@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f7f4;
+  --foreground: #1f2933;
+  --muted: #68737d;
+  --line: #d9ded8;
+  --panel: #ffffff;
+  --accent: #0f766e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, "Noto Sans SC", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.sheet-page {
+  min-height: 100vh;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--foreground);
+  padding: 8px 10px;
+  outline: none;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+}
+
+.icon-button,
+.text-button {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 10px;
+}
+
+.icon-button {
+  width: 36px;
+  padding: 0;
+}
+
+.primary-button {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #fff;
+}
+
+.danger-button {
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tag-delete-button {
+  width: 25px;
+  min-width: 25px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.tag-pill-remove {
+  width: 24px;
+  min-width: 24px;
+  padding-left: 5px;
+  padding-right: 5px;
+  cursor: pointer;
+}
+
+.tag-add-select {
+  width: auto;
+  min-height: 28px;
+  padding: 3px 22px 3px 8px;
+  font-size: 12px;
+}
+
+.table-shell {
+  overflow: auto;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.song-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.song-table th,
+.song-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.song-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #eef2ef;
+  color: #344047;
+  font-size: 13px;
+}
+
+.image-stage img {
+  display: block;
+  width: 100%;
+  max-height: none;
+  object-fit: contain;
+}
+
+.fullscreen-view {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #111;
+  color: #fff;
+}
