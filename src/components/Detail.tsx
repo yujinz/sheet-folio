@@ -1,8 +1,7 @@
 "use client";
-
 import Link from "next/link";
-import { ArrowLeft, Images, Plus, Trash2, Upload, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Images, Plus, Trash2, Upload, X, X as XIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
@@ -10,11 +9,22 @@ import type { ImageKind, Song, SongImage, Tag, TagCategory, YoutubeLink } from "
 
 const categories: TagCategory[] = ["pitch", "technique", "rhythm"];
 
+function generateId() {
+  // crypto.randomUUID() requires secure context (HTTPS), use fallback for HTTP
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 function getDeviceId() {
   const key = "sheet-folio-device-id";
   const existing = localStorage.getItem(key);
   if (existing) return existing;
-  const next = crypto.randomUUID();
+  const next = generateId();
   localStorage.setItem(key, next);
   return next;
 }
@@ -27,14 +37,20 @@ export default function Detail({ songId }: { songId: number }) {
   const [editingImages, setEditingImages] = useState(false);
   const [pageIndex, setPageIndex] = useState<number | null>(null);
   const [zoom, setZoom] = useState(100);
+  const clampZoom = (z: number) => Math.min(130, Math.max(25, z));
   const [dragId, setDragId] = useState<number | null>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDirtyRef = useRef(false);
 
   useEffect(() => {
     void refresh();
     const deviceId = getDeviceId();
     fetch(`/api/device-zoom?deviceId=${deviceId}&songId=${songId}`)
       .then((res) => res.json())
-      .then((row) => setZoom(row.zoom ?? 100));
+      .then((row) => setZoom(clampZoom(row.zoom ?? 100)));
   }, [songId]);
 
   useEffect(() => {
@@ -56,6 +72,7 @@ export default function Detail({ songId }: { songId: number }) {
     ]);
     setPiece(pieceRow);
     setTags(tagRows);
+    isDirtyRef.current = false;
   }
 
   async function patch(body: Record<string, unknown>) {
@@ -126,30 +143,57 @@ export default function Detail({ songId }: { songId: number }) {
     location.href = "/";
   }
 
+  // Debounced save — reads values from refs (uncontrolled inputs)
+  function scheduleSave() {
+    isDirtyRef.current = true;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      const title = titleRef.current?.value ?? "";
+      const notes = notesRef.current?.value ?? "";
+      void fetch(`/api/pieces/${songId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, notes })
+      }).then((res) => res.ok ? res.json() : null).then((updated) => {
+        if (updated) setPiece(updated);
+      });
+    }, 500);
+  }
+
   const images = useMemo(() => piece?.images?.[tab] ?? [], [piece, tab]);
   if (!piece) return <main className="p-6">{t.loading}</main>;
 
   return (
     <main className="sheet-page">
-      <header className="sticky top-0 z-10 grid gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
+      <header ref={headerRef} className="grid gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           <Link className="icon-button" href="/" aria-label={t.backToDirectory}><ArrowLeft size={16} /></Link>
-          <input className="input max-w-lg text-xl font-semibold" value={piece.title} onChange={(event) => patch({ title: event.target.value })} />
-          <select className="select w-20" value={piece.difficulty} onChange={(event) => patch({ difficulty: Number(event.target.value) })}>
-            {[1, 2, 3, 4, 5].map((score) => <option key={score}>{score}</option>)}
-          </select>
+          <input
+            ref={titleRef}
+            key={songId}
+            className="input max-w-lg text-xl font-semibold"
+            defaultValue={piece.title}
+            onChange={scheduleSave}
+          />
           <button className="text-button" type="button" onClick={() => setEditingImages((value) => !value)}>
             {editingImages ? <X size={16} /> : <Images size={16} />} {editingImages ? t.viewImages : t.editImages}
           </button>
-          <label className="flex items-center gap-2 text-sm">
-            {t.zoom}
-            <input type="range" min="25" max="220" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
-          </label>
-          <LocaleSwitch />
           <button className="icon-button danger-button ml-auto" type="button" onClick={deletePiece} aria-label={t.deletePiece}><Trash2 size={15} /></button>
+          <LocaleSwitch />
         </div>
-        <textarea className="textarea" rows={1} value={piece.notes} onChange={(event) => patch({ notes: event.target.value })} placeholder={t.notes} />
-        <div className="grid gap-3 lg:grid-cols-3">
+        <textarea
+          ref={notesRef}
+          key={`notes-${songId}`}
+          className="textarea"
+          rows={1}
+          defaultValue={piece.notes}
+          onChange={scheduleSave}
+          placeholder={t.notes}
+        />
+        <div className="flex flex-nowrap items-center gap-3 overflow-x-auto">
+          <select className="select tag-add-select text-center" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => patch({ difficulty: Number(event.target.value) })}>
+            {[1, 2, 3, 4, 5].map((score) => <option key={score}>{score}</option>)}
+          </select>
           {categories.map((category) => (
             <TagPicker
               key={category}
@@ -162,14 +206,23 @@ export default function Detail({ songId }: { songId: number }) {
             />
           ))}
         </div>
-        <div className="flex gap-2">
+      </header>
+
+      <div className="sticky top-0 z-20 pointer-events-none">
+        {!editingImages && (
+          <label className="pointer-events-auto absolute left-2 top-2 flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm">
+            {t.zoom}
+            <input type="range" min="25" max="130" value={zoom} onChange={(event) => setZoom(clampZoom(Number(event.target.value)))} className="w-20" />
+          </label>
+        )}
+        <div className="pointer-events-auto absolute right-2 top-2 flex gap-1">
           {(["staff", "numbered"] as ImageKind[]).map((kind) => (
-            <button key={kind} className={`text-button ${tab === kind ? "primary-button" : ""}`} type="button" onClick={() => setTab(kind)}>
+            <button key={kind} className={`rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur-sm ${tab === kind ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--foreground)]"}`} type="button" onClick={() => setTab(kind)}>
               {t[kind]}
             </button>
           ))}
         </div>
-      </header>
+      </div>
 
       {editingImages ? (
         <ImageEditor images={images} dragId={dragId} setDragId={setDragId} upload={upload} deleteImage={deleteImage} moveImage={moveImage} />
@@ -223,13 +276,16 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
   const { t } = useLocale();
   const [draft, setDraft] = useState(links);
   useEffect(() => setDraft(links), [links]);
+  const scrollRef = useRef<HTMLDivElement>(null);
   return (
-    <section className="image-stage grid gap-6 px-3 py-4">
-      {images.map((image, index) => (
-        <button key={image.id} className="mx-auto block w-full border-0 bg-transparent p-0" style={{ maxWidth: `${zoom}vw` }} onClick={() => onOpen(index)}>
-          <img src={image.url} alt="" />
-        </button>
-      ))}
+    <section className="px-3 py-4">
+      <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth">
+        {images.map((image, index) => (
+          <button key={image.id} className="flex-shrink-0 border-0 bg-transparent p-0 snap-start" style={{ width: `${zoom}vw`, maxWidth: "95vw", touchAction: "manipulation" }} onClick={() => onOpen(index)}>
+            <img src={image.url} alt="" className="block w-full h-auto" />
+          </button>
+        ))}
+      </div>
       <div className="mx-auto grid w-full max-w-3xl gap-2 pb-8">
         {draft.map((link, index) => (
           <div key={index} className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
@@ -259,15 +315,27 @@ function Pager({ images, tab, setTab, index, setIndex, zoom }: {
   const image = images[index];
   return (
     <div className="fullscreen-view">
-      <div className="absolute left-3 top-3 z-10 flex gap-2">
+      <div className="absolute right-3 top-3 z-20 flex gap-2">
         {(["staff", "numbered"] as ImageKind[]).map((kind) => (
-          <button key={kind} className={`text-button ${tab === kind ? "primary-button" : ""}`} type="button" onClick={() => setTab(kind)}>{t[kind]}</button>
+          <button key={kind} className={`rounded-md bg-white/20 px-2 py-1 text-sm text-white backdrop-blur-sm ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => setTab(kind)}>{t[kind]}</button>
         ))}
       </div>
-      <button className="absolute inset-y-0 left-0 w-1/3" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))} />
-      <button className="absolute inset-y-0 left-1/3 w-1/3" aria-label={t.exitPager} onClick={() => setIndex(null)} />
-      <button className="absolute inset-y-0 right-0 w-1/3" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))} />
-      {image && <img src={image.url} alt="" className="h-full w-full object-contain" style={{ transform: `scale(${zoom / 100})` }} />}
+      <button className="absolute left-3 top-3 z-30 rounded-md bg-white/20 px-3 py-2 text-white backdrop-blur-sm hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
+        <XIcon size={24} />
+      </button>
+      <button className="absolute inset-0 left-0 right-1/2 z-10" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
+        <div className="flex h-full w-16 items-center justify-center opacity-30 hover:opacity-70 transition-opacity">
+          <ChevronLeft size={40} />
+        </div>
+      </button>
+      <button className="absolute inset-0 left-1/2 right-0 z-10" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
+        <div className="flex h-full w-16 items-center justify-center opacity-30 hover:opacity-70 transition-opacity ml-auto">
+          <ChevronRight size={40} />
+        </div>
+      </button>
+      <div className="absolute inset-0 flex items-center justify-center">
+        {image && <img src={image.url} alt="" className="block max-h-full max-w-full object-contain" />}
+      </div>
     </div>
   );
 }

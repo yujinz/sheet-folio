@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil, Plus, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
@@ -35,11 +35,20 @@ export default function Directory() {
   }
 
   async function createPiece() {
-    const row = await fetch("/api/pieces", {
+    const res = await fetch("/api/pieces", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: t.newPieceTitle })
-    }).then((res) => res.json());
+    });
+    if (!res.ok) {
+      alert(`Error creating piece: ${res.status} ${res.statusText}`);
+      return;
+    }
+    const row = await res.json();
+    if (!row.id) {
+      alert(`Error: no id returned. Response: ${JSON.stringify(row)}`);
+      return;
+    }
     location.href = `/piece/${row.id}`;
   }
 
@@ -75,13 +84,17 @@ export default function Directory() {
       );
     });
     return [...filtered].sort((a, b) => {
-      const read = (piece: Song) => {
+      const read = (piece: Song): string | number => {
         if (sort.key === "difficulty") return piece.difficulty;
         if (sort.key === "notes") return piece.notes;
-        if (sort.key === "title") return piece.title;
+        if (sort.key === "title") return piece.id;
         return piece.tags[sort.key].map((tag) => tag.name).join(",");
       };
-      const result = String(read(a)).localeCompare(String(read(b)), locale, { numeric: true });
+      const aVal = read(a);
+      const bVal = read(b);
+      const result = typeof aVal === "number" && typeof bVal === "number"
+        ? aVal - bVal
+        : String(aVal).localeCompare(String(bVal), locale, { numeric: true });
       return sort.dir === "asc" ? result : -result;
     });
   }, [filters, locale, pieces, query, sort]);
@@ -93,29 +106,24 @@ export default function Directory() {
   return (
     <main className="sheet-page">
       <header className="flex flex-wrap items-center gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
-        <h1 className="text-xl font-semibold">{t.appTitle}</h1>
-        <div className="relative min-w-64 flex-1">
+        <button className="text-button primary-button shrink-0" type="button" style={{ fontSize: "14px" }} onClick={createPiece}>
+          <Plus size={16} /> {t.addPiece}
+        </button>
+        <div className="relative min-w-48 flex-1">
           <Search className="absolute left-3 top-2.5 text-[var(--muted)]" size={16} />
           <input
             className="input"
-            style={{ paddingLeft: 36 }}
+            style={{ paddingLeft: 36, fontSize: "14px" }}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t.searchTitle}
           />
         </div>
-        <LocaleSwitch />
-        <button className="text-button primary-button" type="button" onClick={createPiece}>
-          <Plus size={16} /> {t.addPiece}
-        </button>
+        <span className="text-[var(--muted)]" style={{ fontSize: "14px" }}>{t.appTitle}</span>
+        <span style={{ fontSize: "14px" }}><LocaleSwitch /></span>
       </header>
 
       <section className="grid gap-3 px-4 py-4">
-        <div className="flex justify-end">
-          <button className={`text-button ${editingTags ? "primary-button" : ""}`} type="button" onClick={() => setEditingTags((value) => !value)}>
-            <Pencil size={16} /> {editingTags ? t.doneEditingTags : t.editTags}
-          </button>
-        </div>
         <div className="grid gap-4 lg:grid-cols-3">
           {categories.map((category) => (
             <TagPicker
@@ -127,6 +135,11 @@ export default function Directory() {
               onCreate={createTag}
               onDelete={deleteTag}
               editingTags={editingTags}
+              action={category === "pitch" ? (
+                <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ml-auto !text-[12px] mb-1 ${editingTags ? "primary-button" : ""}`} type="button" onClick={() => setEditingTags((value) => !value)}>
+                  <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
+                </button>
+              ) : undefined}
             />
           ))}
         </div>
@@ -136,23 +149,23 @@ export default function Directory() {
         <table className="song-table">
           <thead>
             <tr>
-              <th><button onClick={() => sortBy("title")}>{t.title}</button></th>
-              <th><button onClick={() => sortBy("difficulty")}>{t.difficulty}</button></th>
-              {categories.map((category) => <th key={category}><button onClick={() => sortBy(category)}>{t[category]}</button></th>)}
+              <th style={{ width: 80 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
+              <th><button onClick={() => sortBy("title")}>{t.title} {sort.key === "title" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
+              {categories.map((category) => <th key={category} style={{ paddingLeft: 18 }}><button onClick={() => sortBy(category)}>{t[category]}</button></th>)}
               <th><button onClick={() => sortBy("notes")}>{t.notes}</button></th>
             </tr>
           </thead>
           <tbody>
             {visible.map((piece) => (
               <tr key={piece.id}>
-                <td className="font-semibold"><Link href={`/piece/${piece.id}`}>{piece.title}</Link></td>
                 <td>
-                  <select className="select w-20" value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
+                  <select className="select tag-add-select" value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
                     {[1, 2, 3, 4, 5].map((score) => <option key={score}>{score}</option>)}
                   </select>
                 </td>
+                <td className="font-semibold title-cell"><Link href={`/piece/${piece.id}`}>{piece.title}</Link></td>
                 {categories.map((category) => (
-                  <td key={category} className="min-w-56">
+                  <td key={category} style={{ paddingLeft: 18 }}>
                     <TagPicker
                       compact
                       selectedOnly

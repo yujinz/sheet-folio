@@ -6,7 +6,7 @@ import { songs } from "@/db/schema";
 import { getSong, nowIso, setSongTags } from "@/lib/data";
 
 const updateSongSchema = z.object({
-  title: z.string().refine((value) => value.trim().length > 0).optional(),
+  title: z.string().optional(),
   difficulty: z.number().int().min(1).max(5).optional(),
   notes: z.string().optional(),
   tagIds: z.array(z.number().int()).optional()

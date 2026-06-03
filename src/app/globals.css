@@ -34,6 +34,7 @@ textarea {
 
 button {
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .sheet-page {
@@ -50,6 +51,12 @@ button {
   color: var(--foreground);
   padding: 8px 10px;
   outline: none;
+}
+
+.textarea {
+  min-height: 36px;
+  resize: none;
+  overflow: hidden;
 }
 
 .input:focus,
@@ -71,11 +78,15 @@ button {
   justify-content: center;
   gap: 8px;
   padding: 7px 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .icon-button {
   width: 36px;
   padding: 0;
+  font-size: 12px;
 }
 
 .primary-button {
@@ -99,6 +110,10 @@ button {
   font-size: 12px;
   line-height: 1;
   white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .tag-delete-button {
@@ -114,10 +129,11 @@ button {
   padding-left: 5px;
   padding-right: 5px;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .tag-add-select {
-  width: auto;
+  width: 80px;
   min-height: 28px;
   padding: 3px 22px 3px 8px;
   font-size: 12px;
@@ -141,6 +157,7 @@ button {
   padding: 10px;
   text-align: left;
   vertical-align: top;
+  font-size: 12px;
 }
 
 .song-table th {
@@ -149,14 +166,12 @@ button {
   z-index: 1;
   background: #eef2ef;
   color: #344047;
-  font-size: 13px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
-.image-stage img {
-  display: block;
-  width: 100%;
-  max-height: none;
-  object-fit: contain;
+.song-table th button {
+  white-space: nowrap;
 }
 
 .fullscreen-view {
@@ -165,4 +180,10 @@ button {
   z-index: 50;
   background: #111;
   color: #fff;
+}
+
+/* Safari iOS: elements need cursor:pointer to be tappable */
+.fullscreen-view button {
+  cursor: pointer;
+  touch-action: manipulation;
 }

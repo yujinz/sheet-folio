@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/lib/useLocale";
 import type { Tag, TagCategory } from "@/lib/types";
 
@@ -54,16 +54,19 @@ type Props = {
   editingTags?: boolean;
   selectedOnly?: boolean;
   compact?: boolean;
+  action?: React.ReactNode;
 };
 
-export default function TagPicker({ category, tags, selected, onChange, onCreate, onDelete, editingTags, selectedOnly, compact }: Props) {
+export default function TagPicker({ category, tags, selected, onChange, onCreate, onDelete, editingTags, selectedOnly, compact, action }: Props) {
   const { t } = useLocale();
   const [name, setName] = useState("");
   const [color, setColor] = useState(() => pickDefaultColor(tags, "#0d9488"));
+  const [localTags, setLocalTags] = useState(tags);
+  useEffect(() => setLocalTags(tags), [tags]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
-  const visibleTags = selectedOnly ? tags.filter((tag) => selectedSet.has(tag.id)) : tags;
-  const selectedTags = tags.filter((tag) => selectedSet.has(tag.id));
-  const availableTags = tags.filter((tag) => !selectedSet.has(tag.id));
+  const visibleTags = selectedOnly ? localTags.filter((tag) => selectedSet.has(tag.id)) : localTags;
+  const selectedTags = localTags.filter((tag) => selectedSet.has(tag.id));
+  const availableTags = localTags.filter((tag) => !selectedSet.has(tag.id));
 
   function toggle(id: number) {
     onChange(selectedSet.has(id) ? selected.filter((value) => value !== id) : [...selected, id]);
@@ -73,6 +76,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
     const trimmed = name.trim();
     if (!trimmed) return;
     const tag = await onCreate({ name: trimmed, color, category });
+    setLocalTags((prev) => [...prev, tag]);
     onChange([...selected, tag.id]);
     setName("");
     setColor(pickDefaultColor([...tags, tag], color));
@@ -86,51 +90,67 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
 
   if (compact) {
     return (
-      <div className="flex flex-wrap items-center gap-2">
-        {selectedTags.map((tag) => (
-          <span key={tag.id} className="tag-pill-group inline-flex overflow-hidden rounded-full">
-            <span
-              className="tag-pill rounded-r-none"
-              style={{ background: tag.color }}
-            >
-              {tag.name}
-            </span>
-            <button
-              aria-label={`${t.removeTag}: ${tag.name}`}
-              className="tag-pill tag-pill-remove px-2"
-              style={{ background: tag.color, borderBottomLeftRadius: 0, borderTopLeftRadius: 0, opacity: 0.85 }}
-              type="button"
-              onClick={() => onChange(selected.filter((id) => id !== tag.id))}
-            >
-              <X size={13} />
-            </button>
-          </span>
-        ))}
-        {availableTags.length > 0 && (
-          <select
-            aria-label={t.addTag}
-            className="select tag-add-select"
-            defaultValue=""
-            onChange={(event) => {
-              const id = Number(event.target.value);
+      <span className="inline-flex flex-wrap items-start gap-2">
+        <select
+          aria-label={t.addTag}
+          className="select tag-add-select"
+          defaultValue=""
+          onChange={async (event) => {
+            const val = event.target.value;
+            if (val === "__new__") {
+              const name = prompt(t[category]);
+              if (name?.trim()) {
+                const created = await onCreate({ name: name.trim(), color: pickDefaultColor(localTags, "#0d9488"), category });
+                setLocalTags((prev) => [...prev, created]);
+                onChange([...selected, created.id]);
+              }
+            } else {
+              const id = Number(val);
               if (id) onChange([...selected, id]);
-              event.target.value = "";
-            }}
-          >
-            <option value="" disabled hidden></option>
-            {availableTags.map((tag) => (
-              <option key={tag.id} value={tag.id}>{tag.name}</option>
+            }
+            event.target.value = "";
+          }}
+        >
+          <option value="" disabled hidden>{t[category]}</option>
+          {availableTags.map((tag) => (
+            <option key={tag.id} value={tag.id}>{tag.name}</option>
+          ))}
+          <option value="__new__">+ {t.addTag}</option>
+        </select>
+        {selectedTags.length > 0 && (
+          <span className="flex flex-wrap items-center gap-2">
+            {selectedTags.map((tag) => (
+              <span key={tag.id} className="tag-pill-group inline-flex overflow-hidden rounded-full">
+                <span
+                  className="tag-pill rounded-r-none"
+                  style={{ background: tag.color }}
+                >
+                  {tag.name}
+                </span>
+                <button
+                  aria-label={`${t.removeTag}: ${tag.name}`}
+                  className="tag-pill tag-pill-remove px-2"
+                  style={{ background: tag.color, borderBottomLeftRadius: 0, borderTopLeftRadius: 0, opacity: 0.85 }}
+                  type="button"
+                  onClick={() => onChange(selected.filter((id) => id !== tag.id))}
+                >
+                  <X size={13} />
+                </button>
+              </span>
             ))}
-          </select>
+          </span>
         )}
-      </div>
+      </span>
     );
   }
 
   return (
-    <div className="grid gap-2">
-      <div className="text-sm font-semibold">{t[category]}</div>
-      <div className="flex flex-wrap gap-2">
+    <div className="grid gap-0.5">
+      <div className="flex items-start gap-0.5">
+        <span className="text-[12px] font-semibold">{t[category]}</span>
+        {action}
+      </div>
+      <div className="flex flex-wrap items-center gap-0.5">
         {visibleTags.map((tag) => (
           <span key={tag.id} className="tag-pill-group inline-flex overflow-hidden rounded-full">
             <button
@@ -160,22 +180,22 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
             )}
           </span>
         ))}
-      </div>
-      <div className="flex gap-2">
-        <input className="input min-w-0" value={name} onChange={(event) => setName(event.target.value)} placeholder={t.newTag} />
-        {category === "pitch" && (
-          <div className="flex gap-1">
-            {["♭", "♯", "♮"].map((mark) => (
-              <button key={mark} className="icon-button" type="button" onClick={() => setName((value) => `${value}${mark}`)}>
-                {mark}
-              </button>
-            ))}
-          </div>
-        )}
-        <input aria-label={t.tagColor} className="h-9 w-10" type="color" value={color} onChange={(event) => setColor(event.target.value)} />
-        <button aria-label={t.addTag} className="icon-button" type="button" onClick={createTag}>
-          <Plus size={16} />
-        </button>
+        <span className="ml-auto flex flex-wrap items-center gap-2">
+          {category === "pitch" && (
+            <div className="flex gap-1">
+              {["♭", "♯", "♮"].map((mark) => (
+                <button key={mark} className="icon-button" type="button" onClick={() => setName((value) => `${value}${mark}`)}>
+                  {mark}
+                </button>
+              ))}
+            </div>
+          )}
+          <input className="flex-none" style={{ width: "5rem", fontSize: "12px", border: "1px solid var(--line)", borderRadius: "6px", background: "#fff", color: "var(--foreground)", padding: "8px 10px", outline: "none" }} value={name} onChange={(event) => setName(event.target.value)} placeholder={t.newTag} />
+          <input aria-label={t.tagColor} className="h-9 w-10" type="color" value={color} onChange={(event) => setColor(event.target.value)} />
+          <button aria-label={t.addTag} className="icon-button" type="button" onClick={createTag}>
+            <Plus size={16} />
+          </button>
+        </span>
       </div>
     </div>
   );
