@@ -54,10 +54,9 @@ type Props = {
   editingTags?: boolean;
   selectedOnly?: boolean;
   compact?: boolean;
-  action?: React.ReactNode;
 };
 
-export default function TagPicker({ category, tags, selected, onChange, onCreate, onDelete, editingTags, selectedOnly, compact, action }: Props) {
+export default function TagPicker({ category, tags, selected, onChange, onCreate, onDelete, editingTags, selectedOnly, compact }: Props) {
   const { t } = useLocale();
   const [name, setName] = useState("");
   const [color, setColor] = useState(() => pickDefaultColor(tags, "#0d9488"));
@@ -148,7 +147,6 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
     <div className="grid gap-0.5">
       <div className="flex items-start gap-0.5">
         <span className="text-[12px] font-semibold">{t[category]}</span>
-        {action}
       </div>
       <div className="flex flex-wrap items-center gap-0.5">
         {visibleTags.map((tag) => (
@@ -184,16 +182,16 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
           {category === "pitch" && (
             <div className="flex gap-1">
               {["♭", "♯", "♮"].map((mark) => (
-                <button key={mark} className="icon-button" type="button" onClick={() => setName((value) => `${value}${mark}`)}>
+                <button key={mark} className="pill-add-button" type="button" onClick={() => setName((value) => `${value}${mark}`)}>
                   {mark}
                 </button>
               ))}
             </div>
           )}
-          <input className="flex-none" style={{ width: "5rem", fontSize: "12px", border: "1px solid var(--line)", borderRadius: "6px", background: "#fff", color: "var(--foreground)", padding: "8px 10px", outline: "none" }} value={name} onChange={(event) => setName(event.target.value)} placeholder={t.newTag} />
-          <input aria-label={t.tagColor} className="h-9 w-10" type="color" value={color} onChange={(event) => setColor(event.target.value)} />
-          <button aria-label={t.addTag} className="icon-button" type="button" onClick={createTag}>
-            <Plus size={16} />
+          <input className="flex-none" style={{ width: "5rem", fontSize: "12px", border: "1px solid var(--line)", borderRadius: "999px", background: "#fff", color: "var(--foreground)", padding: "3px 8px", minHeight: "24px", outline: "none" }} value={name} onChange={(event) => setName(event.target.value)} placeholder={t.newTag} />
+          <input aria-label={t.tagColor} className="h-6 w-8" type="color" value={color} onChange={(event) => setColor(event.target.value)} />
+          <button aria-label={t.addTag} className="icon-button pill-add-button" type="button" onClick={createTag}>
+            <Plus size={14} />
           </button>
         </span>
       </div>

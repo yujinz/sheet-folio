@@ -123,8 +123,11 @@ export default function Directory() {
         <span style={{ fontSize: "14px" }}><LocaleSwitch /></span>
       </header>
 
-      <section className="grid gap-3 px-4 py-4">
-        <div className="grid gap-4 lg:grid-cols-3">
+      <section className="relative px-4 py-4">
+        <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 absolute top-3 right-4 -mt-2 ${editingTags ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => setEditingTags((value) => !value)}>
+          <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
+        </button>
+        <div className="grid gap-2 lg:grid-cols-3">
           {categories.map((category) => (
             <TagPicker
               key={category}
@@ -135,11 +138,6 @@ export default function Directory() {
               onCreate={createTag}
               onDelete={deleteTag}
               editingTags={editingTags}
-              action={category === "pitch" ? (
-                <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ml-auto !text-[12px] mb-1 ${editingTags ? "primary-button" : ""}`} type="button" onClick={() => setEditingTags((value) => !value)}>
-                  <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
-                </button>
-              ) : undefined}
             />
           ))}
         </div>
@@ -149,23 +147,23 @@ export default function Directory() {
         <table className="song-table">
           <thead>
             <tr>
-              <th style={{ width: 80 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
-              <th><button onClick={() => sortBy("title")}>{t.title} {sort.key === "title" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
-              {categories.map((category) => <th key={category} style={{ paddingLeft: 18 }}><button onClick={() => sortBy(category)}>{t[category]}</button></th>)}
-              <th><button onClick={() => sortBy("notes")}>{t.notes}</button></th>
+              <th style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
+              <th style={{ width: 200 }}><button onClick={() => sortBy("title")}>{t.title} {sort.key === "title" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
+              {categories.map((category) => <th key={category} style={{ width: 170 }}><button onClick={() => sortBy(category)}>{t[category]}</button></th>)}
+              <th style={{ width: 170 }}><button onClick={() => sortBy("notes")}>{t.notes}</button></th>
             </tr>
           </thead>
           <tbody>
             {visible.map((piece) => (
               <tr key={piece.id}>
                 <td>
-                  <select className="select tag-add-select" value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
+                  <select className="select tag-add-select" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
                     {[1, 2, 3, 4, 5].map((score) => <option key={score}>{score}</option>)}
                   </select>
                 </td>
-                <td className="font-semibold title-cell"><Link href={`/piece/${piece.id}`}>{piece.title}</Link></td>
+                <td className="font-semibold" style={{ fontSize: 15 }}><Link href={`/piece/${piece.id}`}>{piece.title}</Link></td>
                 {categories.map((category) => (
-                  <td key={category} style={{ paddingLeft: 18 }}>
+                  <td key={category}>
                     <TagPicker
                       compact
                       selectedOnly
