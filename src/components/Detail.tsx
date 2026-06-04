@@ -171,6 +171,16 @@ export default function Detail({ songId }: { songId: number }) {
   }
 
   const images = useMemo(() => piece?.images?.[tab] ?? [], [piece, tab]);
+
+  // Auto-switch tab if current one is empty but the other has images
+  useEffect(() => {
+    if (!piece?.images) return;
+    const other: ImageKind = tab === "staff" ? "numbered" : "staff";
+    if ((piece.images[tab]?.length ?? 0) === 0 && (piece.images[other]?.length ?? 0) > 0) {
+      setTab(other);
+    }
+  }, [piece, tab]);
+
   if (!piece) return <main className="p-6">{t.loading}</main>;
 
   return (
