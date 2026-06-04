@@ -11,6 +11,14 @@ pnpm dev
 
 Open `http://localhost:3000` in your browser.
 
+## Testing
+
+```bash
+pnpm test
+```
+
+Runs the test suite with vitest. Tests cover utility functions (API helpers, i18n messages, upload sanitization, data grouping) and database integration (CRUD operations, tag assignment, image ordering, device zoom).
+
 ## LAN Test
 
 Build and start the production server for LAN access:
