@@ -1,6 +1,8 @@
 # Sheet Folio
 
-A recorder sheet music manager and browser.
+A recorder sheet music manager with a web UI accessible from both PC and iPad on the same LAN.
+
+Features: browse, search, and sort a directory of pieces; color-coded difficulty/technique/pitch/rhythm tags; scroll and page-flip sheet views; upload, delete, and drag-to-reorder sheet images; per-device zoom persistence; video link management; full CRUD.
 
 ## Development
 
@@ -29,6 +31,8 @@ pnpm start
 ```
 
 The start command listens on `0.0.0.0` by default (`--hostname 0.0.0.0` in `package.json`), so it can be accessed from other devices on the same LAN.
+
+> **Note:** Docker deployment requires Next.js's `output: "standalone"` mode. The `next.config.ts` enables it automatically when `NEXT_OUTPUT_STANDALONE=true` (set in the Dockerfile's builder stage), so no manual toggling is needed between LAN testing and Docker builds.
 
 If running inside **WSL2**, the WSL2 virtual network is not directly reachable from the LAN. Run the following setup:
 
