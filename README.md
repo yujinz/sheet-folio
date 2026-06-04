@@ -19,7 +19,7 @@ pnpm test
 
 Runs the test suite with vitest. Tests cover utility functions (API helpers, i18n messages, upload sanitization, data grouping) and database integration (CRUD operations, tag assignment, image ordering, device zoom).
 
-## LAN Test
+## LAN Manual Test - Develope on PC and access the app from iPad
 
 Build and start the production server for LAN access:
 
@@ -58,6 +58,8 @@ New-NetFirewallRule -DisplayName "WSL Next.js 3000" -Direction Inbound -Protocol
 Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3000`.
 
 > **Note:** WSL2's internal IP may change after restart, so re-run the portproxy command if needed.
+
+> **Reminder:** `crypto.randomUUID()` requires a secure context (HTTPS). When accessing via plain HTTP (e.g. from iPad on LAN), it throws. The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
 
 ## Server Deployment with Docker
 
@@ -112,6 +114,20 @@ pnpm db:migrate
 ### Health Check
 
 The app exposes `/api/health` for container health checks. Docker Compose and orchestrators will monitor this endpoint.
+
+### Backup
+
+A `backup.sh` script is provided to back up the SQLite database and uploaded images to the NAS:
+
+```bash
+./backup.sh
+```
+
+The script stops the `sheet-folio` container, archives `volumes/app/` (SQLite DB + uploads), restarts the container, and copies the archive to `web17@nas17:/srv/mergerfs/Merger1/merger/otlab/` via SCP. Old backups accumulate on the NAS (no automatic rotation). Schedule it with cron:
+
+```
+0 3 * * * /path/to/sheet-folio/backup.sh
+```
 
 ### Architecture
 
