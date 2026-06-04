@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
-
-function uploadRoot() {
-  return process.env.UPLOAD_DIR || path.join(process.cwd(), "data", "uploads");
-}
+import { uploadRoot } from "@/lib/upload";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const { path: parts } = await params;

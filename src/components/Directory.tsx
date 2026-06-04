@@ -78,7 +78,10 @@ export default function Directory() {
 
   const visible = useMemo(() => {
     const filtered = pieces.filter((piece) => {
-      if (query && !piece.title.toLowerCase().includes(query.toLowerCase())) return false;
+      if (query) {
+        const titleForSearch = locale === "en-US" ? piece.titleEn || piece.title : piece.title;
+        if (!titleForSearch.toLowerCase().includes(query.toLowerCase())) return false;
+      }
       return categories.every((category) =>
         filters[category].every((id) => piece.tags[category].some((tag) => tag.id === id))
       );
@@ -161,7 +164,9 @@ export default function Directory() {
                     {[1, 2, 3, 4, 5].map((score) => <option key={score}>{score}</option>)}
                   </select>
                 </td>
-                <td className="font-semibold" style={{ fontSize: 15 }}><Link href={`/piece/${piece.id}`}>{piece.title}</Link></td>
+                <td className="font-semibold" style={{ fontSize: 15 }}>
+                  <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? piece.titleEn || piece.title : piece.title}</Link>
+                </td>
                 {categories.map((category) => (
                   <td key={category}>
                     <TagPicker

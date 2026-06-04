@@ -7,6 +7,7 @@ import * as schema from "./schema";
 
 type DbCache = {
   db: ReturnType<typeof drizzle<typeof schema>>;
+  sqlite: Database.Database;
 };
 
 declare global {
@@ -28,11 +29,9 @@ function createDb() {
   const presets = [
     ["pitch", "高音", "#2563eb"],
     ["pitch", "低音", "#0891b2"],
-    ["pitch", "临时升降号", "#7c3aed"],
-    ["technique", "吐音", "#dc2626"],
     ["technique", "连音", "#ea580c"],
-    ["technique", "换气", "#16a34a"],
-    ["rhythm", "切分", "#9333ea"],
+    ["technique", "颤音", "#dc2626"],
+    ["technique", "装饰音", "#16a34a"],
     ["rhythm", "附点", "#c026d3"],
     ["rhythm", "三连音", "#0284c7"]
   ] as const;
@@ -42,8 +41,23 @@ function createDb() {
     insertPreset.run(preset[0], preset[1], preset[2]);
   }
 
-  return { db };
+  return { db, sqlite };
 }
 
 export const db = globalThis.sheetFolioDb?.db ?? (globalThis.sheetFolioDb = createDb()).db;
+
+// Graceful shutdown: close the database connection on SIGTERM/SIGINT
+if (typeof process !== "undefined") {
+  const handleShutdown = () => {
+    const cache = globalThis.sheetFolioDb;
+    if (cache) {
+      cache.sqlite.close();
+      globalThis.sheetFolioDb = undefined;
+    }
+    process.exit(0);
+  };
+  process.on("SIGTERM", handleShutdown);
+  process.on("SIGINT", handleShutdown);
+}
+
 export type Db = typeof db;

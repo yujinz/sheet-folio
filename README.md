@@ -51,8 +51,63 @@ Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3
 
 > **Note:** WSL2's internal IP may change after restart, so re-run the portproxy command if needed.
 
-## Server Deployment
+## Server Deployment with Docker
 
-TODO
+### Prerequisites
 
-To deploy with Docker, add `output: "standalone"` back to `next.config.ts`.
+- Docker and Docker Compose
+- SSL certificate files (for HTTPS)
+
+### Quick Start
+
+1. Clone the repository on your server.
+
+2. Create directories for persistent data and SSL certs:
+
+```bash
+mkdir -p volumes/data/sheet-folio
+```
+
+3. Place your SSL certificate and key at `../certs/volumes/data/sheet-folio/ssl.crt` and `../certs/volumes/data/sheet-folio/ssl.key` (or adjust paths in `docker-compose.yml`).
+
+4. Build and start:
+
+```bash
+docker compose up -d
+```
+
+The app will be available at `https://your-server:3444`.
+
+### Environment Variables
+
+| Variable      | Default                        | Description                  |
+|---------------|--------------------------------|------------------------------|
+| `DB_PATH`     | `./data/sheet-folio.db`        | SQLite database file path    |
+| `UPLOAD_DIR`  | `./data/uploads`               | Sheet music image upload dir |
+| `PORT`        | `3000`                         | Internal server port         |
+| `HOSTNAME`    | `0.0.0.0`                     | Server bind address          |
+
+### Database Migrations
+
+Migrations run automatically on container startup. To generate new migrations during development:
+
+```bash
+pnpm db:generate
+```
+
+To manually apply migrations:
+
+```bash
+pnpm db:migrate
+```
+
+### Health Check
+
+The app exposes `/api/health` for container health checks. Docker Compose and orchestrators will monitor this endpoint.
+
+### Architecture
+
+- **Next.js** app running as a standalone Node server
+- **better-sqlite3** for local database (data stored in a Docker volume)
+- **nginx** as a reverse proxy for HTTPS termination
+- **Docker Compose** orchestrates both services

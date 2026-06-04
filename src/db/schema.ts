@@ -3,8 +3,9 @@ import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core
 export const songs = sqliteTable("songs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull(),
-  difficulty: integer("difficulty").notNull().default(1),
-  notes: text("notes").notNull().default(""),
+  titleEn: text("title_en").notNull().default(""),
+  difficulty: integer("difficulty").notNull(),
+  notes: text("notes").notNull(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull()
 });
@@ -14,6 +15,7 @@ export const tags = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     name: text("name").notNull(),
+    nameEn: text("name_en").notNull().default(""),
     color: text("color").notNull(),
     category: text("category", { enum: ["pitch", "technique", "rhythm"] }).notNull()
   },
@@ -46,6 +48,7 @@ export const songImages = sqliteTable("song_images", {
   url: text("url").notNull(),
   filename: text("filename").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+  sourceUrl: text("source_url"),
   createdAt: text("created_at").notNull()
 });
 

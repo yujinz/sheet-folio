@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { youtubeLinks } from "@/db/schema";
 import { getSong } from "@/lib/data";
+import { apiError, serverError } from "@/lib/api";
 
 const linksSchema = z.object({
   links: z.array(
@@ -16,12 +17,17 @@ const linksSchema = z.object({
 });
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const songId = Number(id);
-  const body = linksSchema.parse(await request.json());
-  db.delete(youtubeLinks).where(eq(youtubeLinks.songId, songId)).run();
-  body.links.forEach((link, index) => {
-    db.insert(youtubeLinks).values({ songId, label: link.label, url: link.url, sortOrder: index }).run();
-  });
-  return NextResponse.json(getSong(songId));
+  try {
+    const { id } = await params;
+    const songId = Number(id);
+    const body = linksSchema.safeParse(await request.json());
+    if (!body.success) return apiError(body.error.flatten().fieldErrors);
+    db.delete(youtubeLinks).where(eq(youtubeLinks.songId, songId)).run();
+    body.data.links.forEach((link, index) => {
+      db.insert(youtubeLinks).values({ songId, label: link.label, url: link.url, sortOrder: index }).run();
+    });
+    return NextResponse.json(getSong(songId));
+  } catch (error) {
+    return serverError(error);
+  }
 }

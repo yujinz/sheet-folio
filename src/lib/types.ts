@@ -4,6 +4,7 @@ export type ImageKind = "staff" | "numbered";
 export type Tag = {
   id: number;
   name: string;
+  nameEn: string;
   color: string;
   category: TagCategory;
 };
@@ -15,6 +16,7 @@ export type SongImage = {
   url: string;
   filename: string;
   sortOrder: number;
+  sourceUrl: string | null;
   createdAt: string;
 };
 
@@ -29,6 +31,7 @@ export type YoutubeLink = {
 export type Song = {
   id: number;
   title: string;
+  titleEn: string;
   difficulty: number;
   notes: string;
   createdAt: string;

@@ -38,7 +38,7 @@ export function getSong(id: number): Song | null {
   const song = db.select().from(songs).where(eq(songs.id, id)).get();
   if (!song) return null;
   const selectedTags = db
-    .select({ id: tags.id, name: tags.name, color: tags.color, category: tags.category })
+    .select({ id: tags.id, name: tags.name, nameEn: tags.nameEn, color: tags.color, category: tags.category })
     .from(songTags)
     .innerJoin(tags, eq(songTags.tagId, tags.id))
     .where(eq(songTags.songId, id))

@@ -14,6 +14,7 @@ CREATE TABLE `song_images` (
 	`url` text NOT NULL,
 	`filename` text NOT NULL,
 	`sort_order` integer DEFAULT 0 NOT NULL,
+	`source_url` text,
 	`created_at` text NOT NULL,
 	FOREIGN KEY (`song_id`) REFERENCES `songs`(`id`) ON UPDATE no action ON DELETE cascade
 );
@@ -29,8 +30,9 @@ CREATE UNIQUE INDEX `song_tags_song_tag_idx` ON `song_tags` (`song_id`,`tag_id`)
 CREATE TABLE `songs` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`title` text NOT NULL,
-	`difficulty` integer DEFAULT 1 NOT NULL,
-	`notes` text DEFAULT '' NOT NULL,
+	`title_en` text DEFAULT '' NOT NULL,
+	`difficulty` integer NOT NULL,
+	`notes` text NOT NULL,
 	`created_at` text NOT NULL,
 	`updated_at` text NOT NULL
 );
@@ -38,6 +40,7 @@ CREATE TABLE `songs` (
 CREATE TABLE `tags` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL,
+	`name_en` text DEFAULT '' NOT NULL,
 	`color` text NOT NULL,
 	`category` text NOT NULL
 );

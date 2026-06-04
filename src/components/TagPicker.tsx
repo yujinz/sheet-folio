@@ -3,25 +3,34 @@
 import { Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/lib/useLocale";
+import type { Locale } from "@/lib/i18n";
 import type { Tag, TagCategory } from "@/lib/types";
 
+function tagDisplayName(tag: Tag, locale: Locale): string {
+  if (locale === "en-US" && tag.nameEn) return tag.nameEn;
+  if (locale === "en-US") return tag.name;
+  // zh-CN: prefer Chinese name, fall back to English
+  if (tag.name) return tag.name;
+  return tag.nameEn;
+}
+
 const TAG_COLORS = [
-  "#2563eb", // blue
-  "#0891b2", // cyan
-  "#0d9488", // teal
-  "#15803d", // green
-  "#65a30d", // lime
-  "#4d7c0f", // olive
-  "#7c3aed", // purple
-  "#9333ea", // violet
-  "#c026d3", // fuchsia
-  "#db2777", // pink
-  "#be123c", // rose
-  "#b91c1c", // red
-  "#ea580c", // orange
-  "#d97706", // amber
-  "#a16207", // dark yellow
-  "#92400e", // brown
+  "#4a6fa5", // dusty blue
+  "#5b8c7a", // sage
+  "#7a6f9c", // muted lavender
+  "#8c6b8c", // dusty mauve
+  "#9e7b6b", // warm taupe
+  "#6b8e6b", // moss
+  "#7a8c8c", // slate
+  "#a57c6b", // terracotta
+  "#6b7a9c", // steel blue
+  "#8c7a6b", // warm gray
+  "#5b7a6b", // pine
+  "#9c7a8c", // dusty rose
+  "#7a7a9c", // periwinkle
+  "#8c8c6b", // olive gray
+  "#6b8c9c", // teal slate
+  "#9c8c6b", // sandalwood
 ];
 
 function pickDefaultColor(tags: Tag[], currentColor: string): string {
@@ -57,9 +66,10 @@ type Props = {
 };
 
 export default function TagPicker({ category, tags, selected, onChange, onCreate, onDelete, editingTags, selectedOnly, compact }: Props) {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [name, setName] = useState("");
-  const [color, setColor] = useState(() => pickDefaultColor(tags, "#0d9488"));
+  const [nameEn, setNameEn] = useState("");
+  const [color, setColor] = useState(() => pickDefaultColor(tags, "#4a6fa5"));
   const [localTags, setLocalTags] = useState(tags);
   useEffect(() => setLocalTags(tags), [tags]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -74,10 +84,10 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
   async function createTag() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const tag = await onCreate({ name: trimmed, color, category });
+    const tag = await onCreate({ name: trimmed, nameEn: nameEn.trim(), color, category });
     setLocalTags((prev) => [...prev, tag]);
-    onChange([...selected, tag.id]);
     setName("");
+    setNameEn("");
     setColor(pickDefaultColor([...tags, tag], color));
   }
 
@@ -97,9 +107,10 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
           onChange={async (event) => {
             const val = event.target.value;
             if (val === "__new__") {
-              const name = prompt(t[category]);
+              const name = prompt(t[category] + " (中文)");
               if (name?.trim()) {
-                const created = await onCreate({ name: name.trim(), color: pickDefaultColor(localTags, "#0d9488"), category });
+                const nameEn = prompt(t[category] + " (English)");
+                const created = await onCreate({ name: name.trim(), nameEn: nameEn?.trim() ?? "", color: pickDefaultColor(localTags, "#4a6fa5"), category });
                 setLocalTags((prev) => [...prev, created]);
                 onChange([...selected, created.id]);
               }
@@ -112,7 +123,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
         >
           <option value="" disabled hidden>{t[category]}</option>
           {availableTags.map((tag) => (
-            <option key={tag.id} value={tag.id}>{tag.name}</option>
+            <option key={tag.id} value={tag.id}>{tagDisplayName(tag, locale)}</option>
           ))}
           <option value="__new__">+ {t.addTag}</option>
         </select>
@@ -124,10 +135,10 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                   className="tag-pill rounded-r-none"
                   style={{ background: tag.color }}
                 >
-                  {tag.name}
+                  {tagDisplayName(tag, locale)}
                 </span>
                 <button
-                  aria-label={`${t.removeTag}: ${tag.name}`}
+                  aria-label={`${t.removeTag}: ${tagDisplayName(tag, locale)}`}
                   className="tag-pill tag-pill-remove px-2"
                   style={{ background: tag.color, borderBottomLeftRadius: 0, borderTopLeftRadius: 0, opacity: 0.85 }}
                   type="button"
@@ -163,7 +174,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               type="button"
               onClick={() => toggle(tag.id)}
             >
-              {tag.name}
+              {tagDisplayName(tag, locale)}
             </button>
             {editingTags && onDelete && (
               <button
@@ -188,11 +199,26 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               ))}
             </div>
           )}
-          <input className="flex-none" style={{ width: "5rem", fontSize: "12px", border: "1px solid var(--line)", borderRadius: "999px", background: "#fff", color: "var(--foreground)", padding: "3px 8px", minHeight: "24px", outline: "none" }} value={name} onChange={(event) => setName(event.target.value)} placeholder={t.newTag} />
-          <input aria-label={t.tagColor} className="h-6 w-8" type="color" value={color} onChange={(event) => setColor(event.target.value)} />
-          <button aria-label={t.addTag} className="icon-button pill-add-button" type="button" onClick={createTag}>
-            <Plus size={14} />
-          </button>
+          <div className="flex flex-wrap items-center gap-1">
+            <input
+              className="flex-none"
+              style={{ width: "5rem", fontSize: "12px", border: "1px solid var(--line)", borderRadius: "999px", background: "#fff", color: "var(--foreground)", padding: "3px 8px", minHeight: "24px", outline: "none" }}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder={locale === "en-US" ? "Chinese name" : "中文名"}
+            />
+            <input
+              className="flex-none"
+              style={{ width: "5rem", fontSize: "12px", border: "1px solid var(--line)", borderRadius: "999px", background: "#fff", color: "var(--foreground)", padding: "3px 8px", minHeight: "24px", outline: "none" }}
+              value={nameEn}
+              onChange={(event) => setNameEn(event.target.value)}
+              placeholder={locale === "en-US" ? "English name" : "英文名"}
+            />
+            <input aria-label={t.tagColor} className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={color} onChange={(event) => setColor(event.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
+            <button aria-label={t.addTag} className="icon-button pill-add-button" type="button" onClick={createTag}>
+              <Plus size={14} />
+            </button>
+          </div>
         </span>
       </div>
     </div>

@@ -44,8 +44,11 @@ export const messages = {
     saveLinks: "保存链接",
     previousPage: "上一张",
     exitPager: "退出",
+    source: "来源",
+    sourceUrl: "来源链接",
     nextPage: "下一张",
-    loading: "加载中..."
+    loading: "加载中...",
+    noImages: "暂无图片"
   },
   "en-US": {
     appTitle: "Recorder Sheet Manager",
@@ -85,8 +88,11 @@ export const messages = {
     saveLinks: "Save links",
     previousPage: "Previous page",
     exitPager: "Exit",
+    source: "Source",
+    sourceUrl: "Source link",
     nextPage: "Next page",
-    loading: "Loading..."
+    loading: "Loading...",
+    noImages: "No images"
   }
 } as const;
 

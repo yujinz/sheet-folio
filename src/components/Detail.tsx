@@ -30,7 +30,7 @@ function getDeviceId() {
 }
 
 export default function Detail({ songId }: { songId: number }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [piece, setPiece] = useState<Song | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
   const [tab, setTab] = useState<ImageKind>("staff");
@@ -41,6 +41,7 @@ export default function Detail({ songId }: { songId: number }) {
   const [dragId, setDragId] = useState<number | null>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const titleEnRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDirtyRef = useRef(false);
@@ -148,14 +149,23 @@ export default function Detail({ songId }: { songId: number }) {
     isDirtyRef.current = true;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      const title = titleRef.current?.value ?? "";
       const notes = notesRef.current?.value ?? "";
+      const body: Record<string, string> = { notes };
+      // Only one title input is rendered (based on locale); preserve the other from current piece state
+      if (locale === "en-US") {
+        body.title = piece?.title ?? "";
+        body.titleEn = titleEnRef.current?.value ?? "";
+      } else {
+        body.title = titleRef.current?.value ?? "";
+        body.titleEn = piece?.titleEn ?? "";
+      }
       void fetch(`/api/pieces/${songId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, notes })
+        body: JSON.stringify(body)
       }).then((res) => res.ok ? res.json() : null).then((updated) => {
         if (updated) setPiece(updated);
+        isDirtyRef.current = false;
       });
     }, 500);
   }
@@ -169,10 +179,10 @@ export default function Detail({ songId }: { songId: number }) {
         <div className="flex flex-wrap items-center gap-2">
           <Link className="icon-button" href="/" aria-label={t.backToDirectory}><ArrowLeft size={16} /></Link>
           <input
-            ref={titleRef}
-            key={songId}
+            ref={locale === "en-US" ? titleEnRef : titleRef}
+            key={`title-${songId}-${locale}`}
             className="input max-w-lg text-xl font-semibold"
-            defaultValue={piece.title}
+            defaultValue={locale === "en-US" ? piece.titleEn : piece.title}
             onChange={scheduleSave}
           />
           <button className="text-button" type="button" onClick={() => setEditingImages((value) => !value)}>
@@ -253,11 +263,27 @@ function ImageEditor({ images, dragId, setDragId, upload, deleteImage, moveImage
         <Upload size={16} /> {t.upload}
         <input className="hidden" type="file" multiple accept="image/*" onChange={(event) => upload(event.target.files)} />
       </label>
+      {images.length === 0 && (
+        <p className="py-8 text-center text-sm text-[var(--muted)]">{t.noImages}</p>
+      )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {images.map((image) => (
           <div key={image.id} draggable onDragStart={() => setDragId(image.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => moveImage(image.id)} className="relative border border-[var(--line)] bg-white p-2">
             <img src={image.url} alt="" className="aspect-[3/4] w-full object-contain" />
             <button className="icon-button danger-button absolute right-2 top-2" type="button" onClick={() => deleteImage(image.id)}><Trash2 size={14} /></button>
+            <input
+              className="input mt-2 w-full text-xs"
+              placeholder={t.sourceUrl}
+              defaultValue={image.sourceUrl ?? ""}
+              onBlur={(event) => {
+                const value = event.target.value.trim() || null;
+                fetch(`/api/pieces/${image.songId}/images/${image.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ sourceUrl: value })
+                });
+              }}
+            />
           </div>
         ))}
       </div>
@@ -279,11 +305,21 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
   const scrollRef = useRef<HTMLDivElement>(null);
   return (
     <section className="px-3 py-4">
+      {images.length === 0 && (
+        <p className="py-8 text-center text-sm text-[var(--muted)]">{t.noImages}</p>
+      )}
       <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth">
         {images.map((image, index) => (
-          <button key={image.id} className="flex-shrink-0 border-0 bg-transparent p-0 snap-start" style={{ width: `${zoom}vw`, maxWidth: "95vw", touchAction: "manipulation" }} onClick={() => onOpen(index)}>
-            <img src={image.url} alt="" className="block w-full h-auto" />
-          </button>
+          <div key={image.id} className="flex-shrink-0 snap-start" style={{ width: `${zoom}vw`, maxWidth: "95vw" }}>
+            <button className="border-0 bg-transparent p-0 block w-full" style={{ touchAction: "manipulation" }} onClick={() => onOpen(index)}>
+              <img src={image.url} alt="" className="block w-full h-auto" />
+            </button>
+            {image.sourceUrl && (
+              <a href={image.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-xs text-[var(--accent)] hover:underline" onClick={(e) => e.stopPropagation()}>
+                {image.sourceUrl}
+              </a>
+            )}
+          </div>
         ))}
       </div>
       <div className="mx-auto grid w-full max-w-3xl gap-2 pb-8">
@@ -336,6 +372,16 @@ function Pager({ images, tab, setTab, index, setIndex, zoom }: {
       <div className="absolute inset-0 flex items-center justify-center">
         {image && <img src={image.url} alt="" className="block max-h-full max-w-full object-contain" />}
       </div>
+      {image?.sourceUrl && (
+        <a
+          href={image.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 max-w-[80vw] truncate rounded-md bg-black/50 px-3 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/70"
+        >
+          {t.source}: {image.sourceUrl}
+        </a>
+      )}
     </div>
   );
 }
