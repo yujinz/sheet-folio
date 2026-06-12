@@ -1,10 +1,33 @@
 # Sheet Folio
 
-A recorder sheet music manager with a web UI accessible from both PC and iPad on the same LAN.
+A sheet music manager with a web UI accessible from both PC and iPad.
 
-Features: browse, search, and sort a directory of pieces; color-coded difficulty/technique/pitch/rhythm tags; scroll and page-flip sheet views; upload, delete, and drag-to-reorder sheet images; per-device zoom persistence; video link management; full CRUD.
+App features: browse, search, and sort a directory of pieces; upload, delete, and drag-to-reorder sheet images; color-coded difficulty/technique/pitch/rhythm tags; scroll and page-flip sheet views; per-device zoom persistence; sheet source and video link management; full CRUD.
 
-## Development
+<details>
+<summary><h2 style="display:inline">Quick Start: Local Management + Static Export</h2></summary>
+
+If you don't want to deal with server deployment or LAN setup, you can run the app locally to manage your sheet music collection, then export a self-contained static site for easy hosting.
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Open `http://localhost:3000` in your browser. Add, edit, and organize your pieces using the full web UI. The SQLite database (`./data/sheet-folio.db`) persists on disk even after you close the app, so you can always resume where you left off.
+
+When you're ready to share, generate a static site:
+
+```bash
+pnpm export
+```
+
+Copy the contents of `static-export/` to any static host (Codeberg Pages, GitHub Pages, Netlify, etc.) — no server or database required for the hosted site.
+
+</details>
+
+<details>
+<summary><h2 style="display:inline">Development</h2></summary>
 
 ```bash
 pnpm install
@@ -13,7 +36,10 @@ pnpm dev
 
 Open `http://localhost:3000` in your browser.
 
-## Testing
+</details>
+
+<details>
+<summary><h2 style="display:inline">Unit Test</h2></summary>
 
 ```bash
 pnpm test
@@ -21,7 +47,10 @@ pnpm test
 
 Runs the test suite with vitest. Tests cover utility functions (API helpers, i18n messages, upload sanitization, data grouping) and database integration (CRUD operations, tag assignment, image ordering, device zoom).
 
-## LAN Manual Test - Develope on PC and access the app from iPad
+</details>
+
+<details>
+<summary><h2 style="display:inline">LAN Manual Test: Develop on PC and test on iPad</h2></summary>
 
 Build and start the production server for LAN access:
 
@@ -65,7 +94,10 @@ Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3
 
 > **Reminder:** `crypto.randomUUID()` requires a secure context (HTTPS). When accessing via plain HTTP (e.g. from iPad on LAN), it throws. The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
 
-## Server Deployment with Docker
+</details>
+
+<details>
+<summary><h2 style="display:inline">Server Deployment with Docker</h2></summary>
 
 ### Prerequisites
 
@@ -139,3 +171,114 @@ The script stops the `sheet-folio` container, archives `volumes/app/` (SQLite DB
 - **better-sqlite3** for local database (data stored in a Docker volume)
 - **nginx** as a reverse proxy for HTTPS termination
 - **Docker Compose** orchestrates both services
+
+</details>
+
+<details>
+<summary><h2 style="display:inline">Static Export</h2></summary>
+
+Generate a self-contained static HTML site from the database for sharing on free static hosts (Codeberg Pages, GitHub Pages, etc.):
+
+```bash
+pnpm export
+```
+
+Output goes to `static-export/`. It includes:
+
+- `index.html` — directory page with search, tag filtering, and sorting (client-side, no server needed)
+- `piece/{id}/index.html` — detail pages with image galleries and links
+- `images/{id}/{kind}/` — re-encoded images with EXIF metadata stripped
+
+### Preview
+
+```bash
+cd static-export && python3 -m http.server 8080
+```
+
+Open `http://localhost:8080` to browse the exported collection.
+
+### Automated Deployment to Codeberg Pages / GitHub Pages
+
+A deploy script is provided to export the site and push it to a Git branch that your static host uses for Pages:
+
+```bash
+pnpm deploy:static
+```
+
+This runs `pnpm export` first, then pushes the result to the `pages` branch of your repository by default. On Codeberg Pages or GitHub Pages, configure that branch as your Pages source.
+
+#### Authentication
+
+The script supports two authentication methods. Choose one:
+
+**Option A: SSH key (recommended)**
+
+1. On the server (the machine running cron), generate a key pair:
+
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/sheet-folio-deploy -N ""
+   ```
+
+2. Copy the public key and add it to your Codeberg account:
+
+   ```bash
+   cat ~/.ssh/sheet-folio-deploy.pub
+   ```
+
+   Go to **Codeberg → Settings → SSH/GPG Keys → Add Key** and paste it.
+
+3. Run the deploy with:
+
+   ```bash
+   DEPLOY_KEY=~/.ssh/sheet-folio-deploy pnpm deploy:static
+   ```
+
+**Option B: Personal access token**
+
+1. Create a token on Codeberg: **Settings → Applications → Generate Token** with repo write access.
+2. Run the deploy with:
+
+   ```bash
+   DEPLOY_TOKEN=your_token_here pnpm deploy:static
+   ```
+
+With either method, the secret (private key file or token) stays **outside the repo** — the server has it, but it's never committed.
+
+#### Environment Variables
+
+| Variable       | Default                      | Description                                      |
+|----------------|------------------------------|--------------------------------------------------|
+| `TARGET_REPO`  | (auto-detected from git origin) | Remote URL (e.g. `git@codeberg.org:user/repo`) |
+| `TARGET_BRANCH`| `pages`                      | Branch to push to                                |
+| `DEPLOY_KEY`   | (uses default SSH agent)     | Path to SSH private key                          |
+| `DEPLOY_TOKEN` | (uses default SSH agent)     | Personal access token for HTTPS auth             |
+
+#### Cron (automatic updates)
+
+Schedule the export and deploy to run daily. It only pushes when the exported content has actually changed (no-op if identical):
+
+```cron
+0 3 * * * cd /path/to/sheet-folio && DEPLOY_KEY=/home/user/.ssh/sheet-folio-deploy ./scripts/deploy-static.sh >> /tmp/sheet-folio-deploy.log 2>&1
+```
+
+Or with a token:
+
+```cron
+0 3 * * * cd /path/to/sheet-folio && DEPLOY_TOKEN=abc123 ./scripts/deploy-static.sh >> /tmp/sheet-folio-deploy.log 2>&1
+```
+
+This lets you keep managing sheets locally via `pnpm dev` while the public site stays in sync automatically.
+
+### Manual Deployment
+
+Copy the contents of `static-export/` to any static host. For Codeberg Pages or GitHub Pages, also include an empty `.nojekyll` file in the root to prevent Jekyll processing.
+
+### Environment Variables
+
+| Variable     | Default                   | Description                       |
+|-------------|---------------------------|-----------------------------------|
+| `DB_PATH`   | `./data/sheet-folio.db`   | Path to the SQLite database       |
+| `UPLOAD_DIR`| `./data/uploads`          | Sheet music image upload directory|
+| `OUTPUT_DIR`| `./static-export`         | Directory for the exported site   |
+
+</details>

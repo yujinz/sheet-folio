@@ -11,7 +11,9 @@
     "test:watch": "vitest",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit push"
+    "db:migrate": "drizzle-kit push",
+    "export": "tsx scripts/export-static.ts",
+    "deploy:static": "./scripts/deploy-static.sh"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -40,7 +42,9 @@
     "@types/react-dom": "^19.0.2",
     "drizzle-kit": "^0.31.9",
     "postcss": "^8.4.49",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.2.1",
+    "tsx": "^4.22.4",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"
   },

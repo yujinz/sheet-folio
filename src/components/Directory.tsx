@@ -19,7 +19,7 @@ export default function Directory() {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Record<TagCategory, number[]>>({ pitch: [], technique: [], rhythm: [] });
   const [editingTags, setEditingTags] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "title", dir: "asc" });
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "difficulty", dir: "asc" });
 
   useEffect(() => {
     void refresh();
