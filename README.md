@@ -130,7 +130,7 @@ docker compose up -d
 
 The app will be available at `http://localhost:3100` (plain HTTP, no SSL setup needed).
 
-> **Note on `network_mode: host`:** The `docker-compose.yml` uses `network_mode: host` instead of the more common `ports:` mapping, so that browsers in Windows can access the port. This makes the container share the host's network stack directly — the app listens on `localhost:8080` (or whichever `PORT` is set) without Docker's NAT/bridge layer. This is okay because:
+> **Note on `network_mode: host`:** The `docker-compose.yml` uses `network_mode: host` instead of the more common `ports:` mapping, so that browsers in Windows can access the port. This makes the container share the host's network stack directly — the app listens on `localhost:8888` (or whichever `PORT` is set) without Docker's NAT/bridge layer. This is okay because:
 > - Sheet-folio is a LAN-only app with no reverse proxy or HTTPS requirement
 > - No inter-container communication is needed (no database or other companion containers)
 > - Host networking avoids port conflicts with other Docker services on the same machine

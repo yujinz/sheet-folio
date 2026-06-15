@@ -3,7 +3,7 @@ services:
     build: .
     network_mode: host
     environment:
-      - PORT=8080
+      - PORT=8888
     volumes:
       - ./volumes/app:/app/data
     restart: unless-stopped
