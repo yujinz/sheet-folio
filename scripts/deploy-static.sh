@@ -44,14 +44,11 @@ echo "=== Sheet Folio static deploy ==="
 echo "Time: $(date)"
 echo "Project: $PROJECT_DIR"
 
-# If TARGET_REPO is not set, auto-detect from the project's git origin
 if [ -z "$TARGET_REPO" ]; then
-  TARGET_REPO="$(cd "$PROJECT_DIR" && git remote get-url origin 2>/dev/null || true)"
-  if [ -z "$TARGET_REPO" ]; then
-    echo "ERROR: TARGET_REPO is not set and could not detect git origin."
-    exit 1
-  fi
-  echo "Auto-detected remote: $TARGET_REPO"
+  echo "ERROR: TARGET_REPO is not set."
+  echo "Set it to your Codeberg (or other static host) repo, e.g.:"
+  echo '  TARGET_REPO=git@codeberg.org:your-user/sheet-music.git ./scripts/deploy-static.sh'
+  exit 1
 fi
 
 # Configure authentication method
@@ -78,9 +75,12 @@ fi
 
 # Step 1: Run the static export
 echo ""
-echo "--- Step 1: Exporting static site ---"
+echo "--- Step 1: Exporting static site (via Docker) ---"
 cd "$PROJECT_DIR"
-npx tsx scripts/export-static.ts
+docker run --rm \
+  -v "$PWD/volumes/app:/app/data" \
+  -v "$PWD/static-export:/app/static-export" \
+  sheet-folio-export
 
 echo ""
 echo "--- Step 2: Preparing deploy directory ---"
