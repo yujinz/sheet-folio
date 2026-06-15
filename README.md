@@ -76,9 +76,10 @@ networkingMode=mirrored
 
 Then restart WSL2: `wsl --shutdown` and reopen your WSL2 terminal.
 
-### 2. If you encounter issue where buttons are not clickable on iPad, the below port forwarding and firewall rule could help, but you shouldn't need this if you've done the previous step right.
+### 2. If you encounter issue where buttons are not clickable on iPad
 
-Run the following in **PowerShell as Administrator**:
+Run the following in **PowerShell as Administrator** could help, but you shouldn't need this if you've done the previous step right. The proxy also occupies port 3000 on Windows, interfering with docker run.
+
 
 ```powershell
 $wslIP = (wsl hostname -I).Trim().Split()[0]
@@ -90,7 +91,7 @@ New-NetFirewallRule -DisplayName "WSL Next.js 3000" -Direction Inbound -Protocol
 
 Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3000`.
 
-> **Note:** WSL2's internal IP may change after restart,`wsl hostname -I`.
+> **Note:** WSL2's internal IP may change after restart, run `hostname -I`.
 
 > **Reminder:** `crypto.randomUUID()` requires a secure context (HTTPS). The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
 

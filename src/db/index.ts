@@ -27,18 +27,20 @@ function createDb() {
   migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
 
   const presets = [
-    ["pitch", "高音", "#2563eb"],
-    ["pitch", "低音", "#0891b2"],
-    ["technique", "连音", "#ea580c"],
-    ["technique", "颤音", "#dc2626"],
-    ["technique", "装饰音", "#16a34a"],
-    ["rhythm", "附点", "#c026d3"],
-    ["rhythm", "三连音", "#0284c7"]
+    ["pitch", "高音", "High notes", "#2563eb"],
+    ["pitch", "低音", "Low notes", "#0891b2"],
+    ["technique", "连音", "Legato", "#ea580c"],
+    ["technique", "颤音", "Trill", "#dc2626"],
+    ["technique", "装饰音", "Ornament", "#16a34a"],
+    ["rhythm", "附点", "Dotted", "#c026d3"],
+    ["rhythm", "三连音", "Triplet", "#0284c7"]
   ] as const;
 
-  const insertPreset = sqlite.prepare("INSERT OR IGNORE INTO tags (category, name, color) VALUES (?, ?, ?)");
+  const insertPreset = sqlite.prepare("INSERT OR IGNORE INTO tags (category, name, name_en, color) VALUES (?, ?, ?, ?)");
+  const updatePresetNameEn = sqlite.prepare("UPDATE tags SET name_en = ? WHERE name = ? AND (name_en IS NULL OR name_en = '')");
   for (const preset of presets) {
-    insertPreset.run(preset[0], preset[1], preset[2]);
+    insertPreset.run(preset[0], preset[1], preset[2], preset[3]);
+    updatePresetNameEn.run(preset[2], preset[1]);
   }
 
   return { db, sqlite };

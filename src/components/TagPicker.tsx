@@ -7,11 +7,9 @@ import type { Locale } from "@/lib/i18n";
 import type { Tag, TagCategory } from "@/lib/types";
 
 function tagDisplayName(tag: Tag, locale: Locale): string {
-  if (locale === "en-US" && tag.nameEn) return tag.nameEn;
-  if (locale === "en-US") return tag.name;
+  if (locale === "en-US") return tag.nameEn || tag.name;
   // zh-CN: prefer Chinese name, fall back to English
-  if (tag.name) return tag.name;
-  return tag.nameEn;
+  return tag.name || tag.nameEn;
 }
 
 const TAG_COLORS = [
@@ -83,8 +81,9 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
 
   async function createTag() {
     const trimmed = name.trim();
-    if (!trimmed) return;
-    const tag = await onCreate({ name: trimmed, nameEn: nameEn.trim(), color, category });
+    const trimmedEn = nameEn.trim();
+    if (!trimmed && !trimmedEn) return;
+    const tag = await onCreate({ name: trimmed || trimmedEn, nameEn: trimmedEn, color, category });
     setLocalTags((prev) => [...prev, tag]);
     setName("");
     setNameEn("");
@@ -107,13 +106,20 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
           onChange={async (event) => {
             const val = event.target.value;
             if (val === "__new__") {
-              const name = prompt(t[category] + " (中文)");
-              if (name?.trim()) {
-                const nameEn = prompt(t[category] + " (English)");
-                const created = await onCreate({ name: name.trim(), nameEn: nameEn?.trim() ?? "", color: pickDefaultColor(localTags, "#4a6fa5"), category });
-                setLocalTags((prev) => [...prev, created]);
-                onChange([...selected, created.id]);
+              let name: string | null;
+              let nameEn: string | null;
+              if (locale === "en-US") {
+                nameEn = prompt(t[category] + " (English)");
+                if (!nameEn?.trim()) return;
+                name = prompt(t[category] + " (中文)");
+              } else {
+                name = prompt(t[category] + " (中文)");
+                if (!name?.trim()) return;
+                nameEn = prompt(t[category] + " (English)");
               }
+              const created = await onCreate({ name: (name ?? "").trim(), nameEn: (nameEn ?? "").trim(), color: pickDefaultColor(localTags, "#4a6fa5"), category });
+              setLocalTags((prev) => [...prev, created]);
+              onChange([...selected, created.id]);
             } else {
               const id = Number(val);
               if (id) onChange([...selected, id]);
@@ -205,14 +211,14 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               style={{ width: "5rem", fontSize: "12px", border: "1px solid var(--line)", borderRadius: "999px", background: "#fff", color: "var(--foreground)", padding: "3px 8px", minHeight: "24px", outline: "none" }}
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder={locale === "en-US" ? "Chinese name" : "中文名"}
+              placeholder={locale === "en-US" ? "新标签" : "新标签"}
             />
             <input
               className="flex-none"
               style={{ width: "5rem", fontSize: "12px", border: "1px solid var(--line)", borderRadius: "999px", background: "#fff", color: "var(--foreground)", padding: "3px 8px", minHeight: "24px", outline: "none" }}
               value={nameEn}
               onChange={(event) => setNameEn(event.target.value)}
-              placeholder={locale === "en-US" ? "English name" : "英文名"}
+              placeholder={locale === "en-US" ? "New Tag" : "New Tag"}
             />
             <input aria-label={t.tagColor} className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={color} onChange={(event) => setColor(event.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
             <button aria-label={t.addTag} className="icon-button pill-add-button" type="button" onClick={createTag}>

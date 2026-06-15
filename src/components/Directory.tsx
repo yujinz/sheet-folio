@@ -91,7 +91,7 @@ export default function Directory() {
         if (sort.key === "difficulty") return piece.difficulty;
         if (sort.key === "notes") return piece.notes;
         if (sort.key === "title") return piece.id;
-        return piece.tags[sort.key].map((tag) => tag.name).join(",");
+        return piece.tags[sort.key].map((tag) => locale === "en-US" ? (tag.nameEn || tag.name) : tag.name).join(",");
       };
       const aVal = read(a);
       const bVal = read(b);
