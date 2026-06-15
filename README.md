@@ -76,7 +76,7 @@ networkingMode=mirrored
 
 Then restart WSL2: `wsl --shutdown` and reopen your WSL2 terminal.
 
-### 2. Add port forwarding and firewall rule
+### 2. If you encounter issue where buttons are not clickable on iPad, the below port forwarding and firewall rule could help, but you shouldn't need this if you've done the previous step right.
 
 Run the following in **PowerShell as Administrator**:
 
@@ -90,9 +90,9 @@ New-NetFirewallRule -DisplayName "WSL Next.js 3000" -Direction Inbound -Protocol
 
 Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3000`.
 
-> **Note:** WSL2's internal IP may change after restart, so re-run the portproxy command if needed.
+> **Note:** WSL2's internal IP may change after restart,`wsl hostname -I`.
 
-> **Reminder:** `crypto.randomUUID()` requires a secure context (HTTPS). When accessing via plain HTTP (e.g. from iPad on LAN), it throws. The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
+> **Reminder:** `crypto.randomUUID()` requires a secure context (HTTPS). The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
 
 </details>
 
@@ -102,7 +102,6 @@ Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3
 ### Prerequisites
 
 - Docker and Docker Compose
-- SSL certificate files (for HTTPS)
 
 ### Quick Start
 
@@ -113,8 +112,15 @@ Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3
 ```bash
 mkdir -p volumes/data/sheet-folio
 ```
+3. Disable firewall
 
-3. Place your SSL certificate and key at `../certs/volumes/data/sheet-folio/ssl.crt` and `../certs/volumes/data/sheet-folio/ssl.key` (or adjust paths in `docker-compose.yml`).
+Create/edit `%USERPROFILE%\.wslconfig` on Windows:
+
+```ini
+[wsl2]
+networkingMode=mirrored
+firewall=false
+```
 
 4. Build and start:
 
@@ -122,7 +128,14 @@ mkdir -p volumes/data/sheet-folio
 docker compose up -d
 ```
 
-The app will be available at `https://your-server:3444`.
+The app will be available at `http://localhost:3100` (plain HTTP, no SSL setup needed).
+
+> **Note on `network_mode: host`:** The `docker-compose.yml` uses `network_mode: host` instead of the more common `ports:` mapping, so that browsers in Windows can access the port. This makes the container share the host's network stack directly — the app listens on `localhost:8080` (or whichever `PORT` is set) without Docker's NAT/bridge layer. This is okay because:
+> - Sheet-folio is a LAN-only app with no reverse proxy or HTTPS requirement
+> - No inter-container communication is needed (no database or other companion containers)
+> - Host networking avoids port conflicts with other Docker services on the same machine
+>
+> If you later add containers that need to talk to each other (e.g., a database), switch to bridge networking with explicit `ports:` mapping.
 
 ### Environment Variables
 
@@ -197,7 +210,7 @@ cd static-export && python3 -m http.server 8080
 
 Open `http://localhost:8080` to browse the exported collection.
 
-### Automated Deployment to Codeberg Pages / GitHub Pages
+### Deployment via pnpm (for development machines)
 
 A deploy script is provided to export the site and push it to a Git branch that your static host uses for Pages:
 
