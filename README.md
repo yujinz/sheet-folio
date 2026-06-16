@@ -173,11 +173,7 @@ A `backup.sh` script is provided to back up the SQLite database and uploaded ima
 ./backup.sh
 ```
 
-The script stops the `sheet-folio` container, archives `volumes/app/` (SQLite DB + uploads), restarts the container, and copies the archive to `web17@nas17:/srv/mergerfs/Merger1/merger/otlab/` via SCP. Old backups accumulate on the NAS (no automatic rotation). Schedule it with cron:
-
-```
-0 3 * * * /path/to/sheet-folio/backup.sh
-```
+TBD
 
 ### Architecture
 
@@ -222,7 +218,30 @@ docker run --rm \
   sheet-folio-export
 ```
 
+### Consuming the Export
+
+Downstream tools read the data export and content files, then produce a self-contained static HTML site. The downstream repo owns its own `Dockerfile` and `deploy.sh` for building and pushing the site — no npm required on the server.
+
+Output includes:
+
+- `index.html` — directory page with search, tag filtering, and sorting
+- `piece/{id}/index.html` — detail pages with image galleries and links
+- `images/{id}/{kind}/` — re-encoded images
+
 ### Data Format
 
 The exchange format is documented in [SCHEMA.md](SCHEMA.md).
+
+### Automated Deployment (cron)
+
+To run the full pipeline (export → generate → deploy) daily on a server:
+
+```
+0 3 * * * cd /path/to/sheet-folio && docker run --rm -e DB_PATH=/data/sheet-folio.db -e UPLOAD_DIR=/data/uploads -e OUTPUT_DIR=/data/output -v $PWD/volumes/app/sheet-folio.db:/data/sheet-folio.db:ro -v $PWD/volumes/app/uploads:/data/uploads:ro -v $PWD/export-data:/data/output sheet-folio-export && cd /path/to/downstream-repo && git pull origin main && EXPORT_DIR=/path/to/sheet-folio/export-data DEPLOY_KEY=~/.ssh/sheet-folio-deploy ./deploy.sh
+```
+
+This single cron job:
+1. Exports data from the SQLite database and uploads
+2. Pulls the latest content from the downstream repo
+3. Generates and pushes the static site
 
