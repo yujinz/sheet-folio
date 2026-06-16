@@ -15,7 +15,8 @@ COPY package.json pnpm-lock.yaml ./
 RUN corepack enable && corepack prepare pnpm@latest --activate
 RUN pnpm install --frozen-lockfile
 RUN pnpm add -D esbuild
-COPY scripts/export-data.ts tsconfig.json ./
+COPY scripts/ scripts/
+COPY tsconfig.json ./
 RUN pnpm exec esbuild scripts/export-data.ts --bundle --platform=node --format=esm \
   --external:better-sqlite3 --external:sharp --outfile=/out/export-data.mjs
 
