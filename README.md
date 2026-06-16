@@ -234,14 +234,11 @@ The exchange format is documented in [SCHEMA.md](SCHEMA.md).
 
 ### Automated Deployment (cron)
 
-To run the full pipeline (export → generate → deploy) daily on a server:
+To export data daily on a server:
 
 ```
-0 3 * * * cd /path/to/sheet-folio && docker run --rm -e DB_PATH=/data/sheet-folio.db -e UPLOAD_DIR=/data/uploads -e OUTPUT_DIR=/data/output -v $PWD/volumes/app/sheet-folio.db:/data/sheet-folio.db:ro -v $PWD/volumes/app/uploads:/data/uploads:ro -v $PWD/export-data:/data/output sheet-folio-export && cd /path/to/downstream-repo && git pull origin main && EXPORT_DIR=/path/to/sheet-folio/export-data DEPLOY_KEY=~/.ssh/sheet-folio-deploy ./deploy.sh
+0 3 * * * cd /path/to/sheet-folio && docker run --rm -e DB_PATH=/data/sheet-folio.db -e UPLOAD_DIR=/data/uploads -e OUTPUT_DIR=/data/output -v $PWD/volumes/app/sheet-folio.db:/data/sheet-folio.db:ro -v $PWD/volumes/app/uploads:/data/uploads:ro -v $PWD/export-data:/data/output sheet-folio-export
 ```
 
-This single cron job:
-1. Exports data from the SQLite database and uploads
-2. Pulls the latest content from the downstream repo
-3. Generates and pushes the static site
+Downstream tools consume the export independently — see their own documentation for cron setup.
 

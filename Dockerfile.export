@@ -3,10 +3,9 @@
 #   docker run --rm \
 #     -e DB_PATH=/data/sheet-folio.db \
 #     -e UPLOAD_DIR=/data/uploads \
-#     -e OUTPUT_DIR=/data/output \
-#     -v /host/data/sheet-folio.db:/data/sheet-folio.db:ro \
-#     -v /host/data/uploads:/data/uploads:ro \
-#     -v /host/export-data:/data/output \
+#     -e OUTPUT_DIR=/output \
+#     -v /host/data/app:/data:ro \
+#     -v /host/export-data:/output \
 #     sheet-folio-export
 
 FROM node:22-slim AS builder

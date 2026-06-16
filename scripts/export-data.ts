@@ -124,8 +124,7 @@ function readData() {
     process.exit(1);
   }
 
-  const sqlite = new Database(DB_PATH);
-  sqlite.pragma("journal_mode = WAL");
+  const sqlite = new Database(DB_PATH, { readonly: true });
 
   const songs = sqlite.prepare("SELECT * FROM songs ORDER BY id").all() as SongRow[];
   const tags = sqlite.prepare("SELECT * FROM tags ORDER BY id").all() as TagRow[];
@@ -255,8 +254,7 @@ async function main() {
   console.log("🖼️  Copying images with EXIF stripping...");
 
   // We need the raw rows for image paths, rebuild songImageMap from raw data
-  const sqlite = new Database(DB_PATH);
-  sqlite.pragma("journal_mode = WAL");
+  const sqlite = new Database(DB_PATH, { readonly: true });
   const rawImages = sqlite.prepare("SELECT * FROM song_images ORDER BY sort_order, id").all() as SongImageRow[];
   sqlite.close();
 
