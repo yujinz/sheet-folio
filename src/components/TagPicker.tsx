@@ -1,12 +1,12 @@
 "use client";
 
 import { Plus, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/lib/useLocale";
 import type { Locale } from "@/lib/i18n";
 import type { Tag, TagCategory } from "@/lib/types";
 
-function tagDisplayName(tag: Tag, locale: Locale): string {
+export function tagDisplayName(tag: Tag, locale: Locale): string {
   if (locale === "en-US") return tag.nameEn || tag.name;
   // zh-CN: prefer Chinese name, fall back to English
   return tag.name || tag.nameEn;
@@ -74,6 +74,30 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
   const visibleTags = selectedOnly ? localTags.filter((tag) => selectedSet.has(tag.id)) : localTags;
   const selectedTags = localTags.filter((tag) => selectedSet.has(tag.id));
   const availableTags = localTags.filter((tag) => !selectedSet.has(tag.id));
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createNameEn, setCreateNameEn] = useState("");
+  const createDialogRef = useRef<HTMLDivElement>(null);
+  const createNameInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus the first input when dialog opens
+  useEffect(() => {
+    if (showCreateDialog) {
+      createNameInputRef.current?.focus();
+    }
+  }, [showCreateDialog]);
+
+  async function handleCreateFromDialog() {
+    const trimmed = createName.trim();
+    const trimmedEn = createNameEn.trim();
+    if (!trimmed && !trimmedEn) return;
+    const created = await onCreate({ name: trimmed || trimmedEn, nameEn: trimmedEn, color: pickDefaultColor(localTags, "#4a6fa5"), category });
+    setLocalTags((prev) => [...prev, created]);
+    onChange([...selected, created.id]);
+    setShowCreateDialog(false);
+    setCreateName("");
+    setCreateNameEn("");
+  }
 
   function toggle(id: number) {
     onChange(selectedSet.has(id) ? selected.filter((value) => value !== id) : [...selected, id]);
@@ -106,20 +130,9 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
           onChange={async (event) => {
             const val = event.target.value;
             if (val === "__new__") {
-              let name: string | null;
-              let nameEn: string | null;
-              if (locale === "en-US") {
-                nameEn = prompt(t[category] + " (English)");
-                if (!nameEn?.trim()) return;
-                name = prompt(t[category] + " (中文)");
-              } else {
-                name = prompt(t[category] + " (中文)");
-                if (!name?.trim()) return;
-                nameEn = prompt(t[category] + " (English)");
-              }
-              const created = await onCreate({ name: (name ?? "").trim(), nameEn: (nameEn ?? "").trim(), color: pickDefaultColor(localTags, "#4a6fa5"), category });
-              setLocalTags((prev) => [...prev, created]);
-              onChange([...selected, created.id]);
+              setCreateName("");
+              setCreateNameEn("");
+              setShowCreateDialog(true);
             } else {
               const id = Number(val);
               if (id) onChange([...selected, id]);
@@ -155,6 +168,35 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               </span>
             ))}
           </span>
+        )}
+
+        {showCreateDialog && (
+          <div ref={createDialogRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowCreateDialog(false)}>
+            <div className="mx-4 w-full max-w-xs rounded-lg bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="mb-3 text-sm font-semibold">{t.addTag}</div>
+              <div className="grid gap-2">
+                <input
+                  ref={createNameInputRef}
+                  className="input w-full"
+                  placeholder={t[category] + " (中文)"}
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }}
+                />
+                <input
+                  className="input w-full"
+                  placeholder={t[category] + " (English)"}
+                  value={createNameEn}
+                  onChange={(e) => setCreateNameEn(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }}
+                />
+              </div>
+              <div className="mt-3 flex justify-end gap-2">
+                <button className="text-button" type="button" onClick={() => setShowCreateDialog(false)}>{locale === "en-US" ? "Cancel" : "取消"}</button>
+                <button className="text-button primary-button" type="button" onClick={handleCreateFromDialog}>{t.addTag}</button>
+              </div>
+            </div>
+          </div>
         )}
       </span>
     );

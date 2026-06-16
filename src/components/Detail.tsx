@@ -172,14 +172,15 @@ export default function Detail({ songId }: { songId: number }) {
 
   const images = useMemo(() => piece?.images?.[tab] ?? [], [piece, tab]);
 
-  // Auto-switch tab if current one is empty but the other has images
+  // Auto-switch tab if current one is empty but the other has images.
+  // Only runs when piece data changes (initial load / after upload), not on manual tab switch.
   useEffect(() => {
     if (!piece?.images) return;
     const other: ImageKind = tab === "staff" ? "numbered" : "staff";
     if ((piece.images[tab]?.length ?? 0) === 0 && (piece.images[other]?.length ?? 0) > 0) {
       setTab(other);
     }
-  }, [piece, tab]);
+  }, [piece]);
 
   if (!piece) return <main className="p-6">{t.loading}</main>;
 
@@ -349,7 +350,7 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
   );
 }
 
-function Pager({ images, tab, setTab, index, setIndex, zoom }: {
+export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
   images: SongImage[];
   tab: ImageKind;
   setTab: (kind: ImageKind) => void;
@@ -363,7 +364,7 @@ function Pager({ images, tab, setTab, index, setIndex, zoom }: {
     <div className="fullscreen-view">
       <div className="absolute right-3 top-3 z-20 flex gap-2">
         {(["staff", "numbered"] as ImageKind[]).map((kind) => (
-          <button key={kind} className={`rounded-md bg-white/20 px-2 py-1 text-sm text-white backdrop-blur-sm ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => setTab(kind)}>{t[kind]}</button>
+          <button key={kind} className={`rounded-md bg-white/20 px-2 py-1 text-sm text-white backdrop-blur-sm ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}>{t[kind]}</button>
         ))}
       </div>
       <button className="absolute left-3 top-3 z-30 rounded-md bg-white/20 px-3 py-2 text-white backdrop-blur-sm hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
