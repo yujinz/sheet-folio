@@ -12,8 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push",
-    "export": "tsx scripts/export-static.ts",
-    "deploy:static": "./scripts/deploy-static.sh"
+    "export-data": "tsx scripts/export-data.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

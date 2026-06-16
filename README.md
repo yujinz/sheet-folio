@@ -5,9 +5,9 @@ A sheet music manager with a web UI accessible from both PC and iPad.
 App features: browse, search, and sort a directory of pieces; upload, delete, and drag-to-reorder sheet images; color-coded difficulty/technique/pitch/rhythm tags; scroll and page-flip sheet views; per-device zoom persistence; sheet source and video link management; full CRUD.
 
 <details>
-<summary><h2 style="display:inline">Quick Start: Local Management + Static Export</h2></summary>
+<summary><h2 style="display:inline">Quick Start: Local Management + Static Export</summary>
 
-If you don't want to deal with server deployment or LAN setup, you can run the app locally to manage your sheet music collection, then export a self-contained static site for easy hosting.
+If you don't want to deal with server deployment or LAN setup, you can run the app locally to manage your sheet music collection, then export a self-contained data bundle. You can convert the data into a static site by yourself for easy hosting.
 
 ```bash
 pnpm install
@@ -16,13 +16,13 @@ pnpm dev
 
 Open `http://localhost:3000` in your browser. Add, edit, and organize your pieces using the full web UI. The SQLite database (`./data/sheet-folio.db`) persists on disk even after you close the app, so you can always resume where you left off.
 
-When you're ready to share, generate a static site:
+When you're ready to share, export the data:
 
 ```bash
-pnpm export
+pnpm export-data
 ```
 
-Copy the contents of `static-export/` to any static host (Codeberg Pages, GitHub Pages, Netlify, etc.) — no server or database required for the hosted site.
+The export produces a structured data bundle in `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format). Feed this into a static site generator or any other downstream tool to produce a self-contained static site — no server or database required for the hosted site.
 
 </details>
 
@@ -189,110 +189,40 @@ The script stops the `sheet-folio` container, archives `volumes/app/` (SQLite DB
 </details>
 
 <details>
-<summary><h2 style="display:inline">Static Export</h2></summary>
+<summary><h2 style="display:inline">Data Export</h2></summary>
 
-Generate a self-contained static HTML site from the database for sharing on free static hosts (Codeberg Pages, GitHub Pages, etc.):
+This repo produces a structured data export that can be consumed by downstream tools (static site generators, backup systems, migration pipelines). The export format is documented in [SCHEMA.md](SCHEMA.md).
+
+### Export Data
+
+Extract structured data from the SQLite database and images:
 
 ```bash
-pnpm export
+pnpm export-data
 ```
 
-Output goes to `static-export/`. It includes:
+Output goes to `export-data/`:
 
-- `index.html` — directory page with search, tag filtering, and sorting (client-side, no server needed)
-- `piece/{id}/index.html` — detail pages with image galleries and links
+- `pieces.json` — all pieces with tags, images, and links
+- `tags.json` — all tags
 - `images/{id}/{kind}/` — re-encoded images with EXIF metadata stripped
+- `manifest.json` — export metadata
 
-### Preview
-
-```bash
-cd static-export && python3 -m http.server 8080
-```
-
-Open `http://localhost:8080` to browse the exported collection.
-
-### Deployment via pnpm (for development machines)
-
-A deploy script is provided to export the site and push it to a Git branch that your static host uses for Pages:
+#### Via Docker (no Node.js required)
 
 ```bash
-pnpm deploy:static
+docker build -f Dockerfile.export -t sheet-folio-export .
+docker run --rm \
+  -e DB_PATH=/data/sheet-folio.db \
+  -e UPLOAD_DIR=/data/uploads \
+  -e OUTPUT_DIR=/data/output \
+  -v /path/to/data/sheet-folio.db:/data/sheet-folio.db:ro \
+  -v /path/to/data/uploads:/data/uploads:ro \
+  -v /path/to/export-data:/data/output \
+  sheet-folio-export
 ```
 
-This runs `pnpm export` first, then pushes the result to the `pages` branch of your repository by default. On Codeberg Pages or GitHub Pages, configure that branch as your Pages source.
+### Data Format
 
-#### Authentication
+The exchange format is documented in [SCHEMA.md](SCHEMA.md).
 
-The script supports two authentication methods. Choose one:
-
-**Option A: SSH key (recommended)**
-
-1. On the server (the machine running cron), generate a key pair:
-
-   ```bash
-   ssh-keygen -t ed25519 -f ~/.ssh/sheet-folio-deploy -N ""
-   ```
-
-2. Copy the public key and add it to your Codeberg account:
-
-   ```bash
-   cat ~/.ssh/sheet-folio-deploy.pub
-   ```
-
-   Go to **Codeberg → Settings → SSH/GPG Keys → Add Key** and paste it.
-
-3. Run the deploy with:
-
-   ```bash
-   DEPLOY_KEY=~/.ssh/sheet-folio-deploy pnpm deploy:static
-   ```
-
-**Option B: Personal access token**
-
-1. Create a token on Codeberg: **Settings → Applications → Generate Token** with repo write access.
-2. Run the deploy with:
-
-   ```bash
-   DEPLOY_TOKEN=your_token_here pnpm deploy:static
-   ```
-
-With either method, the secret (private key file or token) stays **outside the repo** — the server has it, but it's never committed.
-
-#### Environment Variables
-
-| Variable       | Default                      | Description                                      |
-|----------------|------------------------------|--------------------------------------------------|
-| `TARGET_REPO`  | (auto-detected from git origin) | Remote URL (e.g. `git@codeberg.org:user/repo`) |
-| `TARGET_BRANCH`| `pages`                      | Branch to push to                                |
-| `DEPLOY_KEY`   | (uses default SSH agent)     | Path to SSH private key                          |
-| `DEPLOY_TOKEN` | (uses default SSH agent)     | Personal access token for HTTPS auth             |
-
-#### Cron (automatic updates)
-
-Schedule the export and deploy to run daily. It only pushes when the exported content has actually changed (no-op if identical):
-
-```cron
-0 3 * * * cd /path/to/sheet-folio && DEPLOY_KEY=/home/user/.ssh/sheet-folio-deploy ./scripts/deploy-static.sh >> /tmp/sheet-folio-deploy.log 2>&1
-```
-
-Or with a token:
-
-```cron
-0 3 * * * cd /path/to/sheet-folio && DEPLOY_TOKEN=abc123 ./scripts/deploy-static.sh >> /tmp/sheet-folio-deploy.log 2>&1
-```
-
-This lets you keep managing sheets locally via `pnpm dev` while the public site stays in sync automatically.
-
-### Manual Deployment
-
-Copy the contents of `static-export/` to any static host. For Codeberg Pages or GitHub Pages, also include an empty `.nojekyll` file in the root to prevent Jekyll processing.
-
-### Environment Variables
-
-| Variable     | Default                   | Description                       |
-|-------------|---------------------------|-----------------------------------|
-| `DB_PATH`   | `./data/sheet-folio.db`   | Path to the SQLite database       |
-| `UPLOAD_DIR`| `./data/uploads`          | Sheet music image upload directory|
-| `OUTPUT_DIR`| `./static-export`         | Directory for the exported site   |
-
-</details>
