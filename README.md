@@ -4,139 +4,90 @@ A sheet music manager with a web UI accessible from both PC and iPad.
 
 App features: browse, search, and sort a directory of pieces; upload, delete, and drag-to-reorder sheet images; color-coded difficulty/technique/pitch/rhythm tags; scroll and page-flip sheet views; per-device zoom persistence; sheet source and video link management; full CRUD.
 
-<details>
-<summary><h2 style="display:inline">Quick Start: Local Management + Static Export</summary>
+## Quick Start
 
-If you don't want to deal with server deployment or LAN setup, you can run the app locally to manage your sheet music collection, then export a self-contained data bundle. You can convert the data into a static site by yourself for easy hosting.
+### Option 1: Docker Compose
+
+```bash
+git clone <repo>
+cd sheet-folio
+docker compose up -d
+
+# To rebuild after code changes: 
+docker compose up -d --build
+```
+
+Open `http://localhost:8888` in your browser. Stop with `docker compose down`. Data persists in Docker volumes. 
+
+> **Note:** If running inside WSL2, add the below to `%USERPROFILE%\.wslconfig`:
+> ```ini
+> [wsl2]
+> networkingMode=mirrored
+> firewall=false
+> ```
+> Then restart WSL2 with `wsl --shutdown`, reopen your WSL2 terminal, and start docker.
+
+> **Note on `network_mode: host`:** The `docker-compose.yml` uses `network_mode: host` instead of the more common `ports:` mapping, so that browsers on Windows can access the docker running inside WSL. This makes the container share the host's network stack directly without Docker's NAT/bridge layer. This is okay because:
+> - Sheet-folio is a LAN-only app with no reverse proxy or HTTPS requirement
+> - No inter-container communication is needed (no database or other companion containers)
+> - No other Docker container on the same machine is using the same 8888 port
+>
+> If you later add containers that need to talk to each other (e.g., a database), switch to bridge networking with explicit `ports:` mapping.
+
+### Option 2: Build & Run (requires Node.js/pnpm)
 
 ```bash
 pnpm install
-pnpm dev
+pnpm build
+pnpm start
+
+# To rebuild after code changes: 
+pnpm build && pnpm start
 ```
 
-Open `http://localhost:3000` in your browser. Add, edit, and organize your pieces using the full web UI. The SQLite database (`./data/sheet-folio.db`) persists on disk even after you close the app, so you can always resume where you left off.
+Open `http://localhost:3000` in your browser. This runs a production server on `0.0.0.0` (all network interfaces). Data persists in `./data/sheet-folio.db`.
 
-When you're ready to share, export the data:
+> **Note:** `pnpm start` is used instead of `pnpm dev` so the app is accessible from other devices on the same LAN (see LAN Manual Test section at the end).
+
+> **Note:** Docker needs `output: "standalone"` while `pnpm start` needs to run without it. The `next.config.ts` only enables standalone when `NEXT_OUTPUT_STANDALONE=true` (set in the Dockerfile's builder stage), so no manual toggling is needed between LAN testing and Docker builds.
+
+## Data Export
+
+### Option 1: Via Docker
+
+```bash
+docker build -f Dockerfile.export -t sheet-folio-export .
+docker run --rm \
+  -v /tmp:/app/data \
+  -v $PWD/volumes/app/uploads:/app/data/uploads \
+  -v $PWD/export-data:/app/export-data \
+  sheet-folio-export
+```
+
+### Option 2: Via pnpm (requires Node.js)
 
 ```bash
 pnpm export-data
 ```
 
-The export produces a structured data bundle in `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format). Feed this into a static site generator or any other downstream tool to produce a self-contained static site — no server or database required for the hosted site.
+Output goes to `export-data/`:
+- `pieces.json` — all pieces with tags, images, and links
+- `tags.json` — all tags
+- `images/{id}/{kind}/` — re-encoded images with EXIF metadata stripped
+- `manifest.json` — export metadata
 
-</details>
+## Backup
+
+```bash
+./backup.sh
+```
+
+(WIP — backs up SQLite database and uploaded images to NAS)
+
+## Reference
 
 <details>
-<summary><h2 style="display:inline">Development</h2></summary>
-
-```bash
-pnpm install
-pnpm dev
-```
-
-Open `http://localhost:3000` in your browser.
-
-</details>
-
-<details>
-<summary><h2 style="display:inline">Unit Test</h2></summary>
-
-```bash
-pnpm test
-```
-
-Runs the test suite with vitest. Tests cover utility functions (API helpers, i18n messages, upload sanitization, data grouping) and database integration (CRUD operations, tag assignment, image ordering, device zoom).
-
-</details>
-
-<details>
-<summary><h2 style="display:inline">LAN Manual Test: Develop on PC and test on iPad</h2></summary>
-
-Build and start the production server for LAN access:
-
-```bash
-pnpm build
-pnpm start
-```
-
-The start command listens on `0.0.0.0` by default (`--hostname 0.0.0.0` in `package.json`), so it can be accessed from other devices on the same LAN.
-
-> **Note:** Docker deployment requires Next.js's `output: "standalone"` mode. The `next.config.ts` enables it automatically when `NEXT_OUTPUT_STANDALONE=true` (set in the Dockerfile's builder stage), so no manual toggling is needed between LAN testing and Docker builds.
-
-If running inside **WSL2**, the WSL2 virtual network is not directly reachable from the LAN. Run the following setup:
-
-### 1. Enable mirrored networking mode
-
-Create/edit `%USERPROFILE%\.wslconfig` on Windows:
-
-```ini
-[wsl2]
-networkingMode=mirrored
-```
-
-Then restart WSL2: `wsl --shutdown` and reopen your WSL2 terminal.
-
-### 2. If you encounter issue where buttons are not clickable on iPad
-
-Run the following in **PowerShell as Administrator** could help, but you shouldn't need this if you've done the previous step right. The proxy also occupies port 3000 on Windows, interfering with docker run.
-
-
-```powershell
-$wslIP = (wsl hostname -I).Trim().Split()[0]
-netsh interface portproxy add v4tov4 listenport=3000 listenaddress=0.0.0.0 connectport=3000 connectaddress=$wslIP
-New-NetFirewallRule -DisplayName "WSL Next.js 3000" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow
-```
-
-### 3. Access from LAN
-
-Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3000`.
-
-> **Note:** WSL2's internal IP may change after restart, run `hostname -I`.
-
-> **Reminder:** `crypto.randomUUID()` requires a secure context (HTTPS). The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
-
-</details>
-
-<details>
-<summary><h2 style="display:inline">Server Deployment with Docker</h2></summary>
-
-### Prerequisites
-
-- Docker and Docker Compose
-
-### Quick Start
-
-1. Clone the repository on your server.
-
-2. Create directories for persistent data and SSL certs:
-
-```bash
-mkdir -p volumes/data/sheet-folio
-```
-3. Disable firewall
-
-Create/edit `%USERPROFILE%\.wslconfig` on Windows:
-
-```ini
-[wsl2]
-networkingMode=mirrored
-firewall=false
-```
-
-4. Build and start:
-
-```bash
-docker compose up -d
-```
-
-The app will be available at `http://localhost:3100` (plain HTTP, no SSL setup needed).
-
-> **Note on `network_mode: host`:** The `docker-compose.yml` uses `network_mode: host` instead of the more common `ports:` mapping, so that browsers in Windows can access the port. This makes the container share the host's network stack directly — the app listens on `localhost:8888` (or whichever `PORT` is set) without Docker's NAT/bridge layer. This is okay because:
-> - Sheet-folio is a LAN-only app with no reverse proxy or HTTPS requirement
-> - No inter-container communication is needed (no database or other companion containers)
-> - Host networking avoids port conflicts with other Docker services on the same machine
->
-> If you later add containers that need to talk to each other (e.g., a database), switch to bridge networking with explicit `ports:` mapping.
+<summary>Environment Variables, Database Migrations, Health Check</summary>
 
 ### Environment Variables
 
@@ -145,7 +96,9 @@ The app will be available at `http://localhost:3100` (plain HTTP, no SSL setup n
 | `DB_PATH`     | `./data/sheet-folio.db`        | SQLite database file path    |
 | `UPLOAD_DIR`  | `./data/uploads`               | Sheet music image upload dir |
 | `PORT`        | `3000`                         | Internal server port         |
-| `HOSTNAME`    | `0.0.0.0`                     | Server bind address          |
+| `HOSTNAME`    | `0.0.0.0`                     | Bind to all network interfaces |
+
+> **Note:** Docker Compose overrides `PORT` to `8888` — the app is accessible at `http://localhost:8888` when run via Docker.
 
 ### Database Migrations
 
@@ -165,80 +118,51 @@ pnpm db:migrate
 
 The app exposes `/api/health` for container health checks. Docker Compose and orchestrators will monitor this endpoint.
 
-### Backup
-
-A `backup.sh` script is provided to back up the SQLite database and uploaded images to the NAS:
-
-```bash
-./backup.sh
-```
-
-TBD
-
-### Architecture
-
-- **Next.js** app running as a standalone Node server
-- **better-sqlite3** for local database (data stored in a Docker volume)
-- **nginx** as a reverse proxy for HTTPS termination
-- **Docker Compose** orchestrates both services
-
 </details>
 
+## LAN Manual Test (develop on PC, test on iPad)
+
 <details>
-<summary><h2 style="display:inline">Data Export</h2></summary>
+<summary>Click to expand</summary>
 
-This repo produces a structured data export that can be consumed by downstream tools (static site generators, backup systems, migration pipelines). The export format is documented in [SCHEMA.md](SCHEMA.md).
-
-### Export Data
-
-Extract structured data from the SQLite database and images:
+Build and start the production server for LAN access:
 
 ```bash
-pnpm export-data
+pnpm build && pnpm start
 ```
 
-Output goes to `export-data/`:
+The start command listens on `0.0.0.0` by default (`--hostname 0.0.0.0` in `package.json`), so it can be accessed from other devices on the same LAN.
 
-- `pieces.json` — all pieces with tags, images, and links
-- `tags.json` — all tags
-- `images/{id}/{kind}/` — re-encoded images with EXIF metadata stripped
-- `manifest.json` — export metadata
+If running inside **WSL2**, the WSL2 virtual network is not directly reachable from the LAN. Run the following setup:
 
-#### Via Docker (no Node.js required)
+### 1. Enable mirrored networking mode
 
-```bash
-docker build -f Dockerfile.export -t sheet-folio-export .
-docker run --rm \
-  -e DB_PATH=/data/sheet-folio.db \
-  -e UPLOAD_DIR=/data/uploads \
-  -e OUTPUT_DIR=/data/output \
-  -v /path/to/data/sheet-folio.db:/data/sheet-folio.db:ro \
-  -v /path/to/data/uploads:/data/uploads:ro \
-  -v /path/to/export-data:/data/output \
-  sheet-folio-export
+Create/edit `%USERPROFILE%\.wslconfig` on Windows:
+
+```ini
+[wsl2]
+networkingMode=mirrored
 ```
 
-### Consuming the Export
+Then restart WSL2: `wsl --shutdown` and reopen your WSL2 terminal.
 
-Downstream tools read the data export and content files, then produce a self-contained static HTML site. The downstream repo owns its own `Dockerfile` and `deploy.sh` for building and pushing the site — no npm required on the server.
+### 2. If you encounter issue where buttons are not clickable on iPad
 
-Output includes:
+Run the following in **PowerShell as Administrator** could help, but you shouldn't need this if you've done the previous step right. The proxy also occupies port 3000 on Windows, interfering with docker run.
 
-- `index.html` — directory page with search, tag filtering, and sorting
-- `piece/{id}/index.html` — detail pages with image galleries and links
-- `images/{id}/{kind}/` — re-encoded images
-
-### Data Format
-
-The exchange format is documented in [SCHEMA.md](SCHEMA.md).
-
-### Automated Deployment (cron)
-
-To export data daily on a server:
-
-```
-0 3 * * * cd /path/to/sheet-folio && docker run --rm -e DB_PATH=/data/sheet-folio.db -e UPLOAD_DIR=/data/uploads -e OUTPUT_DIR=/data/output -v $PWD/volumes/app/sheet-folio.db:/data/sheet-folio.db:ro -v $PWD/volumes/app/uploads:/data/uploads:ro -v $PWD/export-data:/data/output sheet-folio-export
+```powershell
+$wslIP = (wsl hostname -I).Trim().Split()[0]
+netsh interface portproxy add v4tov4 listenport=3000 listenaddress=0.0.0.0 connectport=3000 connectaddress=$wslIP
+New-NetFirewallRule -DisplayName "WSL Next.js 3000" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow
 ```
 
-Downstream tools consume the export independently — see their own documentation for cron setup.
+### 3. Access from LAN
+
+Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3000`.
+
+> **Note:** WSL2's internal IP may change after restart, run `hostname -I`.
+
+> **Reminder:** `crypto.randomUUID()` requires a secure context (HTTPS). The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
+
+</details>
 
