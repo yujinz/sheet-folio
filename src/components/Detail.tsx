@@ -193,7 +193,7 @@ export default function Detail({ songId }: { songId: number }) {
             ref={locale === "en-US" ? titleEnRef : titleRef}
             key={`title-${songId}-${locale}`}
             className="input max-w-lg text-xl font-semibold"
-            defaultValue={locale === "en-US" ? piece.titleEn : piece.title}
+            defaultValue={locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn)}
             onChange={scheduleSave}
           />
           <button className="text-button" type="button" onClick={() => setEditingImages((value) => !value)}>

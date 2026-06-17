@@ -6,7 +6,8 @@ import { getSongs, nowIso } from "@/lib/data";
 import { apiError, serverError } from "@/lib/api";
 
 const createSongSchema = z.object({
-  title: z.string().trim().min(1).default("新曲子")
+  title: z.string().default(""),
+  titleEn: z.string().default("")
 });
 
 export async function GET() {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     const time = nowIso();
     const song = db
       .insert(songs)
-      .values({ title: parsed.data.title, difficulty: 1, notes: "", createdAt: time, updatedAt: time })
+      .values({ title: parsed.data.title, titleEn: parsed.data.titleEn, difficulty: 1, notes: "", createdAt: time, updatedAt: time })
       .returning()
       .get();
     return NextResponse.json(song);

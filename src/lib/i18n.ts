@@ -7,7 +7,7 @@ export const localeLabels: Record<Locale, string> = {
 
 export const messages = {
   "zh-CN": {
-    appTitle: "竖笛乐谱管理器",
+    appTitle: "乐谱管理器",
     searchTitle: "搜索曲名",
     addPiece: "新增曲子",
     newPieceTitle: "新曲子",
@@ -51,7 +51,7 @@ export const messages = {
     noImages: "暂无图片"
   },
   "en-US": {
-    appTitle: "Recorder Sheet Manager",
+    appTitle: "Sheet Music Manager",
     searchTitle: "Search titles",
     addPiece: "Add piece",
     newPieceTitle: "New piece",

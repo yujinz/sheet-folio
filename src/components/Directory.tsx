@@ -38,7 +38,10 @@ export default function Directory() {
     const res = await fetch("/api/pieces", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: t.newPieceTitle })
+      body: JSON.stringify({ 
+        title: locale === "zh-CN" ? t.newPieceTitle : "",
+        titleEn: locale === "en-US" ? t.newPieceTitle : ""
+      })
     });
     if (!res.ok) {
       alert(`Error creating piece: ${res.status} ${res.statusText}`);
@@ -79,7 +82,7 @@ export default function Directory() {
   const visible = useMemo(() => {
     const filtered = pieces.filter((piece) => {
       if (query) {
-        const titleForSearch = locale === "en-US" ? piece.titleEn || piece.title : piece.title;
+        const titleForSearch = locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
         if (!titleForSearch.toLowerCase().includes(query.toLowerCase())) return false;
       }
       return categories.every((category) =>
@@ -165,7 +168,7 @@ export default function Directory() {
                   </select>
                 </td>
                 <td className="font-semibold" style={{ fontSize: 15 }}>
-                  <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? piece.titleEn || piece.title : piece.title}</Link>
+                  <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn)}</Link>
                 </td>
                 {categories.map((category) => (
                   <td key={category}>

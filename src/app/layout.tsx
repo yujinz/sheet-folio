@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "竖笛乐谱管理器",
-  description: "Local recorder sheet music manager"
+  title: "乐谱管理器",
+  description: "Sheet Music Manager"
 };
 
 export const viewport: Viewport = {
