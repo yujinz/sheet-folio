@@ -53,16 +53,19 @@ Open `http://localhost:3000` in your browser. This runs a production server on `
 
 ## Data Export
 
+Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format):
+- `pieces.json` — all pieces with tags, images, and links
+- `tags.json` — all tags
+- `images/{id}/{kind}/` — re-encoded images with EXIF metadata stripped
+- `manifest.json` — export metadata
+
 ### Option 1: Via Docker
 
 ```bash
-docker build -f Dockerfile.export -t sheet-folio-export .
-docker run --rm \
-  -v /tmp:/app/data \
-  -v $PWD/volumes/app/uploads:/app/data/uploads \
-  -v $PWD/export-data:/app/export-data \
-  sheet-folio-export
+./scripts/export-data.sh
 ```
+
+Streams the SQLite database directly from the running container (bypassing NAS filesystem quirks and WAL checkpoint issues), builds the export image, and outputs to `export-data/`. Requires the sheet-folio container to be running.
 
 ### Option 2: Via pnpm (requires Node.js)
 
@@ -70,11 +73,6 @@ docker run --rm \
 pnpm export-data
 ```
 
-Output goes to `export-data/`:
-- `pieces.json` — all pieces with tags, images, and links
-- `tags.json` — all tags
-- `images/{id}/{kind}/` — re-encoded images with EXIF metadata stripped
-- `manifest.json` — export metadata
 
 ## Backup
 
