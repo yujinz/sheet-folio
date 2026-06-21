@@ -319,9 +319,9 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
       {images.length === 0 && (
         <p className="py-8 text-center text-sm text-[var(--muted)]">{t.noImages}</p>
       )}
-      <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth">
+      <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4">
         {images.map((image, index) => (
-          <div key={image.id} className="flex-shrink-0 snap-start" style={{ width: `${zoom}vw`, maxWidth: "95vw" }}>
+          <div key={image.id} className="flex-shrink-0" style={{ width: `${zoom}vw`, maxWidth: "95vw" }}>
             <button className="border-0 bg-transparent p-0 block w-full" style={{ touchAction: "manipulation" }} onClick={() => onOpen(index)}>
               <img src={image.url} alt="" className="block w-full h-auto" />
             </button>

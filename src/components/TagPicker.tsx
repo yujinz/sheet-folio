@@ -74,6 +74,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
   const visibleTags = selectedOnly ? localTags.filter((tag) => selectedSet.has(tag.id)) : localTags;
   const selectedTags = localTags.filter((tag) => selectedSet.has(tag.id));
   const availableTags = localTags.filter((tag) => !selectedSet.has(tag.id));
+  const [selectValue, setSelectValue] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createName, setCreateName] = useState("");
   const [createNameEn, setCreateNameEn] = useState("");
@@ -124,11 +125,13 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
     return (
       <span className="inline-flex flex-wrap items-start gap-2">
         <select
+          key={availableTags.map(t => t.id).join(',')}
           aria-label={t.addTag}
           className="select tag-add-select"
-          defaultValue=""
+          value={selectValue}
           onChange={async (event) => {
             const val = event.target.value;
+            setSelectValue("");
             if (val === "__new__") {
               setCreateName("");
               setCreateNameEn("");
@@ -137,7 +140,6 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               const id = Number(val);
               if (id) onChange([...selected, id]);
             }
-            event.target.value = "";
           }}
         >
           <option value="" disabled hidden>{t[category]}</option>
@@ -255,13 +257,24 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               onChange={(event) => setName(event.target.value)}
               placeholder={locale === "en-US" ? "新标签" : "新标签"}
             />
-            <input
-              className="flex-none"
-              style={{ width: "5rem", fontSize: "12px", border: "1px solid var(--line)", borderRadius: "999px", background: "#fff", color: "var(--foreground)", padding: "3px 8px", minHeight: "24px", outline: "none" }}
-              value={nameEn}
-              onChange={(event) => setNameEn(event.target.value)}
-              placeholder={locale === "en-US" ? "New Tag" : "New Tag"}
-            />
+            <div className="flex gap-1">
+              <input
+                className="flex-none"
+                style={{ width: "5rem", fontSize: "12px", border: "1px solid var(--line)", borderRadius: "999px", background: "#fff", color: "var(--foreground)", padding: "3px 8px", minHeight: "24px", outline: "none" }}
+                value={nameEn}
+                onChange={(event) => setNameEn(event.target.value)}
+                placeholder={locale === "en-US" ? "New Tag" : "New Tag"}
+              />
+              {category === "pitch" && (
+                <div className="flex gap-1">
+                  {["♭", "♯", "♮"].map((mark) => (
+                    <button key={mark + "-en"} className="pill-add-button" type="button" onClick={() => setNameEn((value) => `${value}${mark}`)}>
+                      {mark}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <input aria-label={t.tagColor} className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={color} onChange={(event) => setColor(event.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
             <button aria-label={t.addTag} className="icon-button pill-add-button" type="button" onClick={createTag}>
               <Plus size={14} />
