@@ -31,9 +31,9 @@ function createDb() {
     ["pitch", "低音", "Low notes", "#0891b2"],
     ["technique", "连音", "Legato", "#ea580c"],
     ["technique", "颤音", "Trill", "#dc2626"],
-    ["technique", "装饰音", "Ornament", "#16a34a"],
+    ["technique", "装饰音", "Ornament", "#b45309"],
     ["rhythm", "附点", "Dotted", "#c026d3"],
-    ["rhythm", "三连音", "Triplet", "#0284c7"]
+    ["rhythm", "三连音", "Triplet", "#7c3aed"]
   ] as const;
 
   const insertPreset = sqlite.prepare("INSERT OR IGNORE INTO tags (category, name, name_en, color) VALUES (?, ?, ?, ?)");

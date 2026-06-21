@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
-import TagPicker from "@/components/TagPicker";
+import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
 import type { Song, Tag, TagCategory } from "@/lib/types";
 
@@ -20,10 +20,17 @@ export default function Directory() {
   const [filters, setFilters] = useState<Record<TagCategory, number[]>>({ pitch: [], technique: [], rhythm: [] });
   const [editingTags, setEditingTags] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "difficulty", dir: "asc" });
+  const [defaultColor, setDefaultColor] = useState("#9e6aba");
 
   useEffect(() => {
     void refresh();
   }, []);
+
+  // Recalculate default color when tags are loaded
+  useEffect(() => {
+    if (tags.length === 0) return;
+    setDefaultColor((prev) => pickDefaultColor(tags, prev));
+  }, [tags]);
 
   async function refresh() {
     const [pieceRows, tagRows] = await Promise.all([
@@ -62,12 +69,23 @@ export default function Directory() {
       body: JSON.stringify(tag)
     }).then((res) => res.json());
     setTags((value) => [...value.filter((item) => item.id !== created.id), created]);
+    // Rotate default color based on all tags including the new one
+    setDefaultColor((prev) => pickDefaultColor([...tags, created], prev));
     return created;
   }
 
   async function deleteTag(tag: Tag) {
     await fetch(`/api/tags/${tag.id}`, { method: "DELETE" });
     await refresh();
+  }
+
+  async function updateTag(tag: Tag) {
+    await fetch(`/api/tags/${tag.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: tag.name, nameEn: tag.nameEn, color: tag.color })
+    });
+    setTags((value) => value.map((t) => t.id === tag.id ? { ...t, ...tag } : t));
   }
 
   async function updatePiece(piece: Song, patch: Record<string, unknown>) {
@@ -143,7 +161,10 @@ export default function Directory() {
               onChange={(ids) => setFilters((value) => ({ ...value, [category]: ids }))}
               onCreate={createTag}
               onDelete={deleteTag}
+              onUpdate={updateTag}
               editingTags={editingTags}
+              defaultColor={defaultColor}
+              onDefaultColorChange={setDefaultColor}
             />
           ))}
         </div>
@@ -180,6 +201,8 @@ export default function Directory() {
                       selected={piece.tags[category].map((tag) => tag.id)}
                       onCreate={createTag}
                       onChange={(ids) => updatePiece(piece, { tagIds: categories.flatMap((cat) => cat === category ? ids : piece.tags[cat].map((tag) => tag.id)) })}
+                      defaultColor={defaultColor}
+                      onDefaultColorChange={setDefaultColor}
                     />
                   </td>
                 ))}
