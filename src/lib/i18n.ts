@@ -38,7 +38,7 @@ export const messages = {
     upload: "上传",
     dragging: "拖拽中",
     linkTitle: "标题",
-    youtubeLink: "YouTube 链接",
+    youtubeLink: "视频链接",
     open: "打开",
     link: "链接",
     saveLinks: "保存链接",
@@ -46,6 +46,7 @@ export const messages = {
     exitPager: "退出",
     source: "来源",
     sourceUrl: "来源链接",
+    save: "保存",
     nextPage: "下一张",
     loading: "加载中...",
     noImages: "暂无图片"
@@ -82,7 +83,7 @@ export const messages = {
     upload: "Upload",
     dragging: "Dragging",
     linkTitle: "Title",
-    youtubeLink: "YouTube link",
+    youtubeLink: "Video link",
     open: "Open",
     link: "Link",
     saveLinks: "Save links",
@@ -90,6 +91,7 @@ export const messages = {
     exitPager: "Exit",
     source: "Source",
     sourceUrl: "Source link",
+    save: "Save",
     nextPage: "Next page",
     loading: "Loading...",
     noImages: "No images"

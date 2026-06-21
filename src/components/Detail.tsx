@@ -38,13 +38,14 @@ export default function Detail({ songId }: { songId: number }) {
   const [pageIndex, setPageIndex] = useState<number | null>(null);
   const [zoom, setZoom] = useState(100);
   const clampZoom = (z: number) => Math.min(130, Math.max(25, z));
-  const [dragId, setDragId] = useState<number | null>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const titleEnRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDirtyRef = useRef(false);
+  const imagesSectionRef = useRef<HTMLDivElement>(null);
+  const hasScrolledToImages = useRef(false);
 
   useEffect(() => {
     void refresh();
@@ -113,13 +114,15 @@ export default function Detail({ songId }: { songId: number }) {
     setPiece(updated);
   }
 
-  async function moveImage(targetId: number) {
-    if (!piece || dragId === null || dragId === targetId) return;
+  async function moveImage(imageId: number, direction: "left" | "right") {
+    if (!piece) return;
     const current = piece.images?.[tab] ?? [];
-    const from = current.findIndex((image) => image.id === dragId);
-    const to = current.findIndex((image) => image.id === targetId);
+    const index = current.findIndex((image) => image.id === imageId);
+    if (direction === "left" && index === 0) return;
+    if (direction === "right" && index === current.length - 1) return;
+    const targetIndex = direction === "left" ? index - 1 : index + 1;
     const next = [...current];
-    next.splice(to, 0, next.splice(from, 1)[0]);
+    next.splice(targetIndex, 0, next.splice(index, 1)[0]);
     setPiece({ ...piece, images: { ...piece.images!, [tab]: next } });
     await fetch(`/api/pieces/${songId}/images`, {
       method: "PATCH",
@@ -129,13 +132,26 @@ export default function Detail({ songId }: { songId: number }) {
   }
 
   async function saveLinks(links: YoutubeLink[]) {
-    const clean = links.filter((link) => link.label.trim() && link.url.trim());
-    const updated = await fetch(`/api/pieces/${songId}/links`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ links: clean })
-    }).then((res) => res.json());
-    setPiece(updated);
+    const clean = links
+      .filter((link) => link.label.trim() && link.url.trim())
+      .map((link) => ({
+        ...link,
+        url: link.url.match(/^https?:\/\//) ? link.url : `https://${link.url}`
+      }));
+    try {
+      const res = await fetch(`/api/pieces/${songId}/links`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ links: clean })
+      });
+      if (res.ok) {
+        setPiece(await res.json());
+      } else {
+        console.error("saveLinks failed", res.status, await res.text());
+      }
+    } catch (err) {
+      console.error("saveLinks error", err);
+    }
   }
 
   async function deletePiece() {
@@ -171,6 +187,19 @@ export default function Detail({ songId }: { songId: number }) {
   }
 
   const images = useMemo(() => piece?.images?.[tab] ?? [], [piece, tab]);
+
+  // Auto-scroll to images section if there are images (only on initial load)
+  useEffect(() => {
+    if (!piece || hasScrolledToImages.current) return;
+    const hasImages = Object.values(piece.images ?? {}).some((arr) => arr.length > 0);
+    if (hasImages) {
+      hasScrolledToImages.current = true;
+      // Small delay to ensure DOM is rendered
+      requestAnimationFrame(() => {
+        imagesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [piece]);
 
   // Auto-switch tab if current one is empty but the other has images.
   // Only runs when piece data changes (initial load / after upload), not on manual tab switch.
@@ -229,27 +258,34 @@ export default function Detail({ songId }: { songId: number }) {
         </div>
       </header>
 
-      <div className="sticky top-0 z-20 pointer-events-none">
-        {!editingImages && (
-          <label className="pointer-events-auto absolute left-2 top-2 flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm">
-            {t.zoom}
-            <input type="range" min="25" max="130" value={zoom} onChange={(event) => setZoom(clampZoom(Number(event.target.value)))} className="w-20" />
-          </label>
-        )}
-        <div className="pointer-events-auto absolute right-2 top-2 flex gap-1">
+      <div className="sticky top-0 z-20 pointer-events-none flex items-start justify-between px-2 py-2">
+        <div className="pointer-events-auto flex gap-1">
           {(["staff", "numbered"] as ImageKind[]).map((kind) => (
             <button key={kind} className={`rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur-sm ${tab === kind ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--foreground)]"}`} type="button" onClick={() => setTab(kind)}>
               {t[kind]}
             </button>
           ))}
         </div>
+        <div className="pointer-events-auto flex items-center gap-1">
+          <Link className="flex items-center justify-center rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm hover:bg-white/90" href="/" aria-label={t.backToDirectory}>
+            <ArrowLeft size={14} />
+          </Link>
+          {!editingImages && (
+            <label className="flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm">
+              {t.zoom}
+              <input type="range" min="25" max="130" value={zoom} onChange={(event) => setZoom(clampZoom(Number(event.target.value)))} className="w-20" />
+            </label>
+          )}
+        </div>
       </div>
 
-      {editingImages ? (
-        <ImageEditor images={images} dragId={dragId} setDragId={setDragId} upload={upload} deleteImage={deleteImage} moveImage={moveImage} />
-      ) : (
-        <Browser images={images} zoom={zoom} onOpen={setPageIndex} links={piece.links ?? []} setLinks={saveLinks} />
-      )}
+      <div ref={imagesSectionRef}>
+        {editingImages ? (
+          <ImageEditor images={images} upload={upload} deleteImage={deleteImage} moveImage={moveImage} onUpdatePiece={setPiece} />
+        ) : (
+          <Browser images={images} zoom={zoom} onOpen={setPageIndex} links={piece.links ?? []} setLinks={saveLinks} />
+        )}
+      </div>
 
       {pageIndex !== null && (
         <Pager images={images} tab={tab} setTab={setTab} index={pageIndex} setIndex={setPageIndex} zoom={zoom} />
@@ -258,15 +294,37 @@ export default function Detail({ songId }: { songId: number }) {
   );
 }
 
-function ImageEditor({ images, dragId, setDragId, upload, deleteImage, moveImage }: {
+function ImageEditor({ images, upload, deleteImage, moveImage, onUpdatePiece }: {
   images: SongImage[];
-  dragId: number | null;
-  setDragId: (id: number | null) => void;
   upload: (files: FileList | null) => void;
   deleteImage: (id: number) => void;
-  moveImage: (id: number) => void;
+  moveImage: (imageId: number, direction: "left" | "right") => void;
+  onUpdatePiece: (piece: Song) => void;
 }) {
   const { t } = useLocale();
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
+
+  function setDraft(id: number, value: string) {
+    setDrafts((prev) => ({ ...prev, [id]: value }));
+  }
+
+  async function saveSourceUrl(image: SongImage) {
+    const value = drafts[image.id]?.trim() || null;
+    const res = await fetch(`/api/pieces/${image.songId}/images/${image.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceUrl: value })
+    });
+    if (res.ok) {
+      const updated = await res.json() as Song;
+      onUpdatePiece(updated);
+      setDrafts((prev) => {
+        const next = { ...prev };
+        delete next[image.id];
+        return next;
+      });
+    }
+  }
 
   return (
     <section className="p-4">
@@ -278,27 +336,50 @@ function ImageEditor({ images, dragId, setDragId, upload, deleteImage, moveImage
         <p className="py-8 text-center text-sm text-[var(--muted)]">{t.noImages}</p>
       )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {images.map((image) => (
-          <div key={image.id} draggable onDragStart={() => setDragId(image.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => moveImage(image.id)} className="relative border border-[var(--line)] bg-white p-2">
-            <img src={image.url} alt="" className="aspect-[3/4] w-full object-contain" />
-            <button className="icon-button danger-button absolute right-2 top-2" type="button" onClick={() => deleteImage(image.id)}><Trash2 size={14} /></button>
-            <input
-              className="input mt-2 w-full text-xs"
-              placeholder={t.sourceUrl}
-              defaultValue={image.sourceUrl ?? ""}
-              onBlur={(event) => {
-                const value = event.target.value.trim() || null;
-                fetch(`/api/pieces/${image.songId}/images/${image.id}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ sourceUrl: value })
-                });
-              }}
-            />
-          </div>
-        ))}
+        {images.map((image) => {
+          const draft = drafts[image.id];
+          const hasDraft = draft !== undefined;
+          const currentValue = hasDraft ? draft : (image.sourceUrl ?? "");
+          const isDirty = hasDraft && draft !== (image.sourceUrl ?? "");
+          const currentIndex = images.findIndex((img) => img.id === image.id);
+          const isFirst = currentIndex === 0;
+          const isLast = currentIndex === images.length - 1;
+          return (
+            <div key={image.id} className="relative border border-[var(--line)] bg-white p-2">
+              <img src={image.url} alt="" className="aspect-[3/4] w-full object-contain" />
+              <button className="icon-button danger-button absolute right-2 top-2" type="button" onClick={() => deleteImage(image.id)}><Trash2 size={14} /></button>
+              <div className="mt-2 flex gap-1">
+                <input
+                  className="input w-full text-xs"
+                  placeholder={t.sourceUrl}
+                  value={currentValue}
+                  onChange={(event) => setDraft(image.id, event.target.value)}
+                />
+                <button
+                  className={`shrink-0 rounded-md border px-2 text-xs ${isDirty ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--line)] bg-[#eef2ef] text-[var(--muted)] opacity-60"}`}
+                  type="button"
+                  disabled={!isDirty}
+                  onClick={() => saveSourceUrl(image)}
+                >{t.save}</button>
+              </div>
+              <div className="mt-2 flex justify-center gap-1">
+                <button
+                  className={`rounded-md px-2 py-1 text-xs ${isFirst ? "border border-[var(--line)] bg-[#eef2ef] text-[var(--muted)] opacity-60 cursor-not-allowed" : "border border-[var(--accent)] bg-[var(--accent)] text-white hover:opacity-80"}`}
+                  type="button"
+                  disabled={isFirst}
+                  onClick={() => moveImage(image.id, "left")}
+                ><ChevronLeft size={14} /></button>
+                <button
+                  className={`rounded-md px-2 py-1 text-xs ${isLast ? "border border-[var(--line)] bg-[#eef2ef] text-[var(--muted)] opacity-60 cursor-not-allowed" : "border border-[var(--accent)] bg-[var(--accent)] text-white hover:opacity-80"}`}
+                  type="button"
+                  disabled={isLast}
+                  onClick={() => moveImage(image.id, "right")}
+                ><ChevronRight size={14} /></button>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      {dragId !== null && <div className="sr-only">{t.dragging}</div>}
     </section>
   );
 }
@@ -312,6 +393,10 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
 }) {
   const { t } = useLocale();
   const [draft, setDraft] = useState(links);
+  const isDirty = useMemo(() => {
+    if (draft.length !== links.length) return true;
+    return draft.some((link, i) => link.label !== links[i].label || link.url !== links[i].url);
+  }, [draft, links]);
   useEffect(() => setDraft(links), [links]);
   const scrollRef = useRef<HTMLDivElement>(null);
   return (
@@ -343,7 +428,7 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
         ))}
         <div className="flex gap-2">
           <button className="text-button" type="button" onClick={() => setDraft([...draft, { id: 0, songId: 0, label: "", url: "", sortOrder: draft.length }])}><Plus size={16} /> {t.link}</button>
-          <button className="text-button primary-button" type="button" onClick={() => setLinks(draft)}>{t.saveLinks}</button>
+          <button className={`text-button ${isDirty ? "primary-button" : "disabled-button"}`} type="button" disabled={!isDirty} onClick={() => setLinks(draft)}>{t.saveLinks}</button>
         </div>
       </div>
     </section>

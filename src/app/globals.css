@@ -95,6 +95,14 @@ button {
   color: #fff;
 }
 
+.disabled-button {
+  border-color: var(--line);
+  background: #eef2ef;
+  color: var(--muted);
+  cursor: default;
+  opacity: 0.6;
+}
+
 .danger-button {
   border-color: #fecaca;
   color: #991b1b;
