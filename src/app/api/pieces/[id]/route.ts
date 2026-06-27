@@ -6,13 +6,19 @@ import { songs } from "@/db/schema";
 import { getSong, nowIso, setSongTags } from "@/lib/data";
 import { apiError, serverError } from "@/lib/api";
 
-const updateSongSchema = z.object({
+export const updateSongSchema = z.object({
   title: z.string().optional(),
   titleEn: z.string().optional(),
   difficulty: z.number().int().min(1).max(5).optional(),
   notes: z.string().optional(),
   tagIds: z.array(z.number().int()).optional()
-});
+}).refine((data) => {
+  // At least one of title or titleEn must be non-empty
+  const title = data.title;
+  const titleEn = data.titleEn;
+  if (title !== undefined && title.trim() === "" && titleEn !== undefined && titleEn.trim() === "") return false;
+  return true;
+}, { message: "At least one title (Chinese or English) must be non-empty" });
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {

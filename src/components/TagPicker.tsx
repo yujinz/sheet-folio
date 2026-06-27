@@ -57,7 +57,7 @@ function pitchColorFromName(name: string): string | null {
   return hslToHex(hue, 40, 65);
 }
 
-// Default tag colors: ordered by hue (purple → pink → red → orange → gold → yellow)
+// Default tag colors: ordered by hue (purple → pink → red → orange → gold → olive → green)
 // Avoiding greens/blues since pitch tags will use those hues.
 const TAG_COLORS = [
   "#9e6aba", // lavender-purple
@@ -72,8 +72,8 @@ const TAG_COLORS = [
   "#d48a4a", // amber
   "#d49a5a", // goldenrod
   "#d4aa4a", // gold
-  "#d4b84a", // yellow-gold
-  "#c4a64a", // olive-yellow
+  "#d4c04a", // yellow
+  "#a8b44a", // olive-chartreuse
   "#9c8c6b", // sandalwood
   "#8a9a6a", // olive-green
 ];
@@ -195,12 +195,16 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
     const trimmed = createName.trim();
     const trimmedEn = createNameEn.trim();
     if (!trimmed && !trimmedEn) return;
-    const created = await onCreate({ name: trimmed || trimmedEn, nameEn: trimmedEn, color: createColor, category });
-    setLocalTags((prev) => [...prev, created]);
-    onChange([...selected, created.id]);
-    setShowCreateDialog(false);
-    setCreateName("");
-    setCreateNameEn("");
+    try {
+      const created = await onCreate({ name: trimmed || trimmedEn, nameEn: trimmedEn, color: createColor, category });
+      setLocalTags((prev) => [...prev, created]);
+      onChange([...selected, created.id]);
+      setShowCreateDialog(false);
+      setCreateName("");
+      setCreateNameEn("");
+    } catch {
+      alert(t.tagExists);
+    }
   }
 
   function toggle(id: number) {
@@ -211,10 +215,14 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
     const trimmed = name.trim();
     const trimmedEn = nameEn.trim();
     if (!trimmed && !trimmedEn) return;
-    const tag = await onCreate({ name: trimmed || trimmedEn, nameEn: trimmedEn, color, category });
-    setLocalTags((prev) => [...prev, tag]);
-    setName("");
-    setNameEn("");
+    try {
+      const tag = await onCreate({ name: trimmed || trimmedEn, nameEn: trimmedEn, color, category });
+      setLocalTags((prev) => [...prev, tag]);
+      setName("");
+      setNameEn("");
+    } catch {
+      alert(t.tagExists);
+    }
   }
 
   async function deleteTag(tag: Tag) {

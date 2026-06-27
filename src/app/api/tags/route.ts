@@ -26,12 +26,12 @@ export async function POST(request: Request) {
     const row = db
       .insert(tags)
       .values(body.data)
-      .onConflictDoUpdate({
-        target: [tags.category, tags.name],
-        set: { color: body.data.color, nameEn: body.data.nameEn }
-      })
+      .onConflictDoNothing()
       .returning()
       .get();
+    if (!row) {
+      return apiError("A tag with this name already exists in this category", 409);
+    }
     return NextResponse.json(row);
   } catch (error) {
     return serverError(error);

@@ -5,9 +5,11 @@ import { songs } from "@/db/schema";
 import { getSongs, nowIso } from "@/lib/data";
 import { apiError, serverError } from "@/lib/api";
 
-const createSongSchema = z.object({
+export const createSongSchema = z.object({
   title: z.string().default(""),
   titleEn: z.string().default("")
+}).refine((data) => data.title.trim() || data.titleEn.trim(), {
+  message: "At least one title (Chinese or English) must be non-empty"
 });
 
 export async function GET() {

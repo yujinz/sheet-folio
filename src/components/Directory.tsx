@@ -12,14 +12,43 @@ type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "note
 
 const categories: TagCategory[] = ["pitch", "technique", "rhythm"];
 
+const STORAGE_KEY = "sheet-folio-directory-state";
+
 export default function Directory() {
   const { locale, t } = useLocale();
   const [pieces, setPieces] = useState<Song[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
-  const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState<Record<TagCategory, number[]>>({ pitch: [], technique: [], rhythm: [] });
+  const [query, setQuery] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.query === "string") return parsed.query;
+      }
+    } catch {}
+    return "";
+  });
+  const [filters, setFilters] = useState<Record<TagCategory, number[]>>(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.filters) return parsed.filters;
+      }
+    } catch {}
+    return { pitch: [], technique: [], rhythm: [] };
+  });
   const [editingTags, setEditingTags] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "difficulty", dir: "asc" });
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.sort) return parsed.sort;
+      }
+    } catch {}
+    return { key: "difficulty", dir: "asc" };
+  });
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
 
   useEffect(() => {
@@ -31,6 +60,45 @@ export default function Directory() {
     if (tags.length === 0) return;
     setDefaultColor((prev) => pickDefaultColor(tags, prev));
   }, [tags]);
+
+  // Save sort/query/filters to sessionStorage whenever they change
+  useEffect(() => {
+    const state = { sort, query, filters };
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [sort, query, filters]);
+
+  // Save scroll position on unmount (SPA navigation) and on pagehide (bfcache/unload)
+  useEffect(() => {
+    const saveScroll = () => {
+      try {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const state = saved ? JSON.parse(saved) : {};
+        state.scrollY = window.scrollY;
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch {}
+    };
+    window.addEventListener("pagehide", saveScroll);
+    return () => {
+      window.removeEventListener("pagehide", saveScroll);
+      saveScroll(); // Save on unmount (link click navigation)
+    };
+  }, []);
+
+  // Restore scroll position after data loads
+  useEffect(() => {
+    if (pieces.length === 0) return;
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.scrollY === "number") {
+          requestAnimationFrame(() => {
+            window.scrollTo(0, parsed.scrollY);
+          });
+        }
+      }
+    } catch {}
+  }, [pieces]);
 
   async function refresh() {
     const [pieceRows, tagRows] = await Promise.all([
@@ -63,11 +131,13 @@ export default function Directory() {
   }
 
   async function createTag(tag: Omit<Tag, "id">) {
-    const created = await fetch("/api/tags", {
+    const res = await fetch("/api/tags", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(tag)
-    }).then((res) => res.json());
+    });
+    const created = await res.json();
+    if (!res.ok) throw new Error(created.error ?? "Failed to create tag");
     setTags((value) => [...value.filter((item) => item.id !== created.id), created]);
     // Rotate default color based on all tags including the new one
     setDefaultColor((prev) => pickDefaultColor([...tags, created], prev));

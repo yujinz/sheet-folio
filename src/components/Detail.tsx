@@ -87,11 +87,13 @@ export default function Detail({ songId }: { songId: number }) {
   }
 
   async function createTag(tag: Omit<Tag, "id">) {
-    const created = await fetch("/api/tags", {
+    const res = await fetch("/api/tags", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(tag)
-    }).then((res) => res.json());
+    });
+    const created = await res.json();
+    if (!res.ok) throw new Error(created.error ?? "Failed to create tag");
     setTags((value) => [...value.filter((item) => item.id !== created.id), created]);
     return created;
   }
@@ -175,6 +177,8 @@ export default function Detail({ songId }: { songId: number }) {
         body.title = titleRef.current?.value ?? "";
         body.titleEn = piece?.titleEn ?? "";
       }
+      // Safety net: don't save if both titles would be empty
+      if (body.title.trim() === "" && body.titleEn.trim() === "") return;
       void fetch(`/api/pieces/${songId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -184,6 +188,19 @@ export default function Detail({ songId }: { songId: number }) {
         isDirtyRef.current = false;
       });
     }, 500);
+  }
+
+  function handleTitleBlur() {
+    const currentValue = (titleRef.current ?? titleEnRef.current)?.value ?? "";
+    const newTitle = locale === "en-US" ? (piece?.title ?? "") : currentValue;
+    const newTitleEn = locale === "en-US" ? currentValue : (piece?.titleEn ?? "");
+    if (newTitle.trim() === "" && newTitleEn.trim() === "") {
+      // Revert the input to its previous valid value
+      const fallback = piece?.title || piece?.titleEn || "";
+      if (titleRef.current) titleRef.current.value = fallback;
+      if (titleEnRef.current) titleEnRef.current.value = fallback;
+      alert(t.titleRequired);
+    }
   }
 
   const images = useMemo(() => piece?.images?.[tab] ?? [], [piece, tab]);
@@ -224,6 +241,7 @@ export default function Detail({ songId }: { songId: number }) {
             className="input max-w-lg text-xl font-semibold"
             defaultValue={locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn)}
             onChange={scheduleSave}
+            onBlur={handleTitleBlur}
           />
           <button className="text-button" type="button" onClick={() => setEditingImages((value) => !value)}>
             {editingImages ? <X size={16} /> : <Images size={16} />} {editingImages ? t.viewImages : t.editImages}
