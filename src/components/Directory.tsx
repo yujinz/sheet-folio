@@ -246,7 +246,7 @@ export default function Directory() {
 
       <section className="relative px-4 py-4">
         <div className="absolute top-3 right-4 -mt-2 flex items-center gap-1">
-          <button className="text-button !min-h-0 !h-auto !py-0.5 !px-2" type="button" style={{ fontSize: 12 }} onClick={() => {
+          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(filters.pitch.length > 0 || filters.technique.length > 0 || filters.rhythm.length > 0 || difficultyFilters.length > 0) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
             setFilters({ pitch: [], technique: [], rhythm: [] });
             setDifficultyFilters([]);
           }}>

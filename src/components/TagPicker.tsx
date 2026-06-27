@@ -324,7 +324,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                       ))}
                       <button
                         aria-label="Assign pitch color"
-                        className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[13px] leading-none"
+                        className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap"
                         style={{ background: "none" }}
                         type="button"
                         title="Assign color based on pitch octave"
@@ -334,20 +334,20 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                           if (c) setCreateColor(c);
                         }}
                       >
-                        <Music size={12} />
+                        <Music size={12} /> Assign color by pitch
                       </button>
                     </>
                   )}
                   {category !== "pitch" && (
                     <button
                       aria-label="Cycle tag color"
-                      className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[13px] leading-none"
+                      className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap"
                       style={{ background: "none" }}
                       type="button"
                       title="Next palette color"
                       onClick={() => setCreateColor(nextTagColor(createColor))}
                     >
-                      <Palette size={12} />
+                      <Palette size={12} /> Cycle color
                     </button>
                   )}
                   <input
@@ -522,7 +522,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                     ))}
                     <button
                       aria-label="Assign pitch color"
-                      className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[13px] leading-none"
+                      className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap"
                       style={{ background: "none" }}
                       type="button"
                       title="Assign color based on pitch octave"
@@ -532,20 +532,20 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                         if (c) setEditColor(c);
                       }}
                     >
-                      <Music size={12} />
+                      <Music size={12} /> Assign color by pitch
                     </button>
                   </>
                 )}
                 {category !== "pitch" && (
                   <button
                     aria-label="Cycle tag color"
-                    className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[13px] leading-none"
+                    className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap"
                     style={{ background: "none" }}
                     type="button"
                     title="Next palette color"
                     onClick={() => setEditColor(nextTagColor(editColor))}
                   >
-                    <Palette size={12} />
+                    <Palette size={12} /> Cycle color
                   </button>
                 )}
                 <input
