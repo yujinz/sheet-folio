@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { Music, Palette, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/lib/useLocale";
 import type { Locale } from "@/lib/i18n";
@@ -324,7 +324,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                       ))}
                       <button
                         aria-label="Assign pitch color"
-                        className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[8px] leading-none whitespace-nowrap"
+                        className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[13px] leading-none"
                         style={{ background: "none" }}
                         type="button"
                         title="Assign color based on pitch octave"
@@ -334,20 +334,20 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                           if (c) setCreateColor(c);
                         }}
                       >
-                        🎵 Assign color by pitch
+                        <Music size={12} />
                       </button>
                     </>
                   )}
                   {category !== "pitch" && (
                     <button
                       aria-label="Cycle tag color"
-                      className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[8px] leading-none whitespace-nowrap"
+                      className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[13px] leading-none"
                       style={{ background: "none" }}
                       type="button"
                       title="Next palette color"
                       onClick={() => setCreateColor(nextTagColor(createColor))}
                     >
-                      🎨 Cycle color
+                      <Palette size={12} />
                     </button>
                   )}
                   <input
@@ -374,7 +374,6 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="text-xs font-semibold shrink-0 w-[4.5rem] text-[var(--foreground)]">{t[category]}</span>
-      <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
         {visibleTags.map((tag) => (
           <span key={tag.id} className="tag-pill-group inline-flex rounded-full">
             <button
@@ -465,7 +464,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                   if (c) setColor(c);
                 }}
               >
-                🎵
+                <Music size={12} />
               </button>
             ) : (
               <button
@@ -476,7 +475,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                 title="Next palette color"
                 onClick={() => setColor(nextTagColor(color))}
               >
-                🎨
+                <Palette size={12} />
               </button>
             )}
             <input aria-label={t.tagColor} className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={color} onChange={(event) => setColor(event.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
@@ -485,7 +484,6 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
             </button>
           </div>
         </span>
-      </div>
       {editingTags && editTag && onUpdate && (
         <div ref={editDialogRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setEditTag(null)}>
           <div className="mx-4 w-full max-w-xs rounded-lg bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -524,7 +522,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                     ))}
                     <button
                       aria-label="Assign pitch color"
-                      className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[8px] leading-none whitespace-nowrap"
+                      className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[13px] leading-none"
                       style={{ background: "none" }}
                       type="button"
                       title="Assign color based on pitch octave"
@@ -534,20 +532,20 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                         if (c) setEditColor(c);
                       }}
                     >
-                      🎵 Assign color by pitch
+                      <Music size={12} />
                     </button>
                   </>
                 )}
                 {category !== "pitch" && (
                   <button
                     aria-label="Cycle tag color"
-                    className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[8px] leading-none whitespace-nowrap"
+                    className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[13px] leading-none"
                     style={{ background: "none" }}
                     type="button"
                     title="Next palette color"
                     onClick={() => setEditColor(nextTagColor(editColor))}
                   >
-                    🎨 Cycle color
+                    <Palette size={12} />
                   </button>
                 )}
                 <input

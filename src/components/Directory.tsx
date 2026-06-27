@@ -16,11 +16,11 @@ const STORAGE_KEY = "sheet-folio-directory-state";
 const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5] as const;
 
 const DIFFICULTY_COLORS = [
-	"#ebce9f", // 1  maple
-  "#e2c490", // 2  birch
-  "#dbb88a", // 3  pine
-  "#c9a472", // 4  spruce
-  "#c49464", // 5  oak
+	"#ecc484", // 1  maple
+  "#e5b86a", // 2  birch
+  "#dba55e", // 3  pine
+  "#c98e46", // 4  spruce
+  "#c47a30", // 5  oak
   "#a8774b", // 6  teak
   "#8c5a3c", // 7  walnut
   "#6e422a", // 8  mahogany
