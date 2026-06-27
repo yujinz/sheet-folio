@@ -78,6 +78,15 @@ const TAG_COLORS = [
   "#8a9a6a", // olive-green
 ];
 
+/** Return the next color in the TAG_COLORS palette, wrapping around. */
+function nextTagColor(currentColor: string): string {
+  const index = TAG_COLORS.indexOf(currentColor);
+  if (index === -1 || index === TAG_COLORS.length - 1) {
+    return TAG_COLORS[0];
+  }
+  return TAG_COLORS[index + 1];
+}
+
 export function pickDefaultColor(tags: Tag[], currentColor: string): string {
   const counts = new Map<string, number>();
   for (const c of TAG_COLORS) counts.set(c, 0);
@@ -261,9 +270,9 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
         {selectedTags.length > 0 && (
           <span className="flex flex-wrap items-center gap-2">
             {selectedTags.map((tag) => (
-              <span key={tag.id} className="tag-pill-group inline-flex overflow-hidden rounded-full">
-                <span
-                  className="tag-pill rounded-r-none"
+              <span key={tag.id} className="tag-pill-group inline-flex rounded-full">
+              <span
+                className="tag-pill rounded-r-none"
                   style={{ background: tag.color }}
                 >
                   {tagDisplayName(tag, locale)}
@@ -329,6 +338,18 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                       </button>
                     </>
                   )}
+                  {category !== "pitch" && (
+                    <button
+                      aria-label="Cycle tag color"
+                      className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[8px] leading-none whitespace-nowrap"
+                      style={{ background: "none" }}
+                      type="button"
+                      title="Next palette color"
+                      onClick={() => setCreateColor(nextTagColor(createColor))}
+                    >
+                      🎨 Cycle color
+                    </button>
+                  )}
                   <input
                     aria-label={t.tagColor}
                     className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0"
@@ -351,19 +372,16 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
   }
 
   return (
-    <div className="grid gap-0.5">
-      <div className="flex items-start gap-0.5">
-        <span className="text-[12px] font-semibold">{t[category]}</span>
-      </div>
-      <div className="flex flex-wrap items-center gap-0.5">
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-xs font-semibold shrink-0 w-[4.5rem] text-[var(--foreground)]">{t[category]}</span>
+      <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
         {visibleTags.map((tag) => (
-          <span key={tag.id} className="tag-pill-group inline-flex overflow-hidden rounded-full">
+          <span key={tag.id} className="tag-pill-group inline-flex rounded-full">
             <button
               className="tag-pill rounded-r-none"
               style={{
                 background: tag.color,
                 opacity: selectedSet.has(tag.id) ? 1 : 0.35,
-                outline: selectedSet.has(tag.id) ? "2px solid #111827" : "0",
                 borderBottomRightRadius: editingTags && onDelete ? 0 : undefined,
                 borderTopRightRadius: editingTags && onDelete ? 0 : undefined
               }}
@@ -433,7 +451,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               onFocus={() => setActiveInput("nameEn")}
               placeholder="New Tag"
             />
-            {category === "pitch" && (
+            {category === "pitch" ? (
               <button
                 aria-label="Assign pitch color"
                 className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[13px] leading-none"
@@ -448,6 +466,17 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                 }}
               >
                 🎵
+              </button>
+            ) : (
+              <button
+                aria-label="Cycle tag color"
+                className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[13px] leading-none"
+                style={{ background: "none" }}
+                type="button"
+                title="Next palette color"
+                onClick={() => setColor(nextTagColor(color))}
+              >
+                🎨
               </button>
             )}
             <input aria-label={t.tagColor} className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={color} onChange={(event) => setColor(event.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
@@ -508,6 +537,18 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                       🎵 Assign color by pitch
                     </button>
                   </>
+                )}
+                {category !== "pitch" && (
+                  <button
+                    aria-label="Cycle tag color"
+                    className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center text-[8px] leading-none whitespace-nowrap"
+                    style={{ background: "none" }}
+                    type="button"
+                    title="Next palette color"
+                    onClick={() => setEditColor(nextTagColor(editColor))}
+                  >
+                    🎨 Cycle color
+                  </button>
                 )}
                 <input
                   aria-label={t.tagColor}

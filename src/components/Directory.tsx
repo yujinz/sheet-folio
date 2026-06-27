@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, RotateCcw, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
@@ -13,6 +13,20 @@ type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "note
 const categories: TagCategory[] = ["pitch", "technique", "rhythm"];
 
 const STORAGE_KEY = "sheet-folio-directory-state";
+const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5] as const;
+
+const DIFFICULTY_COLORS = [
+	"#ebce9f", // 1  maple
+  "#e2c490", // 2  birch
+  "#dbb88a", // 3  pine
+  "#c9a472", // 4  spruce
+  "#c49464", // 5  oak
+  "#a8774b", // 6  teak
+  "#8c5a3c", // 7  walnut
+  "#6e422a", // 8  mahogany
+  "#4a2a18", // 9  rosewood
+  "#1a0e06", // 10 ebony
+];
 
 export default function Directory() {
   const { locale, t } = useLocale();
@@ -37,6 +51,16 @@ export default function Directory() {
       }
     } catch {}
     return { pitch: [], technique: [], rhythm: [] };
+  });
+  const [difficultyFilters, setDifficultyFilters] = useState<number[]>(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.difficultyFilters)) return parsed.difficultyFilters;
+      }
+    } catch {}
+    return [];
   });
   const [editingTags, setEditingTags] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>(() => {
@@ -63,9 +87,9 @@ export default function Directory() {
 
   // Save sort/query/filters to sessionStorage whenever they change
   useEffect(() => {
-    const state = { sort, query, filters };
+    const state = { sort, query, filters, difficultyFilters };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [sort, query, filters]);
+  }, [sort, query, filters, difficultyFilters]);
 
   // Save scroll position on unmount (SPA navigation) and on pagehide (bfcache/unload)
   useEffect(() => {
@@ -173,6 +197,9 @@ export default function Directory() {
         const titleForSearch = locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
         if (!titleForSearch.toLowerCase().includes(query.toLowerCase())) return false;
       }
+      if (difficultyFilters.length > 0 && !difficultyFilters.includes(piece.difficulty)) {
+        return false;
+      }
       return categories.every((category) =>
         filters[category].every((id) => piece.tags[category].some((tag) => tag.id === id))
       );
@@ -191,7 +218,7 @@ export default function Directory() {
         : String(aVal).localeCompare(String(bVal), locale, { numeric: true });
       return sort.dir === "asc" ? result : -result;
     });
-  }, [filters, locale, pieces, query, sort]);
+  }, [filters, locale, pieces, query, sort, difficultyFilters]);
 
   function sortBy(key: SortKey) {
     setSort((value) => ({ key, dir: value.key === key && value.dir === "asc" ? "desc" : "asc" }));
@@ -218,9 +245,43 @@ export default function Directory() {
       </header>
 
       <section className="relative px-4 py-4">
-        <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 absolute top-3 right-4 -mt-2 ${editingTags ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => setEditingTags((value) => !value)}>
-          <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
-        </button>
+        <div className="absolute top-3 right-4 -mt-2 flex items-center gap-1">
+          <button className="text-button !min-h-0 !h-auto !py-0.5 !px-2" type="button" style={{ fontSize: 12 }} onClick={() => {
+            setFilters({ pitch: [], technique: [], rhythm: [] });
+            setDifficultyFilters([]);
+          }}>
+            <RotateCcw size={12} /> {t.resetFilters}
+          </button>
+          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${editingTags ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => setEditingTags((value) => !value)}>
+            <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
+          </button>
+        </div>
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-semibold text-[var(--foreground)] shrink-0 w-[4.5rem]">{t.difficulty}</span>
+          {DIFFICULTY_LEVELS.map((level) => {
+            const isActive = difficultyFilters.includes(level);
+            const color = DIFFICULTY_COLORS[level - 1];
+            return (
+              <button
+                key={level}
+                className="difficulty-pill"
+                style={{
+                  background: color,
+                  opacity: isActive ? 1 : 0.35,
+                  
+                }}
+                onClick={() =>
+                  setDifficultyFilters((prev) =>
+                    prev.includes(level) ? prev.filter((d) => d !== level) : [...prev, level]
+                  )
+                }
+                aria-pressed={isActive}
+              >
+                {level}
+              </button>
+            );
+          })}
+        </div>
         <div className="grid gap-2 lg:grid-cols-3">
           {categories.map((category) => (
             <TagPicker

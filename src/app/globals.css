@@ -93,6 +93,7 @@ button {
   border-color: #0f766e;
   background: #0f766e;
   color: #fff;
+  
 }
 
 .disabled-button {
@@ -115,13 +116,17 @@ button {
   border-radius: 999px;
   padding: 3px 9px;
   color: #fff;
+  border: none;
+  
   font-size: 12px;
+  letter-spacing: 0.03em;
   line-height: 1;
   white-space: nowrap;
-  border: none;
+  
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  transition: opacity 0.15s;
 }
 
 .tag-delete-button {
@@ -165,6 +170,25 @@ button {
   font-size: 12px;
 }
 
+.difficulty-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  
+  
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: opacity 0.15s;
+}
+
 .table-shell {
   overflow: auto;
   border-top: 1px solid var(--line);
@@ -206,6 +230,7 @@ button {
   z-index: 50;
   background: #111;
   color: #fff;
+  
 }
 
 /* Safari iOS: elements need cursor:pointer to be tappable */
