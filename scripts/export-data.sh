@@ -20,10 +20,14 @@ echo "=== Sheet-folio data export ==="
 echo "Time: $(date)"
 echo "Container: $CONTAINER_NAME"
 
-# Stream DB directly from the running container
+# Stream DB directly from the running container.
+# Copy all WAL files too so better-sqlite3 can read uncheckpointed transactions.
 echo ""
 echo "--- Streaming DB from container ---"
-docker exec "$CONTAINER_NAME" sh -c 'cat /app/data/sheet-folio.db' > /tmp/sheet-folio.db
+docker cp "$CONTAINER_NAME":/app/data/sheet-folio.db /tmp/sheet-folio.db
+# WAL/SHM files may not exist if no uncheckpointed writes — ignore errors silently
+docker cp "$CONTAINER_NAME":/app/data/sheet-folio.db-wal /tmp/sheet-folio.db-wal 2>/dev/null || true
+docker cp "$CONTAINER_NAME":/app/data/sheet-folio.db-shm /tmp/sheet-folio.db-shm 2>/dev/null || true
 echo "   Copied $(stat --printf='%s' /tmp/sheet-folio.db) bytes"
 
 # Build export image if needed
