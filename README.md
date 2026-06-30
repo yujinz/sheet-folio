@@ -76,11 +76,32 @@ pnpm export-data
 
 ## Backup
 
+Creates compressed, SHA-deduplicated backups of app volumes and export data, with optional Cloudflare R2 upload. **Keeps the last 5 backups** locally and on R2 — older archives are pruned automatically.
+
 ```bash
+# Local backup (saves to ~/backups/sheet-folio/{volumes,exports}/)
 ./backup.sh
+./backup.sh --export-dir <path>  # custom export source (default: export-data/)
+
+# Also upload export to R2
+./backup.sh --r2-bucket <bucket-name>
 ```
 
-(WIP — backs up SQLite database and uploaded images to NAS)
+**Setup for R2:**
+
+1. Get R2 credentials from [Cloudflare Dashboard](https://dash.cloudflare.com/) → R2 → Manage R2 API Tokens → Create API Token (Object Read & Write)
+2. Export credentials and endpoint:
+   ```bash
+   export AWS_ACCESS_KEY_ID="your-access-key-id"
+   export AWS_SECRET_ACCESS_KEY="your-secret-key"
+   export AWS_ENDPOINT_URL_S3="https://<account-id>.r2.cloudflarestorage.com"
+   ```
+
+**What it does:**
+- Archives `volumes/app/` and `export-data/` into `~/backups/sheet-folio/{volumes,exports}/`
+- Names archives as `<prefix>-<timestamp>-<sha12>.tar.gz` — identical data reuses the same file (SHA dedup)
+- Prunes local and R2 storage to the 5 most recent archives
+- With `--r2-bucket`, uploads the export archive to Cloudflare R2
 
 ## Reference
 
