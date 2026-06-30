@@ -3,6 +3,7 @@
 import { Music, Palette, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/lib/useLocale";
+import { CORE_CATEGORIES } from "@/lib/types";
 import type { Locale } from "@/lib/i18n";
 import type { Tag, TagCategory } from "@/lib/types";
 
@@ -109,6 +110,8 @@ export function pickDefaultColor(tags: Tag[], currentColor: string): string {
 
 type Props = {
   category: TagCategory;
+  /** Optional display label (e.g. for i18n of custom categories). Falls back to `t[category]` then `category`. */
+  label?: string;
   tags: Tag[];
   selected: number[];
   onChange: (ids: number[]) => void;
@@ -122,7 +125,7 @@ type Props = {
   onDefaultColorChange?: (color: string) => void;
 };
 
-export default function TagPicker({ category, tags, selected, onChange, onCreate, onDelete, onUpdate, editingTags, selectedOnly, compact, defaultColor, onDefaultColorChange }: Props) {
+export default function TagPicker({ category, label, tags, selected, onChange, onCreate, onDelete, onUpdate, editingTags, selectedOnly, compact, defaultColor, onDefaultColorChange }: Props) {
   const { locale, t } = useLocale();
   const [name, setName] = useState("");
   const [nameEn, setNameEn] = useState("");
@@ -136,6 +139,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
   const visibleTags = selectedOnly ? localTags.filter((tag) => selectedSet.has(tag.id)) : localTags;
   const selectedTags = localTags.filter((tag) => selectedSet.has(tag.id));
   const availableTags = localTags.filter((tag) => !selectedSet.has(tag.id));
+  const categoryLabel = label ?? (t as any)[category] ?? category;
   const [selectValue, setSelectValue] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createName, setCreateName] = useState("");
@@ -261,7 +265,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
             }
           }}
         >
-          <option value="" disabled hidden>{t[category]}</option>
+          <option value="" disabled hidden>{categoryLabel}</option>
           {availableTags.map((tag) => (
             <option key={tag.id} value={tag.id}>{tagDisplayName(tag, locale)}</option>
           ))}
@@ -299,14 +303,14 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                 <input
                   ref={createNameInputRef}
                   className="input w-full"
-                  placeholder={t[category] + " (中文)"}
+                  placeholder={categoryLabel + " (中文)"}
                   value={createName}
                   onChange={(e) => setCreateName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }}
                 />
                 <input
                   className="input w-full"
-                  placeholder={t[category] + " (English)"}
+                  placeholder={categoryLabel + " (English)"}
                   value={createNameEn}
                   onChange={(e) => setCreateNameEn(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }}
@@ -373,7 +377,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs font-semibold shrink-0 w-[4.5rem] text-[var(--foreground)]">{t[category]}</span>
+      <span className="text-xs font-semibold shrink-0 w-[4.5rem] text-[var(--foreground)]">{categoryLabel}</span>
         {visibleTags.map((tag) => (
           <span key={tag.id} className="tag-pill-group inline-flex rounded-full">
             <button
@@ -492,14 +496,14 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               <input
                 ref={editNameInputRef}
                 className="input w-full"
-                placeholder={t[category] + " (中文)"}
+                placeholder={categoryLabel + " (中文)"}
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }}
               />
               <input
                 className="input w-full"
-                placeholder={t[category] + " (English)"}
+                placeholder={categoryLabel + " (English)"}
                 value={editNameEn}
                 onChange={(e) => setEditNameEn(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }}

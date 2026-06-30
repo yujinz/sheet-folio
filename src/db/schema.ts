@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const songs = sqliteTable("songs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -17,7 +17,7 @@ export const tags = sqliteTable(
     name: text("name").notNull(),
     nameEn: text("name_en").notNull().default(""),
     color: text("color").notNull(),
-    category: text("category", { enum: ["pitch", "technique", "rhythm"] }).notNull()
+    category: text("category").notNull()
   },
   (table) => ({
     uniqueName: uniqueIndex("tags_category_name_idx").on(table.category, table.name)

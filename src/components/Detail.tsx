@@ -5,9 +5,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
-import type { ImageKind, Song, SongImage, Tag, TagCategory, YoutubeLink } from "@/lib/types";
+import { CORE_CATEGORIES } from "@/lib/types";
+import type { ImageKind, Song, SongImage, Tag, YoutubeLink } from "@/lib/types";
 
-const categories: TagCategory[] = ["pitch", "technique", "rhythm"];
+const categories = [...CORE_CATEGORIES];
 
 function generateId() {
   // crypto.randomUUID() requires secure context (HTTPS), use fallback for HTTP
@@ -262,17 +263,28 @@ export default function Detail({ songId }: { songId: number }) {
           <select className="select tag-add-select text-center" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => patch({ difficulty: Number(event.target.value) })}>
             {[1, 2, 3, 4, 5].map((score) => <option key={score}>{score}</option>)}
           </select>
-          {categories.map((category) => (
-            <TagPicker
-              key={category}
-              compact
-              category={category}
-              tags={tags.filter((tag) => tag.category === category)}
-              selected={piece.tags[category].map((tag) => tag.id)}
-              onCreate={createTag}
-              onChange={(ids) => patch({ tagIds: categories.flatMap((cat) => cat === category ? ids : piece.tags[cat].map((tag) => tag.id)) })}
-            />
-          ))}
+          {(() => {
+            const allCats = [...categories, ...tags.reduce<string[]>((acc, tag) => {
+              if (!CORE_CATEGORIES.includes(tag.category as typeof CORE_CATEGORIES[number]) && !acc.includes(tag.category)) acc.push(tag.category);
+              return acc;
+            }, [])];
+            function buildTagIds(category: string, ids: number[]) {
+              return allCats.flatMap((cat) =>
+                cat === category ? ids : (piece!.tags[cat]?.map((tag) => tag.id) ?? [])
+              );
+            }
+            return allCats.map((category) => (
+              <TagPicker
+                key={category}
+                compact
+                category={category}
+                tags={tags.filter((tag) => tag.category === category)}
+                selected={piece.tags[category]?.map((tag) => tag.id) ?? []}
+                onCreate={createTag}
+                onChange={(ids) => patch({ tagIds: buildTagIds(category, ids) })}
+              />
+            ));
+          })()}
         </div>
       </header>
 

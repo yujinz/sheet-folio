@@ -3,12 +3,13 @@ import { z } from "zod";
 import { db } from "@/db";
 import { tags } from "@/db/schema";
 import { apiError, serverError } from "@/lib/api";
+import { eq } from "drizzle-orm";
 
 const tagSchema = z.object({
   name: z.string().trim().min(1),
   nameEn: z.string().default(""),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  category: z.enum(["pitch", "technique", "rhythm"])
+  category: z.string().min(1)
 });
 
 export async function GET() {
@@ -33,6 +34,20 @@ export async function POST(request: Request) {
       return apiError("A tag with this name already exists in this category", 409);
     }
     return NextResponse.json(row);
+  } catch (error) {
+    return serverError(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const url = new URL(request.url);
+    const category = url.searchParams.get("category");
+    if (!category) {
+      return apiError("category query parameter is required", 400);
+    }
+    const deleted = db.delete(tags).where(eq(tags.category, category)).returning().all();
+    return NextResponse.json({ deleted: deleted.length });
   } catch (error) {
     return serverError(error);
   }

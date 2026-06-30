@@ -1,4 +1,7 @@
-export type TagCategory = "pitch" | "technique" | "rhythm";
+export type TagCategory = string;
+
+/** The three built-in core tag categories with special i18n labels and UI. */
+export const CORE_CATEGORIES = ["pitch", "technique", "rhythm"] as const;
 export type ImageKind = "staff" | "numbered";
 
 export type Tag = {
@@ -36,7 +39,7 @@ export type Song = {
   notes: string;
   createdAt: string;
   updatedAt: string;
-  tags: Record<TagCategory, Tag[]>;
+  tags: Record<string, Tag[]>;
   images?: Record<ImageKind, SongImage[]>;
   links?: YoutubeLink[];
 };

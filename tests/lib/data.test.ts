@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { groupTags, nowIso } from "@/lib/data";
-import type { Tag, TagCategory } from "@/lib/types";
+import type { Tag } from "@/lib/types";
 
-const categories: TagCategory[] = ["pitch", "technique", "rhythm"];
+const categories = ["pitch", "technique", "rhythm"];
 
 describe("nowIso", () => {
   it("returns a valid ISO string", () => {
@@ -39,10 +39,27 @@ describe("groupTags", () => {
     expect(grouped.rhythm).toHaveLength(0);
   });
 
-  it("handles empty input", () => {
+  it("handles empty input (core categories still present)", () => {
     const grouped = groupTags([]);
-    for (const cat of categories) {
-      expect(grouped[cat]).toEqual([]);
-    }
+    expect(grouped).toHaveProperty("pitch");
+    expect(grouped).toHaveProperty("technique");
+    expect(grouped).toHaveProperty("rhythm");
+    expect(grouped.pitch).toEqual([]);
+    expect(grouped.technique).toEqual([]);
+    expect(grouped.rhythm).toEqual([]);
+  });
+
+  it("groups custom categories dynamically", () => {
+    const tags: Tag[] = [
+      { id: 1, name: "Baroque", nameEn: "", color: "#9e6aba", category: "genre" },
+      { id: 2, name: "Classical", nameEn: "", color: "#c46a9e", category: "genre" },
+      { id: 3, name: "高音", nameEn: "", color: "#2563eb", category: "pitch" },
+    ];
+    const grouped = groupTags(tags);
+    expect(grouped).toHaveProperty("genre");
+    expect(grouped).toHaveProperty("pitch");
+    expect(grouped.genre).toHaveLength(2);
+    expect(grouped.pitch).toHaveLength(1);
+    expect(grouped.technique).toEqual([]);
   });
 });

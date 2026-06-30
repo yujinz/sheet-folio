@@ -1,16 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, RotateCcw, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
-import type { Song, Tag, TagCategory } from "@/lib/types";
+import { CORE_CATEGORIES } from "@/lib/types";
+import type { Song, Tag } from "@/lib/types";
+
+type UserCategory = { key: string; labelZh: string; labelEn: string };
+
+function categoryDisplayName(cat: UserCategory, locale: string): string {
+  return locale === "en-US" ? cat.labelEn : cat.labelZh;
+}
+
+function getCategoryLabel(categories: UserCategory[], key: string, locale: string): string {
+  const found = categories.find((c) => c.key === key);
+  return found ? categoryDisplayName(found, locale) : key;
+}
 
 type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "notes";
 
-const categories: TagCategory[] = ["pitch", "technique", "rhythm"];
+const categories = [...CORE_CATEGORIES];
 
 const STORAGE_KEY = "sheet-folio-directory-state";
 const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5] as const;
@@ -42,7 +54,7 @@ export default function Directory() {
     } catch {}
     return "";
   });
-  const [filters, setFilters] = useState<Record<TagCategory, number[]>>(() => {
+  const [filters, setFilters] = useState<Record<string, number[]>>(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -50,7 +62,7 @@ export default function Directory() {
         if (parsed.filters) return parsed.filters;
       }
     } catch {}
-    return { pitch: [], technique: [], rhythm: [] };
+    return Object.fromEntries(CORE_CATEGORIES.map((c) => [c, []]));
   });
   const [difficultyFilters, setDifficultyFilters] = useState<number[]>(() => {
     try {
@@ -79,6 +91,31 @@ export default function Directory() {
     void refresh();
   }, []);
 
+  const [userCategories, setUserCategories] = useState<UserCategory[]>(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.userCategories)) return parsed.userCategories;
+      }
+    } catch {}
+    return [];
+  });
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryNameZh, setNewCategoryNameZh] = useState("");
+  const [newCategoryNameEn, setNewCategoryNameEn] = useState("");
+
+  // Reset new category form when leaving edit mode
+  useEffect(() => {
+    if (!editingTags) {
+      setShowNewCategory(false);
+      setNewCategoryNameZh("");
+      setNewCategoryNameEn("");
+    }
+  }, [editingTags]);
+  const newCategoryNameZhRef = useRef<HTMLInputElement>(null);
+  const newCategoryNameEnRef = useRef<HTMLInputElement>(null);
+
   // Recalculate default color when tags are loaded
   useEffect(() => {
     if (tags.length === 0) return;
@@ -87,9 +124,9 @@ export default function Directory() {
 
   // Save sort/query/filters to sessionStorage whenever they change
   useEffect(() => {
-    const state = { sort, query, filters, difficultyFilters };
+    const state = { sort, query, filters, difficultyFilters, userCategories };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [sort, query, filters, difficultyFilters]);
+  }, [sort, query, filters, difficultyFilters, userCategories]);
 
   // Save scroll position on unmount (SPA navigation) and on pagehide (bfcache/unload)
   useEffect(() => {
@@ -191,6 +228,71 @@ export default function Directory() {
     setPieces((rows) => rows.map((row) => (row.id === piece.id ? updated : row)));
   }
 
+  /** All extra category keys (from user-created categories + auto-detected from DB tags). */
+  const extraCategoryKeys = useMemo(() => {
+    const keys = new Set(userCategories.map((c) => c.key));
+    for (const tag of tags) {
+      if (!CORE_CATEGORIES.includes(tag.category as typeof CORE_CATEGORIES[number])) {
+        keys.add(tag.category);
+      }
+    }
+    return [...keys].sort();
+  }, [tags, userCategories]);
+
+  /** Lookup a user-created category by key. */
+  function getUserCategory(key: string): UserCategory | undefined {
+    return userCategories.find((c) => c.key === key);
+  }
+
+  // Ensure filters has entries for extra categories
+  useEffect(() => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const key of extraCategoryKeys) {
+        if (!(key in next)) {
+          next[key] = [];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [extraCategoryKeys]);
+
+  function addCategory(zh: string, en: string) {
+    const trimmedZh = zh.trim();
+    const trimmedEn = en.trim();
+    const key = (trimmedEn || trimmedZh).toLowerCase().replace(/\s+/g, "-");
+    if (!key) return;
+    if (CORE_CATEGORIES.includes(key as typeof CORE_CATEGORIES[number])) return;
+    if (extraCategoryKeys.includes(key)) return;
+    setUserCategories((prev) => [...prev, { key, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh }]);
+    setFilters((prev) => ({ ...prev, [key]: [] }));
+    setNewCategoryNameZh("");
+    setNewCategoryNameEn("");
+    setShowNewCategory(false);
+  }
+
+  async function removeCategory(key: string) {
+    const catTags = tags.filter((t) => t.category === key);
+    const tagCount = catTags.length;
+    const label = getUserCategory(key)?.labelEn || key;
+    const msg = tagCount > 0
+      ? `Delete category "${label}" and its ${tagCount} tag${tagCount > 1 ? "s" : ""}? Tags will be removed from all pieces.`
+      : `Remove "${label}" from the filter area?`;
+    if (!confirm(msg)) return;
+    if (tagCount > 0) {
+      await fetch(`/api/tags?category=${encodeURIComponent(key)}`, { method: "DELETE" });
+    }
+    setUserCategories((prev) => prev.filter((c) => c.key !== key));
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    await refresh();
+  }
+
   const visible = useMemo(() => {
     const filtered = pieces.filter((piece) => {
       if (query) {
@@ -200,8 +302,9 @@ export default function Directory() {
       if (difficultyFilters.length > 0 && !difficultyFilters.includes(piece.difficulty)) {
         return false;
       }
-      return categories.every((category) =>
-        filters[category].every((id) => piece.tags[category].some((tag) => tag.id === id))
+      const allFilterCats = Object.keys(filters);
+      return allFilterCats.every((category) =>
+        filters[category]!.length === 0 || (filters[category]?.every((id) => piece.tags[category]?.some((tag) => tag.id === id)) ?? true)
       );
     });
     return [...filtered].sort((a, b) => {
@@ -246,8 +349,8 @@ export default function Directory() {
 
       <section className="relative px-4 py-4">
         <div className="absolute top-3 right-4 -mt-2 flex items-center gap-1">
-          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(filters.pitch.length > 0 || filters.technique.length > 0 || filters.rhythm.length > 0 || difficultyFilters.length > 0) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
-            setFilters({ pitch: [], technique: [], rhythm: [] });
+          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(Object.values(filters).some((ids) => ids.length > 0) || difficultyFilters.length > 0) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
+            setFilters(Object.fromEntries(Object.keys(filters).map((k) => [k, []])));
             setDifficultyFilters([]);
           }}>
             <RotateCcw size={12} /> {t.resetFilters}
@@ -288,7 +391,7 @@ export default function Directory() {
               key={category}
               category={category}
               tags={tags.filter((tag) => tag.category === category)}
-              selected={filters[category]}
+              selected={filters[category] ?? []}
               onChange={(ids) => setFilters((value) => ({ ...value, [category]: ids }))}
               onCreate={createTag}
               onDelete={deleteTag}
@@ -299,6 +402,106 @@ export default function Directory() {
             />
           ))}
         </div>
+          {editingTags && (
+          <div className="mt-3">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-xs font-semibold text-[var(--foreground)]">{t.other}</span>
+                <button
+                  className="icon-button"
+                  style={{ width: 24, height: 24, minWidth: 24, minHeight: 24 }}
+                  type="button"
+                  title="New category"
+                  onClick={() => {
+                    setShowNewCategory(true);
+                    setNewCategoryNameZh("");
+                    setNewCategoryNameEn("");
+                    setTimeout(() => newCategoryNameZhRef.current?.focus(), 50);
+                  }}
+                >
+                  <Plus size={14} />
+                </button>
+            </div>
+            {showNewCategory && (
+              <div className="mb-2 flex items-center gap-1">
+                <input
+                  ref={newCategoryNameZhRef}
+                  className="input"
+                  style={{ width: "8rem", fontSize: "12px" }}
+                  placeholder="分类名称 (中文)"
+                  value={newCategoryNameZh}
+                  onChange={(e) => setNewCategoryNameZh(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") newCategoryNameEnRef.current?.focus();
+                    if (e.key === "Escape") { setShowNewCategory(false); setNewCategoryNameZh(""); setNewCategoryNameEn(""); }
+                  }}
+                />
+                <input
+                  ref={newCategoryNameEnRef}
+                  className="input"
+                  style={{ width: "8rem", fontSize: "12px" }}
+                  placeholder="Category name (English)"
+                  value={newCategoryNameEn}
+                  onChange={(e) => setNewCategoryNameEn(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") addCategory(newCategoryNameZh, newCategoryNameEn);
+                    if (e.key === "Escape") { setShowNewCategory(false); setNewCategoryNameZh(""); setNewCategoryNameEn(""); }
+                  }}
+                  onBlur={() => {
+                    if (!newCategoryNameZh.trim() && !newCategoryNameEn.trim()) setShowNewCategory(false);
+                  }}
+                />
+                <button
+                  className="text-button primary-button"
+                  type="button"
+                  style={{ fontSize: "13px" }}
+                  onClick={() => addCategory(newCategoryNameZh, newCategoryNameEn)}
+                >
+                  <Plus size={14} /> Add
+                </button>
+                <button
+                  className="icon-button"
+                  type="button"
+                  onClick={() => { setShowNewCategory(false); setNewCategoryNameZh(""); setNewCategoryNameEn(""); }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            {extraCategoryKeys.length > 0 && (
+            <div className="grid gap-2 lg:grid-cols-3">
+              {extraCategoryKeys.map((key) => (
+                <div key={key} className="flex items-start gap-1">
+                  <div className="flex-1 min-w-0">
+                    <TagPicker
+                      category={key}
+                      label={getCategoryLabel(userCategories, key, locale)}
+                      tags={tags.filter((tag) => tag.category === key)}
+                      selected={filters[key] ?? []}
+                      onChange={(ids) => setFilters((value) => ({ ...value, [key]: ids }))}
+                      onCreate={createTag}
+                      onDelete={deleteTag}
+                      onUpdate={updateTag}
+                      editingTags={editingTags}
+                      defaultColor={defaultColor}
+                      onDefaultColorChange={setDefaultColor}
+                    />
+                  </div>
+                  {userCategories.some((c) => c.key === key) && (
+                    <button
+                      className="mt-1 shrink-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white"
+                      type="button"
+                      title={`Remove ${getCategoryLabel(userCategories, key, locale)} category`}
+                      onClick={() => removeCategory(key)}
+                    >
+                      <X size={10} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            )}
+          </div>
+          )}
       </section>
 
       <div className="table-shell">
@@ -308,11 +511,18 @@ export default function Directory() {
               <th style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
               <th style={{ width: 200 }}><button onClick={() => sortBy("title")}>{t.title} {sort.key === "title" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
               {categories.map((category) => <th key={category} style={{ width: 170 }}><button onClick={() => sortBy(category)}>{t[category]}</button></th>)}
+              {extraCategoryKeys.map((key) => <th key={key} style={{ width: 170 }}>{getCategoryLabel(userCategories, key, locale)}</th>)}
               <th style={{ width: 170 }}><button onClick={() => sortBy("notes")}>{t.notes}</button></th>
             </tr>
           </thead>
           <tbody>
-            {visible.map((piece) => (
+            {visible.map((piece) => {
+              function buildTagIds(category: string, ids: number[]) {
+                return [...categories, ...extraCategoryKeys].flatMap((cat) =>
+                  cat === category ? ids : (piece.tags[cat]?.map((tag) => tag.id) ?? [])
+                );
+              }
+              return (
               <tr key={piece.id}>
                 <td>
                   <select className="select tag-add-select" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
@@ -329,9 +539,25 @@ export default function Directory() {
                       selectedOnly
                       category={category}
                       tags={tags.filter((tag) => tag.category === category)}
-                      selected={piece.tags[category].map((tag) => tag.id)}
+                      selected={piece.tags[category]?.map((tag) => tag.id) ?? []}
                       onCreate={createTag}
-                      onChange={(ids) => updatePiece(piece, { tagIds: categories.flatMap((cat) => cat === category ? ids : piece.tags[cat].map((tag) => tag.id)) })}
+                      onChange={(ids) => updatePiece(piece, { tagIds: buildTagIds(category, ids) })}
+                      defaultColor={defaultColor}
+                      onDefaultColorChange={setDefaultColor}
+                    />
+                  </td>
+                ))}
+                {extraCategoryKeys.map((key) => (
+                  <td key={key}>
+                    <TagPicker
+                      compact
+                      selectedOnly
+                      category={key}
+                      label={getCategoryLabel(userCategories, key, locale)}
+                      tags={tags.filter((tag) => tag.category === key)}
+                      selected={piece.tags[key]?.map((tag) => tag.id) ?? []}
+                      onCreate={createTag}
+                      onChange={(ids) => updatePiece(piece, { tagIds: buildTagIds(key, ids) })}
                       defaultColor={defaultColor}
                       onDefaultColorChange={setDefaultColor}
                     />
@@ -339,7 +565,8 @@ export default function Directory() {
                 ))}
                 <td><textarea className="textarea min-h-20" value={piece.notes} onChange={(event) => updatePiece(piece, { notes: event.target.value })} /></td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -1,19 +1,18 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { deviceZoom, songImages, songs, songTags, tags, youtubeLinks } from "@/db/schema";
-import type { ImageKind, Song, Tag, TagCategory } from "@/lib/types";
-
-const categories: TagCategory[] = ["pitch", "technique", "rhythm"];
+import { CORE_CATEGORIES } from "@/lib/types";
+import type { ImageKind, Song, Tag } from "@/lib/types";
 
 export function nowIso() {
   return new Date().toISOString();
 }
 
-export function groupTags(rows: Tag[]) {
-  return categories.reduce<Record<TagCategory, Tag[]>>((acc, category) => {
-    acc[category] = rows.filter((tag) => tag.category === category);
-    return acc;
-  }, { pitch: [], technique: [], rhythm: [] });
+export function groupTags(rows: Tag[]): Record<string, Tag[]> {
+  const cats = new Set(rows.map((tag) => tag.category));
+  // Always include core categories so frontend can safely access them
+  for (const core of CORE_CATEGORIES) cats.add(core);
+  return Object.fromEntries([...cats].map((cat) => [cat, rows.filter((tag) => tag.category === cat)])) as Record<string, Tag[]>;
 }
 
 export function getSongs(): Song[] {

@@ -59,7 +59,7 @@ Array of tag objects:
 | `name`   | string | Chinese name (may be empty if only English)    |
 | `nameEn` | string | English name (may be empty if only Chinese)    |
 | `color`  | string | Hex color code for display                     |
-| `category`| string | One of: `"pitch"`, `"technique"`, `"rhythm"` |
+| `category`| string | Any category name (free-text). Core: `"pitch"`, `"technique"`, `"rhythm"`. User-defined: e.g. `"genre"`, `"mood"`. |
 
 ## File: `pieces.json`
 
