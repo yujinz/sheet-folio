@@ -6,7 +6,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
+import { messages } from "@/lib/i18n";
 import { CORE_CATEGORIES } from "@/lib/types";
+import { categoryKey, canAddCategory, isCoreCategoryLabel } from "@/lib/category";
 import type { Song, Tag } from "@/lib/types";
 
 type UserCategory = { key: string; labelZh: string; labelEn: string };
@@ -95,6 +97,7 @@ export default function Directory() {
   const [renameEn, setRenameEn] = useState("");
   const renameZhRef = useRef<HTMLInputElement>(null);
   const renameEnRef = useRef<HTMLInputElement>(null);
+  const [hiddenCoreCategories, setHiddenCoreCategories] = useState<string[]>([]);
 
   useEffect(() => {
     if (renamingCategory) {
@@ -103,10 +106,11 @@ export default function Directory() {
         setRenameZh(uc.labelZh);
         setRenameEn(uc.labelEn);
       } else {
-        // Core category — use i18n labels as defaults
-        const tAny = t as Record<string, string>;
-        setRenameZh(tAny[renamingCategory] || renamingCategory);
-        setRenameEn(renamingCategory);
+        // Core category — use bilingual i18n labels as defaults
+        const zhLabels = messages["zh-CN"] as Record<string, string>;
+        const enLabels = messages["en-US"] as Record<string, string>;
+        setRenameZh(zhLabels[renamingCategory] || renamingCategory);
+        setRenameEn(enLabels[renamingCategory] || renamingCategory);
       }
       setTimeout(() => renameZhRef.current?.focus(), 50);
     }
@@ -120,6 +124,9 @@ export default function Directory() {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed.userCategories)) {
           setUserCategories(parsed.userCategories);
+        }
+        if (Array.isArray(parsed.hiddenCoreCategories)) {
+          setHiddenCoreCategories(parsed.hiddenCoreCategories);
         }
         // Restore filters too, in case extra categories were previously saved
         if (parsed.filters) {
@@ -150,9 +157,9 @@ export default function Directory() {
 
   // Save sort/query/filters to sessionStorage whenever they change
   useEffect(() => {
-    const state = { sort, query, filters, difficultyFilters, userCategories };
+    const state = { sort, query, filters, difficultyFilters, userCategories, hiddenCoreCategories };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [sort, query, filters, difficultyFilters, userCategories]);
+  }, [sort, query, filters, difficultyFilters, userCategories, hiddenCoreCategories]);
 
   // Save scroll position on unmount (SPA navigation) and on pagehide (bfcache/unload)
   useEffect(() => {
@@ -288,10 +295,17 @@ export default function Directory() {
   function addCategory(zh: string, en: string) {
     const trimmedZh = zh.trim();
     const trimmedEn = en.trim();
-    const key = (trimmedEn || trimmedZh).toLowerCase().replace(/\s+/g, "-");
+    const key = categoryKey(trimmedZh, trimmedEn);
     if (!key) return;
-    if (CORE_CATEGORIES.includes(key as typeof CORE_CATEGORIES[number])) return;
-    if (extraCategoryKeys.includes(key)) return;
+    const keyCheck = canAddCategory(key, extraCategoryKeys);
+    if (!keyCheck.valid) {
+      alert(keyCheck.reason!);
+      return;
+    }
+    if (isCoreCategoryLabel(trimmedZh) || isCoreCategoryLabel(trimmedEn)) {
+      alert("This name matches a built-in category. Use a different name.");
+      return;
+    }
     setUserCategories((prev) => [...prev, { key, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh }]);
     setFilters((prev) => ({ ...prev, [key]: [] }));
     setNewCategoryNameZh("");
@@ -327,16 +341,24 @@ export default function Directory() {
     // For core categories, rename the key itself so it becomes a custom category
     const newKey = (trimmedEn || trimmedZh).toLowerCase().replace(/\s+/g, "-");
     if (!newKey || newKey === oldKey) {
-      // Just update the labels for a custom category
-      if (!isCore) {
-        setUserCategories((prev) => prev.map((c) => c.key === oldKey ? { ...c, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh } : c));
-      }
+      // Update labels for any category (core or custom)
+      setUserCategories((prev) => {
+        const existing = prev.findIndex((c) => c.key === oldKey);
+        const updated = { key: oldKey, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh };
+        if (existing >= 0) {
+          return prev.map((c) => c.key === oldKey ? updated : c);
+        }
+        return [...prev, updated];
+      });
       setRenamingCategory(null);
       return;
     }
     if (CORE_CATEGORIES.includes(newKey as typeof CORE_CATEGORIES[number])) {
-      alert("This name conflicts with a built-in category.");
-      return;
+      // Allow if the core category was previously renamed away (hidden)
+      if (!hiddenCoreCategories.includes(newKey)) {
+        alert("This name conflicts with a built-in category.");
+        return;
+      }
     }
     if (extraCategoryKeys.includes(newKey) && newKey !== oldKey) {
       alert("A category with this name already exists.");
@@ -356,10 +378,16 @@ export default function Directory() {
       return next;
     });
     // Update userCategories
-    if (!isCore) {
+    const restoringCore = (CORE_CATEGORIES as readonly string[]).includes(newKey);
+    if (restoringCore) {
+      // Renaming back to a built-in category — remove the old userCategory entry and unhide
+      setUserCategories((prev) => prev.filter((c) => c.key !== oldKey));
+      setHiddenCoreCategories((prev) => prev.filter((k) => k !== newKey));
+    } else if (!isCore) {
       setUserCategories((prev) => prev.map((c) => c.key === oldKey ? { key: newKey, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh } : c));
     } else {
       setUserCategories((prev) => [...prev, { key: newKey, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh }]);
+      setHiddenCoreCategories((prev) => [...prev, oldKey]);
     }
     setRenamingCategory(null);
     await refresh();
@@ -458,7 +486,9 @@ export default function Directory() {
           })}
         </div>
         <div className="grid gap-2 lg:grid-cols-3">
-          {categories.map((category) => (
+          {categories.filter((cat) => !hiddenCoreCategories.includes(cat)).map((category) => {
+            const userCat = userCategories.find((c) => c.key === category);
+            return (
             <div key={category}>
               {editingTags && renamingCategory === category ? (
                 <div className="flex flex-wrap items-center gap-1 p-1">
@@ -492,6 +522,7 @@ export default function Directory() {
               ) : (
                 <TagPicker
                   category={category}
+                  label={userCat ? categoryDisplayName(userCat, locale) : undefined}
                   tags={tags.filter((tag) => tag.category === category)}
                   selected={filters[category] ?? []}
                   onChange={(ids) => setFilters((value) => ({ ...value, [category]: ids }))}
@@ -505,8 +536,63 @@ export default function Directory() {
                 />
               )}
             </div>
-          ))}
+          );}
+        )}
         </div>
+          {extraCategoryKeys.length > 0 && (
+          <div className="grid gap-2 lg:grid-cols-3">
+            {extraCategoryKeys.map((key) => (
+                <div key={key}>
+                  {renamingCategory === key ? (
+                    <div className="flex flex-wrap items-center gap-1 p-1">
+                      <input
+                        ref={renameZhRef}
+                        className="input"
+                        style={{ width: "7rem", fontSize: "12px" }}
+                        placeholder="分类名称 (中文)"
+                        value={renameZh}
+                        onChange={(e) => setRenameZh(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") renameEnRef.current?.focus();
+                          if (e.key === "Escape") setRenamingCategory(null);
+                        }}
+                      />
+                      <input
+                        ref={renameEnRef}
+                        className="input"
+                        style={{ width: "7rem", fontSize: "12px" }}
+                        placeholder="Category (English)"
+                        value={renameEn}
+                        onChange={(e) => setRenameEn(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { renameCategory(key, renameZh, renameEn); }
+                          if (e.key === "Escape") setRenamingCategory(null);
+                        }}
+                      />
+                      <button className="text-button primary-button" type="button" style={{ fontSize: "12px" }} onClick={() => renameCategory(key, renameZh, renameEn)}>{locale === "zh-CN" ? "保存" : "Save"}</button>
+                      <button className="text-button" type="button" style={{ fontSize: "12px" }} onClick={() => setRenamingCategory(null)}>{locale === "zh-CN" ? "取消" : "Cancel"}</button>
+                    </div>
+                  ) : (
+                    <TagPicker
+                      category={key}
+                      label={getCategoryLabel(userCategories, key, locale)}
+                      tags={tags.filter((tag) => tag.category === key)}
+                      selected={filters[key] ?? []}
+                      onChange={(ids) => setFilters((value) => ({ ...value, [key]: ids }))}
+                      onCreate={createTag}
+                      onDelete={deleteTag}
+                      onUpdate={updateTag}
+                      editingTags={editingTags}
+                      defaultColor={defaultColor}
+                      onDefaultColorChange={setDefaultColor}
+                      onRenameCategory={() => setRenamingCategory(key)}
+                      onDeleteCategory={() => removeCategory(key)}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            )}
           {editingTags && (
           <div className="mt-3">
             <div className="mb-2 flex items-center gap-2">
@@ -571,60 +657,6 @@ export default function Directory() {
                   <X size={14} />
                 </button>
               </div>
-            )}
-            {extraCategoryKeys.length > 0 && (
-            <div className="grid gap-2 lg:grid-cols-3">
-              {extraCategoryKeys.map((key) => (
-                <div key={key}>
-                  {renamingCategory === key ? (
-                    <div className="flex flex-wrap items-center gap-1 p-1">
-                      <input
-                        ref={renameZhRef}
-                        className="input"
-                        style={{ width: "7rem", fontSize: "12px" }}
-                        placeholder="分类名称 (中文)"
-                        value={renameZh}
-                        onChange={(e) => setRenameZh(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") renameEnRef.current?.focus();
-                          if (e.key === "Escape") setRenamingCategory(null);
-                        }}
-                      />
-                      <input
-                        ref={renameEnRef}
-                        className="input"
-                        style={{ width: "7rem", fontSize: "12px" }}
-                        placeholder="Category (English)"
-                        value={renameEn}
-                        onChange={(e) => setRenameEn(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") { renameCategory(key, renameZh, renameEn); }
-                          if (e.key === "Escape") setRenamingCategory(null);
-                        }}
-                      />
-                      <button className="text-button primary-button" type="button" style={{ fontSize: "12px" }} onClick={() => renameCategory(key, renameZh, renameEn)}>{locale === "zh-CN" ? "保存" : "Save"}</button>
-                      <button className="text-button" type="button" style={{ fontSize: "12px" }} onClick={() => setRenamingCategory(null)}>{locale === "zh-CN" ? "取消" : "Cancel"}</button>
-                    </div>
-                  ) : (
-                    <TagPicker
-                      category={key}
-                      label={getCategoryLabel(userCategories, key, locale)}
-                      tags={tags.filter((tag) => tag.category === key)}
-                      selected={filters[key] ?? []}
-                      onChange={(ids) => setFilters((value) => ({ ...value, [key]: ids }))}
-                      onCreate={createTag}
-                      onDelete={deleteTag}
-                      onUpdate={updateTag}
-                      editingTags={editingTags}
-                      defaultColor={defaultColor}
-                      onDefaultColorChange={setDefaultColor}
-                      onRenameCategory={() => setRenamingCategory(key)}
-                      onDeleteCategory={userCategories.some((c) => c.key === key) ? () => removeCategory(key) : undefined}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
             )}
           </div>
           )}

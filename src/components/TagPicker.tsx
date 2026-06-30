@@ -184,19 +184,34 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
     const trimmed = editName.trim();
     const trimmedEn = editNameEn.trim();
     if (!trimmed && !trimmedEn) return;
+    const original = editTag;
+    const newName = trimmed || trimmedEn;
+    const newNameEn = trimmedEn;
+    // Client-side duplicate check: same category, any name field matches
+    const dup = localTags.find((t) => {
+      if (t.id === original.id || t.category !== original.category) return false;
+      return (
+        t.name === newName ||
+        t.name === newNameEn ||
+        (newNameEn && (t.nameEn === newName || t.nameEn === newNameEn)) ||
+        (t.nameEn && t.nameEn === newName)
+      );
+    });
+    if (dup) {
+      alert(t.tagExists);
+      return;
+    }
     // Update local state optimistically
-    const updated: Tag = { ...editTag, name: trimmed || trimmedEn, nameEn: trimmedEn, color: editColor };
+    const updated: Tag = { ...original, name: newName, nameEn: trimmedEn, color: editColor };
     setLocalTags((prev) => prev.map((t) => t.id === updated.id ? updated : t));
     setEditTag(null);
-    // Trigger parent update
-    const patch: Partial<Pick<Tag, "name" | "nameEn" | "color">> = { color: editColor };
-    if (trimmed || trimmedEn) {
-      patch.name = trimmed || trimmedEn;
-      patch.nameEn = trimmedEn;
+    // Trigger parent update — the parent will PATCH the API and refresh
+    try {
+      await onUpdate(updated);
+    } catch {
+      alert(t.tagExists);
+      setLocalTags((prev) => prev.map((t) => t.id === original.id ? original : t));
     }
-    // We need a way to update just this tag. We'll call onUpdate with the tag,
-    // and the parent will PATCH the API and refresh.
-    await onUpdate(updated);
   }
 
   // Focus the first input when dialog opens

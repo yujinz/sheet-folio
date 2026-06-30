@@ -3,14 +3,29 @@ import { z } from "zod";
 import { db } from "@/db";
 import { tags } from "@/db/schema";
 import { apiError, serverError } from "@/lib/api";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, ne, or } from "drizzle-orm";
 
-const tagSchema = z.object({
+export const tagSchema = z.object({
   name: z.string().trim().min(1),
   nameEn: z.string().default(""),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   category: z.string().min(1)
 });
+
+/** Check whether another tag in the same category already has a matching name or nameEn. */
+function findDuplicateTag(category: string, name: string, nameEn: string, excludeId?: number) {
+  const nameConditions = [eq(tags.name, name)];
+  if (nameEn) {
+    nameConditions.push(eq(tags.name, nameEn));     // Chinese name matches English input
+    nameConditions.push(eq(tags.nameEn, name));      // English name matches Chinese input
+    nameConditions.push(eq(tags.nameEn, nameEn));    // English name matches English input
+  }
+  const conditions: any[] = [eq(tags.category, category), or(...nameConditions)];
+  if (excludeId !== undefined) {
+    conditions.push(ne(tags.id, excludeId));
+  }
+  return db.select().from(tags).where(and(...conditions)).get();
+}
 
 export async function GET() {
   try {
@@ -24,22 +39,18 @@ export async function POST(request: Request) {
   try {
     const body = tagSchema.safeParse(await request.json());
     if (!body.success) return apiError(body.error.flatten().fieldErrors);
-    const row = db
-      .insert(tags)
-      .values(body.data)
-      .onConflictDoNothing()
-      .returning()
-      .get();
-    if (!row) {
+    const { name, nameEn, color, category } = body.data;
+    if (findDuplicateTag(category, name, nameEn)) {
       return apiError("A tag with this name already exists in this category", 409);
     }
+    const row = db.insert(tags).values({ name, nameEn, color, category }).returning().get();
     return NextResponse.json(row);
   } catch (error) {
     return serverError(error);
   }
 }
 
-const renameCategorySchema = z.object({
+export const renameCategorySchema = z.object({
   oldCategory: z.string().min(1),
   newCategory: z.string().min(1)
 });
