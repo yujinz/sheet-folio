@@ -1,6 +1,6 @@
 "use client";
 
-import { Music, Palette, Plus, X } from "lucide-react";
+import { Music, Palette, Pencil, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/lib/useLocale";
 import { CORE_CATEGORIES } from "@/lib/types";
@@ -123,9 +123,11 @@ type Props = {
   compact?: boolean;
   defaultColor?: string;
   onDefaultColorChange?: (color: string) => void;
+  onRenameCategory?: () => void;
+  onDeleteCategory?: () => void;
 };
 
-export default function TagPicker({ category, label, tags, selected, onChange, onCreate, onDelete, onUpdate, editingTags, selectedOnly, compact, defaultColor, onDefaultColorChange }: Props) {
+export default function TagPicker({ category, label, tags, selected, onChange, onCreate, onDelete, onUpdate, editingTags, selectedOnly, compact, defaultColor, onDefaultColorChange, onRenameCategory, onDeleteCategory }: Props) {
   const { locale, t } = useLocale();
   const [name, setName] = useState("");
   const [nameEn, setNameEn] = useState("");
@@ -377,7 +379,29 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs font-semibold shrink-0 w-[4.5rem] text-[var(--foreground)]">{categoryLabel}</span>
+      <span className="text-xs font-semibold shrink-0 text-[var(--foreground)] inline-flex items-center gap-0.5" style={{ width: editingTags && onRenameCategory ? "auto" : "4.5rem" }}>
+        <span className="truncate">{categoryLabel}</span>
+        {editingTags && onRenameCategory && (
+          <button
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white"
+            type="button"
+            title="Rename category"
+            onClick={(e) => { e.stopPropagation(); onRenameCategory(); }}
+          >
+            <Pencil size={9} />
+          </button>
+        )}
+        {editingTags && onDeleteCategory && (
+          <button
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-red-500 text-white"
+            type="button"
+            title="Delete category"
+            onClick={(e) => { e.stopPropagation(); onDeleteCategory(); }}
+          >
+            <X size={10} />
+          </button>
+        )}
+      </span>
         {visibleTags.map((tag) => (
           <span key={tag.id} className="tag-pill-group inline-flex rounded-full">
             <button

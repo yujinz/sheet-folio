@@ -54,16 +54,9 @@ export default function Directory() {
     } catch {}
     return "";
   });
-  const [filters, setFilters] = useState<Record<string, number[]>>(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.filters) return parsed.filters;
-      }
-    } catch {}
-    return Object.fromEntries(CORE_CATEGORIES.map((c) => [c, []]));
-  });
+  const [filters, setFilters] = useState<Record<string, number[]>>(
+    () => Object.fromEntries(CORE_CATEGORIES.map((c) => [c, []]))
+  );
   const [difficultyFilters, setDifficultyFilters] = useState<number[]>(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
@@ -91,26 +84,59 @@ export default function Directory() {
     void refresh();
   }, []);
 
-  const [userCategories, setUserCategories] = useState<UserCategory[]>(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.userCategories)) return parsed.userCategories;
-      }
-    } catch {}
-    return [];
-  });
+  const [userCategories, setUserCategories] = useState<UserCategory[]>([]);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryNameZh, setNewCategoryNameZh] = useState("");
   const [newCategoryNameEn, setNewCategoryNameEn] = useState("");
 
-  // Reset new category form when leaving edit mode
+  // Category rename state
+  const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
+  const [renameZh, setRenameZh] = useState("");
+  const [renameEn, setRenameEn] = useState("");
+  const renameZhRef = useRef<HTMLInputElement>(null);
+  const renameEnRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (renamingCategory) {
+      const uc = userCategories.find((c) => c.key === renamingCategory);
+      if (uc) {
+        setRenameZh(uc.labelZh);
+        setRenameEn(uc.labelEn);
+      } else {
+        // Core category — use i18n labels as defaults
+        const tAny = t as Record<string, string>;
+        setRenameZh(tAny[renamingCategory] || renamingCategory);
+        setRenameEn(renamingCategory);
+      }
+      setTimeout(() => renameZhRef.current?.focus(), 50);
+    }
+  }, [renamingCategory]);
+
+  // Restore userCategories and filters from sessionStorage after mount (avoids hydration mismatch)
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.userCategories)) {
+          setUserCategories(parsed.userCategories);
+        }
+        // Restore filters too, in case extra categories were previously saved
+        if (parsed.filters) {
+          const hasExtras = Object.keys(parsed.filters).some((k) => !CORE_CATEGORIES.includes(k as typeof CORE_CATEGORIES[number]));
+          if (hasExtras) {
+            setFilters(parsed.filters);
+          }
+        }
+      }
+    } catch {}
+  }, []);
   useEffect(() => {
     if (!editingTags) {
       setShowNewCategory(false);
       setNewCategoryNameZh("");
       setNewCategoryNameEn("");
+      setRenamingCategory(null);
     }
   }, [editingTags]);
   const newCategoryNameZhRef = useRef<HTMLInputElement>(null);
@@ -293,6 +319,52 @@ export default function Directory() {
     await refresh();
   }
 
+  async function renameCategory(oldKey: string, zh: string, en: string) {
+    const isCore = CORE_CATEGORIES.includes(oldKey as typeof CORE_CATEGORIES[number]);
+    const trimmedZh = zh.trim();
+    const trimmedEn = en.trim();
+    if (!trimmedZh && !trimmedEn) return;
+    // For core categories, rename the key itself so it becomes a custom category
+    const newKey = (trimmedEn || trimmedZh).toLowerCase().replace(/\s+/g, "-");
+    if (!newKey || newKey === oldKey) {
+      // Just update the labels for a custom category
+      if (!isCore) {
+        setUserCategories((prev) => prev.map((c) => c.key === oldKey ? { ...c, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh } : c));
+      }
+      setRenamingCategory(null);
+      return;
+    }
+    if (CORE_CATEGORIES.includes(newKey as typeof CORE_CATEGORIES[number])) {
+      alert("This name conflicts with a built-in category.");
+      return;
+    }
+    if (extraCategoryKeys.includes(newKey) && newKey !== oldKey) {
+      alert("A category with this name already exists.");
+      return;
+    }
+    // Update DB: move all tags from oldKey to newKey
+    await fetch("/api/tags", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oldCategory: oldKey, newCategory: newKey })
+    });
+    // Update filters state
+    setFilters((prev) => {
+      const next = { ...prev };
+      next[newKey] = next[oldKey] || [];
+      if (oldKey !== newKey) delete next[oldKey];
+      return next;
+    });
+    // Update userCategories
+    if (!isCore) {
+      setUserCategories((prev) => prev.map((c) => c.key === oldKey ? { key: newKey, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh } : c));
+    } else {
+      setUserCategories((prev) => [...prev, { key: newKey, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh }]);
+    }
+    setRenamingCategory(null);
+    await refresh();
+  }
+
   const visible = useMemo(() => {
     const filtered = pieces.filter((piece) => {
       if (query) {
@@ -387,19 +459,52 @@ export default function Directory() {
         </div>
         <div className="grid gap-2 lg:grid-cols-3">
           {categories.map((category) => (
-            <TagPicker
-              key={category}
-              category={category}
-              tags={tags.filter((tag) => tag.category === category)}
-              selected={filters[category] ?? []}
-              onChange={(ids) => setFilters((value) => ({ ...value, [category]: ids }))}
-              onCreate={createTag}
-              onDelete={deleteTag}
-              onUpdate={updateTag}
-              editingTags={editingTags}
-              defaultColor={defaultColor}
-              onDefaultColorChange={setDefaultColor}
-            />
+            <div key={category}>
+              {editingTags && renamingCategory === category ? (
+                <div className="flex flex-wrap items-center gap-1 p-1">
+                  <input
+                    ref={renameZhRef}
+                    className="input"
+                    style={{ width: "7rem", fontSize: "12px" }}
+                    placeholder="分类名称 (中文)"
+                    value={renameZh}
+                    onChange={(e) => setRenameZh(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") renameEnRef.current?.focus();
+                      if (e.key === "Escape") setRenamingCategory(null);
+                    }}
+                  />
+                  <input
+                    ref={renameEnRef}
+                    className="input"
+                    style={{ width: "7rem", fontSize: "12px" }}
+                    placeholder="Category (English)"
+                    value={renameEn}
+                    onChange={(e) => setRenameEn(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { renameCategory(category, renameZh, renameEn); }
+                      if (e.key === "Escape") setRenamingCategory(null);
+                    }}
+                  />
+                  <button className="text-button primary-button" type="button" style={{ fontSize: "12px" }} onClick={() => renameCategory(category, renameZh, renameEn)}>{locale === "zh-CN" ? "保存" : "Save"}</button>
+                  <button className="text-button" type="button" style={{ fontSize: "12px" }} onClick={() => setRenamingCategory(null)}>{locale === "zh-CN" ? "取消" : "Cancel"}</button>
+                </div>
+              ) : (
+                <TagPicker
+                  category={category}
+                  tags={tags.filter((tag) => tag.category === category)}
+                  selected={filters[category] ?? []}
+                  onChange={(ids) => setFilters((value) => ({ ...value, [category]: ids }))}
+                  onCreate={createTag}
+                  onDelete={deleteTag}
+                  onUpdate={updateTag}
+                  editingTags={editingTags}
+                  defaultColor={defaultColor}
+                  onDefaultColorChange={setDefaultColor}
+                  onRenameCategory={() => setRenamingCategory(category)}
+                />
+              )}
+            </div>
           ))}
         </div>
           {editingTags && (
@@ -470,8 +575,37 @@ export default function Directory() {
             {extraCategoryKeys.length > 0 && (
             <div className="grid gap-2 lg:grid-cols-3">
               {extraCategoryKeys.map((key) => (
-                <div key={key} className="flex items-start gap-1">
-                  <div className="flex-1 min-w-0">
+                <div key={key}>
+                  {renamingCategory === key ? (
+                    <div className="flex flex-wrap items-center gap-1 p-1">
+                      <input
+                        ref={renameZhRef}
+                        className="input"
+                        style={{ width: "7rem", fontSize: "12px" }}
+                        placeholder="分类名称 (中文)"
+                        value={renameZh}
+                        onChange={(e) => setRenameZh(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") renameEnRef.current?.focus();
+                          if (e.key === "Escape") setRenamingCategory(null);
+                        }}
+                      />
+                      <input
+                        ref={renameEnRef}
+                        className="input"
+                        style={{ width: "7rem", fontSize: "12px" }}
+                        placeholder="Category (English)"
+                        value={renameEn}
+                        onChange={(e) => setRenameEn(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { renameCategory(key, renameZh, renameEn); }
+                          if (e.key === "Escape") setRenamingCategory(null);
+                        }}
+                      />
+                      <button className="text-button primary-button" type="button" style={{ fontSize: "12px" }} onClick={() => renameCategory(key, renameZh, renameEn)}>{locale === "zh-CN" ? "保存" : "Save"}</button>
+                      <button className="text-button" type="button" style={{ fontSize: "12px" }} onClick={() => setRenamingCategory(null)}>{locale === "zh-CN" ? "取消" : "Cancel"}</button>
+                    </div>
+                  ) : (
                     <TagPicker
                       category={key}
                       label={getCategoryLabel(userCategories, key, locale)}
@@ -484,17 +618,9 @@ export default function Directory() {
                       editingTags={editingTags}
                       defaultColor={defaultColor}
                       onDefaultColorChange={setDefaultColor}
+                      onRenameCategory={() => setRenamingCategory(key)}
+                      onDeleteCategory={userCategories.some((c) => c.key === key) ? () => removeCategory(key) : undefined}
                     />
-                  </div>
-                  {userCategories.some((c) => c.key === key) && (
-                    <button
-                      className="mt-1 shrink-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white"
-                      type="button"
-                      title={`Remove ${getCategoryLabel(userCategories, key, locale)} category`}
-                      onClick={() => removeCategory(key)}
-                    >
-                      <X size={10} />
-                    </button>
                   )}
                 </div>
               ))}

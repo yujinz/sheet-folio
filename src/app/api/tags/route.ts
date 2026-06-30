@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { tags } from "@/db/schema";
 import { apiError, serverError } from "@/lib/api";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 const tagSchema = z.object({
   name: z.string().trim().min(1),
@@ -34,6 +34,24 @@ export async function POST(request: Request) {
       return apiError("A tag with this name already exists in this category", 409);
     }
     return NextResponse.json(row);
+  } catch (error) {
+    return serverError(error);
+  }
+}
+
+const renameCategorySchema = z.object({
+  oldCategory: z.string().min(1),
+  newCategory: z.string().min(1)
+});
+
+export async function PATCH(request: Request) {
+  try {
+    const body = renameCategorySchema.safeParse(await request.json());
+    if (!body.success) return apiError(body.error.flatten().fieldErrors);
+    const { oldCategory, newCategory } = body.data;
+    if (oldCategory === newCategory) return apiError("New category must differ from old category", 400);
+    const updated = db.update(tags).set({ category: newCategory }).where(eq(tags.category, oldCategory)).returning().all();
+    return NextResponse.json({ updated: updated.length, tags: updated });
   } catch (error) {
     return serverError(error);
   }

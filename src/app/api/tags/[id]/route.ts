@@ -9,6 +9,7 @@ const updateSchema = z.object({
   name: z.string().trim().min(1).optional(),
   nameEn: z.string().optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  category: z.string().min(1).optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
