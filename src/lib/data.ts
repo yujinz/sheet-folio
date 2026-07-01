@@ -44,7 +44,6 @@ export function getSong(id: number): Song | null {
     .all() as Tag[];
   const images = db.select().from(songImages).where(eq(songImages.songId, id)).orderBy(asc(songImages.sortOrder), asc(songImages.id)).all();
   const links = db.select().from(youtubeLinks).where(eq(youtubeLinks.songId, id)).orderBy(asc(youtubeLinks.sortOrder), asc(youtubeLinks.id)).all();
-
   return {
     ...song,
     tags: groupTags(selectedTags),

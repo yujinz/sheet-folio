@@ -61,6 +61,8 @@ Array of tag objects:
 | `color`  | string | Hex color code for display                     |
 | `category`| string | Any category name (free-text). Core: `"pitch"`, `"technique"`, `"rhythm"`. User-defined: e.g. `"genre"`, `"mood"`. |
 
+> The three core categories (`pitch`, `technique`, `rhythm`) are seeded automatically when the app is first created. They can be renamed or deleted like any other category.
+
 ## File: `pieces.json`
 
 Array of piece objects:
@@ -107,13 +109,19 @@ Array of piece objects:
 
 ### tags (within piece)
 
-| Field    | Type   | Description                           |
-|----------|--------|---------------------------------------|
-| `pitch`  | array  | Array of tag objects in pitch category|
-| `technique`| array| Array of tag objects in technique     |
-| `rhythm` | array  | Array of tag objects in rhythm        |
+Tags are grouped by category into `Record<string, Tag[]>`. Each key is a category name, and the value is an array of tag objects in that category (can be empty).
 
-Each tag object in these arrays has the same structure as in `tags.json`.
+Categories registered in `single_select_categories` are single-select — a piece can have at most one tag from that category (enforced by the API on write).
+
+```json
+{
+  "technique": [{ "id": 3, "name": "连音", "nameEn": "Legato", "color": "#ea580c", "category": "technique" }],
+  "rhythm": [{ "id": 6, "name": "附点", "nameEn": "Dotted", "color": "#c026d3", "category": "rhythm" }],
+  "genre": [{ "id": 10, "name": "巴洛克", "nameEn": "Baroque", "color": "#059669", "category": "genre" }]
+}
+```
+
+Each tag object has the same structure as in `tags.json`.
 
 ### images (within piece)
 
@@ -158,8 +166,19 @@ images/{pieceId}/{kind}/{filename}
 
 All images have EXIF metadata stripped using sharp during export.
 
+## File: `single-select-categories.json`
+
+Array of category names that are configured as single-select (optional — absent if none):
+
+```json
+["genre", "mood"]
+```
+
+Each entry is a category key from the `tags` table. When a category appears here, a piece may have at most one tag from that category. The frontend renders radio buttons instead of checkboxes for these categories.
+
 ## Schema Version History
 
 | Version | Notes                                       |
 |---------|---------------------------------------------|
+| 2       | Added `single-select-categories.json`.      |
 | 1       | Initial schema                              |

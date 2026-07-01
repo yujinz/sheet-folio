@@ -62,6 +62,10 @@ export const youtubeLinks = sqliteTable("youtube_links", {
   sortOrder: integer("sort_order").notNull().default(0)
 });
 
+export const singleSelectCategories = sqliteTable("single_select_categories", {
+  category: text("category").primaryKey()
+});
+
 export const deviceZoom = sqliteTable(
   "device_zoom",
   {
