@@ -121,13 +121,14 @@ type Props = {
   editingTags?: boolean;
   selectedOnly?: boolean;
   compact?: boolean;
+  singleSelect?: boolean;
   defaultColor?: string;
   onDefaultColorChange?: (color: string) => void;
   onRenameCategory?: () => void;
   onDeleteCategory?: () => void;
 };
 
-export default function TagPicker({ category, label, tags, selected, onChange, onCreate, onDelete, onUpdate, editingTags, selectedOnly, compact, defaultColor, onDefaultColorChange, onRenameCategory, onDeleteCategory }: Props) {
+export default function TagPicker({ category, label, tags, selected, onChange, onCreate, onDelete, onUpdate, editingTags, selectedOnly, compact, singleSelect, defaultColor, onDefaultColorChange, onRenameCategory, onDeleteCategory }: Props) {
   const { locale, t } = useLocale();
   const [name, setName] = useState("");
   const [nameEn, setNameEn] = useState("");
@@ -238,7 +239,11 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
   }
 
   function toggle(id: number) {
-    onChange(selectedSet.has(id) ? selected.filter((value) => value !== id) : [...selected, id]);
+    if (singleSelect) {
+      onChange(selectedSet.has(id) ? [] : [id]);
+    } else {
+      onChange(selectedSet.has(id) ? selected.filter((value) => value !== id) : [...selected, id]);
+    }
   }
 
   async function createTag() {
@@ -262,6 +267,37 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
   }
 
   if (compact) {
+    if (singleSelect) {
+      return (
+        <span className="inline-flex flex-wrap items-start gap-2">
+          <select
+            key={localTags.map(t => t.id).join(',')}
+            aria-label={categoryLabel}
+            className="select tag-add-select"
+            value={selected.length > 0 ? String(selected[0]) : ""}
+            onChange={async (event) => {
+              const val = event.target.value;
+              if (val === "__new__") {
+                setCreateName("");
+                setCreateNameEn("");
+                setShowCreateDialog(true);
+              } else if (val === "") {
+                onChange([]);
+              } else {
+                const id = Number(val);
+                if (id) onChange([id]);
+              }
+            }}
+          >
+            <option value="">{t.choose}</option>
+            {localTags.map((tag) => (
+              <option key={tag.id} value={tag.id}>{tagDisplayName(tag, locale)}</option>
+            ))}
+            <option value="__new__">+ {t.addTag}</option>
+          </select>
+        </span>
+      );
+    }
     return (
       <span className="inline-flex flex-wrap items-start gap-2">
         <select
@@ -282,7 +318,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
             }
           }}
         >
-          <option value="" disabled hidden>{categoryLabel}</option>
+          <option value="" disabled hidden>+ {t.add}</option>
           {availableTags.map((tag) => (
             <option key={tag.id} value={tag.id}>{tagDisplayName(tag, locale)}</option>
           ))}
@@ -396,6 +432,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="text-xs font-semibold shrink-0 text-[var(--foreground)] inline-flex items-center gap-0.5" style={{ width: editingTags && onRenameCategory ? "auto" : "4.5rem" }}>
         <span className="truncate">{categoryLabel}</span>
+        {singleSelect && <span className="text-[10px] text-[var(--muted)] font-normal">({t.single})</span>}
         {editingTags && onRenameCategory && (
           <button
             className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white"

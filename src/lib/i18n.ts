@@ -53,7 +53,11 @@ export const messages = {
     titleRequired: "中文和英文曲名不能同时为空",
     tagExists: "该分类下已存在同名标签",
     other: "其他",
-    resetFilters: "重置筛选"
+    resetFilters: "重置筛选",
+    single: "单选",
+    singleSelect: "单选",
+    choose: "选择",
+    add: "添加"
   },
   "en-US": {
     appTitle: "Sheet Music Manager",
@@ -102,7 +106,11 @@ export const messages = {
     titleRequired: "Both Chinese and English titles cannot be empty",
     tagExists: "A tag with this name already exists in this category",
     resetFilters: "Reset filters",
-    other: "Other"
+    other: "Other",
+    single: "Single",
+    singleSelect: "Single",
+    choose: "Choose",
+    add: "Add"
   }
 } as const;
 

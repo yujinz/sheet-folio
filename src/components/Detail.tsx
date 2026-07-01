@@ -34,6 +34,7 @@ export default function Detail({ songId }: { songId: number }) {
   const { t, locale } = useLocale();
   const [piece, setPiece] = useState<Song | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<ImageKind>("staff");
   const [editingImages, setEditingImages] = useState(false);
   const [pageIndex, setPageIndex] = useState<number | null>(null);
@@ -50,6 +51,9 @@ export default function Detail({ songId }: { songId: number }) {
 
   useEffect(() => {
     void refresh();
+    fetch("/api/single-select-categories")
+      .then((res) => res.json())
+      .then((rows) => setSingleSelectCategories(new Set(rows as string[])));
     const deviceId = getDeviceId();
     fetch(`/api/device-zoom?deviceId=${deviceId}&songId=${songId}`)
       .then((res) => res.json())
@@ -277,6 +281,7 @@ export default function Detail({ songId }: { songId: number }) {
               <TagPicker
                 key={category}
                 compact
+                singleSelect={singleSelectCategories.has(category)}
                 category={category}
                 tags={tags.filter((tag) => tag.category === category)}
                 selected={piece.tags[category]?.map((tag) => tag.id) ?? []}

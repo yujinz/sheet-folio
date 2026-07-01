@@ -80,6 +80,7 @@ export default function Directory() {
     } catch {}
     return { key: "difficulty", dir: "asc" };
   });
+  const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(new Set());
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
 
   useEffect(() => {
@@ -90,6 +91,7 @@ export default function Directory() {
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryNameZh, setNewCategoryNameZh] = useState("");
   const [newCategoryNameEn, setNewCategoryNameEn] = useState("");
+  const [newCategorySingleSelect, setNewCategorySingleSelect] = useState(false);
 
   // Category rename state
   const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
@@ -195,12 +197,14 @@ export default function Directory() {
   }, [pieces]);
 
   async function refresh() {
-    const [pieceRows, tagRows] = await Promise.all([
+    const [pieceRows, tagRows, ssRows] = await Promise.all([
       fetch("/api/pieces").then((res) => res.json()),
-      fetch("/api/tags").then((res) => res.json())
+      fetch("/api/tags").then((res) => res.json()),
+      fetch("/api/single-select-categories").then((res) => res.json())
     ]);
     setPieces(pieceRows);
     setTags(tagRows);
+    setSingleSelectCategories(new Set(ssRows as string[]));
   }
 
   async function createPiece() {
@@ -308,8 +312,17 @@ export default function Directory() {
     }
     setUserCategories((prev) => [...prev, { key, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh }]);
     setFilters((prev) => ({ ...prev, [key]: [] }));
+    if (newCategorySingleSelect) {
+      fetch("/api/single-select-categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: key })
+      });
+      setSingleSelectCategories((prev) => new Set([...prev, key]));
+    }
     setNewCategoryNameZh("");
     setNewCategoryNameEn("");
+    setNewCategorySingleSelect(false);
     setShowNewCategory(false);
   }
 
@@ -530,6 +543,7 @@ export default function Directory() {
                   onDelete={deleteTag}
                   onUpdate={updateTag}
                   editingTags={editingTags}
+                  singleSelect={singleSelectCategories.has(category)}
                   defaultColor={defaultColor}
                   onDefaultColorChange={setDefaultColor}
                   onRenameCategory={() => setRenamingCategory(category)}
@@ -583,6 +597,7 @@ export default function Directory() {
                       onDelete={deleteTag}
                       onUpdate={updateTag}
                       editingTags={editingTags}
+                      singleSelect={singleSelectCategories.has(key)}
                       defaultColor={defaultColor}
                       onDefaultColorChange={setDefaultColor}
                       onRenameCategory={() => setRenamingCategory(key)}
@@ -641,6 +656,17 @@ export default function Directory() {
                     if (!newCategoryNameZh.trim() && !newCategoryNameEn.trim()) setShowNewCategory(false);
                   }}
                 />
+                <label className="inline-flex items-center gap-1 cursor-pointer" style={{ fontSize: "11px" }}>
+                  <div
+                    className={`relative h-4 w-7 rounded-full transition-colors ${newCategorySingleSelect ? 'bg-[var(--accent)]' : 'bg-gray-300'}`}
+                    onClick={() => setNewCategorySingleSelect((v) => !v)}
+                  >
+                    <div
+                      className={`absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${newCategorySingleSelect ? 'translate-x-3' : ''}`}
+                    />
+                  </div>
+                  <span className="text-[var(--muted)] select-none">{t.single}</span>
+                </label>
                 <button
                   className="text-button primary-button"
                   type="button"
@@ -652,7 +678,7 @@ export default function Directory() {
                 <button
                   className="icon-button"
                   type="button"
-                  onClick={() => { setShowNewCategory(false); setNewCategoryNameZh(""); setNewCategoryNameEn(""); }}
+                  onClick={() => { setShowNewCategory(false); setNewCategoryNameZh(""); setNewCategoryNameEn(""); setNewCategorySingleSelect(false); }}
                 >
                   <X size={14} />
                 </button>
@@ -695,6 +721,7 @@ export default function Directory() {
                     <TagPicker
                       compact
                       selectedOnly
+                      singleSelect={singleSelectCategories.has(category)}
                       category={category}
                       tags={tags.filter((tag) => tag.category === category)}
                       selected={piece.tags[category]?.map((tag) => tag.id) ?? []}
@@ -710,6 +737,7 @@ export default function Directory() {
                     <TagPicker
                       compact
                       selectedOnly
+                      singleSelect={singleSelectCategories.has(key)}
                       category={key}
                       label={getCategoryLabel(userCategories, key, locale)}
                       tags={tags.filter((tag) => tag.category === key)}

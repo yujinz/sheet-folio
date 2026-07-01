@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from "vitest";
-import { inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import * as schema from "@/db/schema";
 
 // Clean up test data after all tests
@@ -127,5 +127,15 @@ describe("Data layer integration", () => {
     expect(names).toContain("装饰音");
     expect(names).toContain("附点");
     expect(names).toContain("三连音");
+  });
+
+  it("single-select categories can be inserted, read, and deleted", async () => {
+    const { db } = await import("@/db");
+    db.insert(schema.singleSelectCategories).values({ category: "test-genre" }).run();
+    const rows = db.select().from(schema.singleSelectCategories).all();
+    expect(rows.map((r) => r.category)).toContain("test-genre");
+    db.delete(schema.singleSelectCategories).where(eq(schema.singleSelectCategories.category, "test-genre")).run();
+    const after = db.select().from(schema.singleSelectCategories).all();
+    expect(after.map((r) => r.category)).not.toContain("test-genre");
   });
 });
