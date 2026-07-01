@@ -32,51 +32,29 @@ export default function Directory() {
   const { locale, t } = useLocale();
   const [pieces, setPieces] = useState<Song[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
-  const [query, setQuery] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (typeof parsed.query === "string") return parsed.query;
-      }
-    } catch {}
-    return "";
-  });
-  const [filters, setFilters] = useState<Record<TagCategory, number[]>>(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.filters) return parsed.filters;
-      }
-    } catch {}
-    return { pitch: [], technique: [], rhythm: [] };
-  });
-  const [difficultyFilters, setDifficultyFilters] = useState<number[]>(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.difficultyFilters)) return parsed.difficultyFilters;
-      }
-    } catch {}
-    return [];
-  });
+  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<Record<TagCategory, number[]>>({ pitch: [], technique: [], rhythm: [] });
+  const [difficultyFilters, setDifficultyFilters] = useState<number[]>([]);
   const [editingTags, setEditingTags] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.sort) return parsed.sort;
-      }
-    } catch {}
-    return { key: "difficulty", dir: "asc" };
-  });
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "difficulty", dir: "asc" });
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
 
   useEffect(() => {
     void refresh();
+  }, []);
+
+  // Restore saved state from sessionStorage after hydration
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.query === "string") setQuery(parsed.query);
+        if (parsed.filters) setFilters(parsed.filters);
+        if (Array.isArray(parsed.difficultyFilters)) setDifficultyFilters(parsed.difficultyFilters);
+        if (parsed.sort) setSort(parsed.sort);
+      }
+    } catch {}
   }, []);
 
   // Recalculate default color when tags are loaded
