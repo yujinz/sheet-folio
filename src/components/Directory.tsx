@@ -63,9 +63,11 @@ export default function Directory() {
     setDefaultColor((prev) => pickDefaultColor(tags, prev));
   }, [tags]);
 
-  // Save sort/query/filters to sessionStorage whenever they change
+  // Save sort/query/filters to sessionStorage whenever they change (merging with existing data to preserve scrollY etc.)
   useEffect(() => {
-    const state = { sort, query, filters, difficultyFilters };
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    const existing = saved ? JSON.parse(saved) : {};
+    const state = { ...existing, sort, query, filters, difficultyFilters };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [sort, query, filters, difficultyFilters]);
 
