@@ -243,9 +243,6 @@ export default function Detail({ songId }: { songId: number }) {
             onChange={scheduleSave}
             onBlur={handleTitleBlur}
           />
-          <button className="text-button" type="button" onClick={() => setEditingImages((value) => !value)}>
-            {editingImages ? <X size={16} /> : <Images size={16} />} {editingImages ? t.viewImages : t.editImages}
-          </button>
           <button className="icon-button danger-button ml-auto" type="button" onClick={deletePiece} aria-label={t.deletePiece}><Trash2 size={15} /></button>
           <LocaleSwitch />
         </div>
@@ -285,9 +282,9 @@ export default function Detail({ songId }: { songId: number }) {
           ))}
         </div>
         <div className="pointer-events-auto flex items-center gap-1">
-          <Link className="flex items-center justify-center rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm hover:bg-white/90" href="/" aria-label={t.backToDirectory}>
-            <House size={16} />
-          </Link>
+          <button className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur-sm ${!editingImages ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--foreground)]"}`} type="button" onClick={() => setEditingImages((value) => !value)}>
+            <Images size={14} /> {editingImages ? t.viewImages : t.editImages}
+          </button>
           {!editingImages && (
             <label className="flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm">
               {t.zoom}
@@ -304,6 +301,9 @@ export default function Detail({ songId }: { songId: number }) {
           <Browser images={images} zoom={zoom} onOpen={setPageIndex} links={piece.links ?? []} setLinks={saveLinks} />
         )}
       </div>
+      <Link className="fixed bottom-4 right-4 z-30 icon-button bg-white/80 backdrop-blur-sm shadow-md hover:bg-white" href="/" aria-label={t.backToDirectory}>
+        <House size={16} />
+      </Link>
 
       {pageIndex !== null && (
         <Pager images={images} tab={tab} setTab={setTab} index={pageIndex} setIndex={setPageIndex} zoom={zoom} />
