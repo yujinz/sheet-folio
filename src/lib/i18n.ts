@@ -52,7 +52,8 @@ export const messages = {
     noImages: "暂无图片",
     titleRequired: "中文和英文曲名不能同时为空",
     tagExists: "该分类下已存在同名标签",
-    resetFilters: "重置筛选"
+    resetFilters: "重置筛选",
+    saveImage: "保存图片"
   },
   "en-US": {
     appTitle: "Sheet Music Manager",
@@ -100,7 +101,8 @@ export const messages = {
     noImages: "No images",
     titleRequired: "Both Chinese and English titles cannot be empty",
     tagExists: "A tag with this name already exists in this category",
-    resetFilters: "Reset filters"
+    resetFilters: "Reset filters",
+    saveImage: "Save image"
   }
 } as const;
 

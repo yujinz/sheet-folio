@@ -7,6 +7,7 @@ import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
 import type { Song, Tag, TagCategory } from "@/lib/types";
+import { useSingleSelectFilter } from "@/lib/useSingleSelectFilter";
 
 type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "notes";
 
@@ -34,7 +35,7 @@ export default function Directory() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Record<TagCategory, number[]>>({ pitch: [], technique: [], rhythm: [] });
-  const [difficultyFilters, setDifficultyFilters] = useState<number[]>([]);
+  const difficultyFilter = useSingleSelectFilter<number>();
   const [editingTags, setEditingTags] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "difficulty", dir: "asc" });
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
@@ -51,7 +52,7 @@ export default function Directory() {
         const parsed = JSON.parse(saved);
         if (typeof parsed.query === "string") setQuery(parsed.query);
         if (parsed.filters) setFilters(parsed.filters);
-        if (Array.isArray(parsed.difficultyFilters)) setDifficultyFilters(parsed.difficultyFilters);
+        if (typeof parsed.difficultyFilter === "number") difficultyFilter.setValue(parsed.difficultyFilter);
         if (parsed.sort) setSort(parsed.sort);
       }
     } catch {}
@@ -67,9 +68,9 @@ export default function Directory() {
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_KEY);
     const existing = saved ? JSON.parse(saved) : {};
-    const state = { ...existing, sort, query, filters, difficultyFilters };
+    const state = { ...existing, sort, query, filters, difficultyFilter: difficultyFilter.value };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [sort, query, filters, difficultyFilters]);
+  }, [sort, query, filters, difficultyFilter.value]);
 
   // Save scroll position on unmount (SPA navigation) and on pagehide (bfcache/unload)
   useEffect(() => {
@@ -177,13 +178,25 @@ export default function Directory() {
         const titleForSearch = locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
         if (!titleForSearch.toLowerCase().includes(query.toLowerCase())) return false;
       }
-      if (difficultyFilters.length > 0 && !difficultyFilters.includes(piece.difficulty)) {
+      if (difficultyFilter.value !== null && difficultyFilter.value !== piece.difficulty) {
         return false;
       }
       return categories.every((category) =>
         filters[category].every((id) => piece.tags[category].some((tag) => tag.id === id))
       );
     });
+    // When any filter is active, sort by title order instead of the current sort key.
+    // This keeps filtered lists intuitive (e.g. filtering by difficulty = all same value).
+    // TODO: When adding new single-select filters (useSingleSelectFilter), add them to the condition below.
+    const hasActiveFilters = difficultyFilter.value !== null
+      || filters.pitch.length > 0 || filters.technique.length > 0 || filters.rhythm.length > 0;
+    if (hasActiveFilters) {
+      return [...filtered].sort((a, b) => {
+        const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
+        const result = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
+        return sort.dir === "asc" ? result : -result;
+      });
+    }
     return [...filtered].sort((a, b) => {
       const read = (piece: Song): string | number => {
         if (sort.key === "difficulty") return piece.difficulty;
@@ -193,12 +206,16 @@ export default function Directory() {
       };
       const aVal = read(a);
       const bVal = read(b);
-      const result = typeof aVal === "number" && typeof bVal === "number"
+      const primary = typeof aVal === "number" && typeof bVal === "number"
         ? aVal - bVal
         : String(aVal).localeCompare(String(bVal), locale, { numeric: true });
-      return sort.dir === "asc" ? result : -result;
+      if (primary !== 0) return sort.dir === "asc" ? primary : -primary;
+      // Secondary sort by title for tie-breaking — respects sort.dir
+      const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
+      const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
+      return sort.dir === "asc" ? titleResult : -titleResult;
     });
-  }, [filters, locale, pieces, query, sort, difficultyFilters]);
+  }, [filters, locale, pieces, query, sort, difficultyFilter.value]);
 
   function sortBy(key: SortKey) {
     setSort((value) => ({ key, dir: value.key === key && value.dir === "asc" ? "desc" : "asc" }));
@@ -224,22 +241,11 @@ export default function Directory() {
         <span style={{ fontSize: "14px" }}><LocaleSwitch /></span>
       </header>
 
-      <section className="relative px-4 py-4">
-        <div className="absolute top-3 right-4 -mt-2 flex items-center gap-1">
-          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(filters.pitch.length > 0 || filters.technique.length > 0 || filters.rhythm.length > 0 || difficultyFilters.length > 0) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
-            setFilters({ pitch: [], technique: [], rhythm: [] });
-            setDifficultyFilters([]);
-          }}>
-            <RotateCcw size={12} /> {t.resetFilters}
-          </button>
-          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${editingTags ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => setEditingTags((value) => !value)}>
-            <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
-          </button>
-        </div>
+      <section className="px-4 py-4">
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           <span className="text-xs font-semibold text-[var(--foreground)] shrink-0 w-[4.5rem]">{t.difficulty}</span>
           {DIFFICULTY_LEVELS.map((level) => {
-            const isActive = difficultyFilters.includes(level);
+            const isActive = difficultyFilter.value === level;
             const color = DIFFICULTY_COLORS[level - 1];
             return (
               <button
@@ -248,19 +254,25 @@ export default function Directory() {
                 style={{
                   background: color,
                   opacity: isActive ? 1 : 0.35,
-                  
                 }}
-                onClick={() =>
-                  setDifficultyFilters((prev) =>
-                    prev.includes(level) ? prev.filter((d) => d !== level) : [...prev, level]
-                  )
-                }
+                onClick={() => difficultyFilter.toggle(level)}
                 aria-pressed={isActive}
               >
                 {level}
               </button>
             );
           })}
+          <div className="flex items-center gap-1 ml-auto">
+            <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(filters.pitch.length > 0 || filters.technique.length > 0 || filters.rhythm.length > 0 || difficultyFilter.value !== null) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
+              setFilters({ pitch: [], technique: [], rhythm: [] });
+              difficultyFilter.reset();
+            }}>
+              <RotateCcw size={12} /> {t.resetFilters}
+            </button>
+            <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${editingTags ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => setEditingTags((value) => !value)}>
+              <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
+            </button>
+          </div>
         </div>
         <div className="grid gap-2 lg:grid-cols-3">
           {categories.map((category) => (

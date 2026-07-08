@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Images, Plus, Trash2, Upload, X, X as XIcon } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, Images, Plus, Trash2, Upload, X, X as XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
@@ -470,9 +470,25 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
           <button key={kind} className={`rounded-md bg-white/20 px-2 py-1 text-sm text-white backdrop-blur-sm ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}>{t[kind]}</button>
         ))}
       </div>
-      <button className="absolute left-3 top-3 z-30 rounded-md bg-white/20 px-3 py-2 text-white backdrop-blur-sm hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
-        <XIcon size={24} />
-      </button>
+      <div className="absolute left-3 top-3 z-30 flex gap-2">
+        <button className="rounded-md bg-white/20 px-3 py-2 text-white backdrop-blur-sm hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
+          <XIcon size={24} />
+        </button>
+        <button
+          className="rounded-md bg-white/20 px-3 py-2 text-white backdrop-blur-sm hover:bg-white/40 transition-colors"
+          aria-label={t.saveImage}
+          onClick={() => {
+            const a = document.createElement("a");
+            a.href = image.url;
+            a.download = image.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }}
+        >
+          <Download size={24} />
+        </button>
+      </div>
       <button className="absolute inset-0 left-0 right-1/2 z-10" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
         <div className="flex h-full w-16 items-center justify-center opacity-30 hover:opacity-70 transition-opacity">
           <ChevronLeft size={40} />
