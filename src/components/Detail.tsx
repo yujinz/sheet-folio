@@ -238,7 +238,7 @@ export default function Detail({ songId }: { songId: number }) {
           <input
             ref={locale === "en-US" ? titleEnRef : titleRef}
             key={`title-${songId}-${locale}`}
-            className="input max-w-lg text-xl font-semibold"
+            className="input max-w-lg text-base font-semibold"
             defaultValue={locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn)}
             onChange={scheduleSave}
             onBlur={handleTitleBlur}
@@ -467,15 +467,15 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
     <div className="fullscreen-view">
       <div className="absolute right-3 top-3 z-20 flex gap-2">
         {(["staff", "numbered"] as ImageKind[]).map((kind) => (
-          <button key={kind} className={`rounded-md bg-white/20 px-2 py-1 text-sm text-white backdrop-blur-sm ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}>{t[kind]}</button>
+          <button key={kind} className={`rounded-md bg-white/20 px-2.5 py-1.5 text-sm text-white backdrop-blur-sm transition-colors ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}>{t[kind]}</button>
         ))}
       </div>
       <div className="absolute left-3 top-3 z-30 flex gap-2">
-        <button className="rounded-md bg-white/20 px-3 py-2 text-white backdrop-blur-sm hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
+        <button className="rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
           <XIcon size={24} />
         </button>
         <button
-          className="rounded-md bg-white/20 px-3 py-2 text-white backdrop-blur-sm hover:bg-white/40 transition-colors"
+          className="rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm hover:bg-white/40 transition-colors"
           aria-label={t.saveImage}
           onClick={() => {
             const a = document.createElement("a");
@@ -489,13 +489,14 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
           <Download size={24} />
         </button>
       </div>
-      <button className="absolute inset-0 left-0 right-1/2 z-10" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
-        <div className="flex h-full w-16 items-center justify-center opacity-30 hover:opacity-70 transition-opacity">
+      <button className="absolute inset-y-0 left-0 w-1/3 z-10" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
+        <div className="flex h-full items-center justify-start pl-2 opacity-30 hover:opacity-70 transition-opacity">
           <ChevronLeft size={40} />
         </div>
       </button>
-      <button className="absolute inset-0 left-1/2 right-0 z-10" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
-        <div className="flex h-full w-16 items-center justify-center opacity-30 hover:opacity-70 transition-opacity ml-auto">
+      <button className="absolute inset-y-0 left-1/3 w-1/3 z-10" aria-label={t.exitPager} onClick={() => setIndex(null)} />
+      <button className="absolute inset-y-0 right-0 w-1/3 z-10" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
+        <div className="flex h-full items-center justify-end pr-2 opacity-30 hover:opacity-70 transition-opacity">
           <ChevronRight size={40} />
         </div>
       </button>
