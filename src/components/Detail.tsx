@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, Images, Plus, Trash2, Upload, X, X as XIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, House, Images, Plus, Trash2, Upload, X, X as XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
@@ -234,7 +234,7 @@ export default function Detail({ songId }: { songId: number }) {
     <main className="sheet-page">
       <header ref={headerRef} className="grid gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Link className="icon-button" href="/" aria-label={t.backToDirectory}><ArrowLeft size={16} /></Link>
+          <Link className="icon-button" href="/" aria-label={t.backToDirectory}><House size={16} /></Link>
           <input
             ref={locale === "en-US" ? titleEnRef : titleRef}
             key={`title-${songId}-${locale}`}
@@ -286,12 +286,12 @@ export default function Detail({ songId }: { songId: number }) {
         </div>
         <div className="pointer-events-auto flex items-center gap-1">
           <Link className="flex items-center justify-center rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm hover:bg-white/90" href="/" aria-label={t.backToDirectory}>
-            <ArrowLeft size={14} />
+            <House size={16} />
           </Link>
           {!editingImages && (
             <label className="flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm">
               {t.zoom}
-              <input type="range" min="25" max="130" value={zoom} onChange={(event) => setZoom(clampZoom(Number(event.target.value)))} className="w-20" />
+              <input type="range" min="25" max="130" value={zoom} onChange={(event) => setZoom(clampZoom(Number(event.target.value)))} className="w-20 accent-[var(--accent)]" />
             </label>
           )}
         </div>

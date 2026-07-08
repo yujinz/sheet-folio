@@ -25,16 +25,18 @@ body {
   font-family: Arial, "Noto Sans SC", sans-serif;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
+@layer base {
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
 
-button {
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  button {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 .sheet-page {
