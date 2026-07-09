@@ -48,6 +48,7 @@ export default function Directory() {
   const difficultyFilter = useSingleSelectFilter<number>();
   const [editingTags, setEditingTags] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "difficulty", dir: "asc" });
+  const [titleSortDir, setTitleSortDir] = useState<"asc" | "desc">("asc");
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
 
   useEffect(() => {
@@ -62,8 +63,9 @@ export default function Directory() {
         const parsed = JSON.parse(saved);
         if (typeof parsed.query === "string") setQuery(parsed.query);
         if (parsed.filters) setFilters(parsed.filters);
-        if (parsed.difficultyFilter != null) difficultyFilter.setValue(parsed.difficultyFilter);
+        if (typeof parsed.difficultyFilter === "number") difficultyFilter.setValue(parsed.difficultyFilter);
         if (parsed.sort) setSort(parsed.sort);
+        if (parsed.titleSortDir) setTitleSortDir(parsed.titleSortDir);
       }
     } catch {}
   }, []);
@@ -78,7 +80,7 @@ export default function Directory() {
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_KEY);
     const existing = saved ? JSON.parse(saved) : {};
-    const state = { ...existing, sort, query, filters, difficultyFilter: difficultyFilter.value };
+    const state = { ...existing, sort, query, filters, difficultyFilter: difficultyFilter.value, titleSortDir };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [sort, query, filters, difficultyFilter.value]);
 
@@ -195,22 +197,6 @@ export default function Directory() {
         filters[category].every((id) => piece.tags[category].some((tag) => tag.id === id))
       );
     });
-    // When any filter is active, sort by title order instead of the current sort key.
-    // This keeps filtered lists intuitive (e.g. filtering by difficulty = all same value).
-    // TODO: When adding new single-select filters (useSingleSelectFilter), add them to the condition below.
-    const hasActiveFilters = difficultyFilter.value !== null
-      || filters.pitch.length > 0 || filters.technique.length > 0 || filters.rhythm.length > 0;
-    if (hasActiveFilters) {
-      return [...filtered].sort((a, b) => {
-        // When sorting by title, favorites come first
-        const isFavA = getFavorites().includes(a.id) ? 0 : 1;
-        const isFavB = getFavorites().includes(b.id) ? 0 : 1;
-        if (isFavA !== isFavB) return isFavA - isFavB;
-        const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
-        const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
-        return sort.dir === "asc" ? titleResult : -titleResult;
-      });
-    }
     return [...filtered].sort((a, b) => {
       // When sorting by title, favorites come first (primary sort)
       if (sort.key === "title") {
@@ -219,7 +205,7 @@ export default function Directory() {
         if (isFavA !== isFavB) return isFavA - isFavB;
         const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
         const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
-        return sort.dir === "asc" ? titleResult : -titleResult;
+        return titleSortDir === "asc" ? titleResult : -titleResult;
       }
       const read = (piece: Song): string | number => {
         if (sort.key === "difficulty") return piece.difficulty;
@@ -236,15 +222,19 @@ export default function Directory() {
       const isFavA = getFavorites().includes(a.id) ? 0 : 1;
       const isFavB = getFavorites().includes(b.id) ? 0 : 1;
       if (isFavA !== isFavB) return isFavA - isFavB;
-      // Tertiary sort by title for tie-breaking — respects sort.dir
+      // Tertiary sort by title using user's last title sort direction
       const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
       const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
-      return sort.dir === "asc" ? titleResult : -titleResult;
+      return titleSortDir === "asc" ? titleResult : -titleResult;
     });
-  }, [filters, locale, pieces, query, sort, difficultyFilter.value]);
+  }, [filters, locale, pieces, query, sort, titleSortDir, difficultyFilter.value]);
 
   function sortBy(key: SortKey) {
-    setSort((value) => ({ key, dir: value.key === key && value.dir === "asc" ? "desc" : "asc" }));
+    setSort((value) => {
+      const dir = value.key === key && value.dir === "asc" ? "desc" : "asc";
+      if (key === "title") setTitleSortDir(dir);
+      return { key, dir };
+    });
   }
 
   return (
