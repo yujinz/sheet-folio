@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Download, House, Images, Plus, Trash2, Upload, X, X as XIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Heart, House, Images, Plus, Trash2, Upload, X, X as XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
@@ -46,6 +46,14 @@ export default function Detail({ songId }: { songId: number }) {
   const isDirtyRef = useRef(false);
   const imagesSectionRef = useRef<HTMLDivElement>(null);
   const hasScrolledToImages = useRef(false);
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sheet-folio-favorites");
+      if (raw) setFavoriteIds(JSON.parse(raw));
+    } catch {}
+  }, []);
 
   useEffect(() => {
     void refresh();
@@ -162,6 +170,14 @@ export default function Detail({ songId }: { songId: number }) {
     location.href = "/";
   }
 
+  function toggleFavorite() {
+    const next = favoriteIds.includes(songId)
+      ? favoriteIds.filter((id) => id !== songId)
+      : [...favoriteIds, songId];
+    setFavoriteIds(next);
+    localStorage.setItem("sheet-folio-favorites", JSON.stringify(next));
+  }
+
   // Debounced save — reads values from refs (uncontrolled inputs)
   function scheduleSave() {
     isDirtyRef.current = true;
@@ -234,17 +250,22 @@ export default function Detail({ songId }: { songId: number }) {
     <main className="sheet-page">
       <header ref={headerRef} className="grid gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Link className="icon-button" href="/" aria-label={t.backToDirectory}><House size={16} /></Link>
-          <input
-            ref={locale === "en-US" ? titleEnRef : titleRef}
-            key={`title-${songId}-${locale}`}
-            className="input max-w-lg text-base font-semibold"
-            defaultValue={locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn)}
-            onChange={scheduleSave}
-            onBlur={handleTitleBlur}
-          />
-          <button className="icon-button danger-button ml-auto" type="button" onClick={deletePiece} aria-label={t.deletePiece}><Trash2 size={15} /></button>
-          <LocaleSwitch />
+          <div className="flex items-center gap-2 flex-1">
+            <Link className="icon-button shrink-0" href="/" aria-label={t.backToDirectory}><House size={16} /></Link>
+            <input
+              ref={locale === "en-US" ? titleEnRef : titleRef}
+              key={`title-${songId}-${locale}`}
+              className="input max-w-lg min-w-[100px] flex-1 text-base font-semibold"
+              defaultValue={locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn)}
+              onChange={scheduleSave}
+              onBlur={handleTitleBlur}
+            />
+          </div>
+          <button className="icon-button" type="button" onClick={toggleFavorite} aria-label={favoriteIds.includes(songId) ? t.removeFromFavorites : t.addToFavorites}>
+            <Heart size={15} fill={favoriteIds.includes(songId) ? "currentColor" : "none"} style={favoriteIds.includes(songId) ? { color: "var(--accent)" } : undefined} />
+          </button>
+          <button className="icon-button danger-button" type="button" onClick={deletePiece} aria-label={t.deletePiece}><Trash2 size={15} /></button>
+          <LocaleSwitch className="ml-auto" />
         </div>
         <textarea
           ref={notesRef}

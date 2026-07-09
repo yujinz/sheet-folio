@@ -53,6 +53,8 @@ export const messages = {
     titleRequired: "中文和英文曲名不能同时为空",
     tagExists: "该分类下已存在同名标签",
     resetFilters: "重置筛选",
+    addToFavorites: "收藏",
+    removeFromFavorites: "取消收藏",
     saveImage: "保存图片"
   },
   "en-US": {
@@ -102,6 +104,8 @@ export const messages = {
     titleRequired: "Both Chinese and English titles cannot be empty",
     tagExists: "A tag with this name already exists in this category",
     resetFilters: "Reset filters",
+    addToFavorites: "Add to favorites",
+    removeFromFavorites: "Remove from favorites",
     saveImage: "Save image"
   }
 } as const;

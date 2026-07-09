@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, RotateCcw, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Heart, Pencil, Plus, RotateCcw, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
@@ -15,6 +15,16 @@ const categories: TagCategory[] = ["pitch", "technique", "rhythm"];
 
 const STORAGE_KEY = "sheet-folio-directory-state";
 const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5] as const;
+
+function getFavorites(): number[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("sheet-folio-favorites");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
 
 const DIFFICULTY_COLORS = [
 	"#ecc484", // 1  maple
@@ -192,17 +202,29 @@ export default function Directory() {
       || filters.pitch.length > 0 || filters.technique.length > 0 || filters.rhythm.length > 0;
     if (hasActiveFilters) {
       return [...filtered].sort((a, b) => {
+        // When sorting by title, favorites come first
+        const isFavA = getFavorites().includes(a.id) ? 0 : 1;
+        const isFavB = getFavorites().includes(b.id) ? 0 : 1;
+        if (isFavA !== isFavB) return isFavA - isFavB;
         const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
-        const result = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
-        return sort.dir === "asc" ? result : -result;
+        const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
+        return sort.dir === "asc" ? titleResult : -titleResult;
       });
     }
     return [...filtered].sort((a, b) => {
+      // When sorting by title, favorites come first (primary sort)
+      if (sort.key === "title") {
+        const isFavA = getFavorites().includes(a.id) ? 0 : 1;
+        const isFavB = getFavorites().includes(b.id) ? 0 : 1;
+        if (isFavA !== isFavB) return isFavA - isFavB;
+        const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
+        const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
+        return sort.dir === "asc" ? titleResult : -titleResult;
+      }
       const read = (piece: Song): string | number => {
         if (sort.key === "difficulty") return piece.difficulty;
         if (sort.key === "notes") return piece.notes;
-        if (sort.key === "title") return piece.id;
-        return piece.tags[sort.key].map((tag) => locale === "en-US" ? (tag.nameEn || tag.name) : tag.name).join(",");
+        return piece.tags[sort.key as TagCategory].map((tag) => locale === "en-US" ? (tag.nameEn || tag.name) : tag.name).join(",");
       };
       const aVal = read(a);
       const bVal = read(b);
@@ -210,7 +232,11 @@ export default function Directory() {
         ? aVal - bVal
         : String(aVal).localeCompare(String(bVal), locale, { numeric: true });
       if (primary !== 0) return sort.dir === "asc" ? primary : -primary;
-      // Secondary sort by title for tie-breaking — respects sort.dir
+      // Secondary: favorites within the same sort-key value
+      const isFavA = getFavorites().includes(a.id) ? 0 : 1;
+      const isFavB = getFavorites().includes(b.id) ? 0 : 1;
+      if (isFavA !== isFavB) return isFavA - isFavB;
+      // Tertiary sort by title for tie-breaking — respects sort.dir
       const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
       const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
       return sort.dir === "asc" ? titleResult : -titleResult;
@@ -312,7 +338,10 @@ export default function Directory() {
                   </select>
                 </td>
                 <td className="font-semibold" style={{ fontSize: 15 }}>
-                  <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn)}</Link>
+                  <span className="inline-flex items-center gap-1">
+                    {getFavorites().includes(piece.id) && <Heart size={13} fill="var(--accent)" style={{ color: "var(--accent)" }} />}
+                    <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn)}</Link>
+                  </span>
                 </td>
                 {categories.map((category) => (
                   <td key={category}>
