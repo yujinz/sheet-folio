@@ -224,7 +224,7 @@ export default function Directory() {
       const read = (piece: Song): string | number => {
         if (sort.key === "difficulty") return piece.difficulty;
         if (sort.key === "notes") return piece.notes;
-        return piece.tags[sort.key as TagCategory].map((tag) => locale === "en-US" ? (tag.nameEn || tag.name) : tag.name).join(",");
+        return piece.tags[sort.key as TagCategory].map((tag) => locale === "en-US" ? (tag.nameEn || tag.name) : (tag.name || tag.nameEn)).join(",");
       };
       const aVal = read(a);
       const bVal = read(b);

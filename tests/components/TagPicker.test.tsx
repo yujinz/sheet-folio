@@ -186,6 +186,7 @@ vi.mock("@/lib/useLocale", () => ({
       deleteTag: "删除标签",
       tagExists: "标签已存在",
       deleteTagConfirm: "确定删除？",
+      cancel: "取消",
     },
   }),
 }));
@@ -225,8 +226,8 @@ describe("TagPicker compact mode", () => {
     // The create dialog should now be visible — "新增标签" appears as heading + button
     expect(screen.getAllByText("新增标签").length).toBeGreaterThanOrEqual(2);
     // The dialog should show input fields
-    expect(screen.getByPlaceholderText("音高 (中文)")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("音高 (English)")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("音高")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Pitch")).toBeInTheDocument();
     // Cancel button should be present
     expect(screen.getByRole("button", { name: "取消" })).toBeInTheDocument();
   });

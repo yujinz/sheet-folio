@@ -1,8 +1,8 @@
 # Sheet Folio
 
-A sheet music manager with a web UI accessible from both PC and iPad.
+A sheet music manager with a web UI accessible from both PC and iPad. The interface is available in Chinese (zh-CN) and English (en-US), but the data model supports arbitrary languages via primary and alternate name fields - designed for easy extension beyond the two currently implemented UI languages.
 
-App features: browse, search, and sort a directory of pieces; upload, delete, and drag-to-reorder sheet images; color-coded difficulty/technique/pitch/rhythm tags; scroll and page-flip sheet views; per-device zoom persistence; sheet source and video link management; full CRUD.
+App features: browse, search, and sort a directory of pieces; upload, delete, and reorder sheet images; color-coded difficulty/technique/pitch/rhythm tags; scroll and page-flip sheet views; per-device zoom persistence and favorate pieces; sheet source and video link management; full CRUD.
 
 ## Quick Start
 

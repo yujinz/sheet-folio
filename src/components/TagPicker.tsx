@@ -3,12 +3,13 @@
 import { Music, Palette, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/lib/useLocale";
-import type { Locale } from "@/lib/i18n";
+import { type Locale, messages } from "@/lib/i18n";
 import type { Tag, TagCategory } from "@/lib/types";
 
 export function tagDisplayName(tag: Tag, locale: Locale): string {
   if (locale === "en-US") return tag.nameEn || tag.name;
-  // zh-CN: prefer Chinese name, fall back to English
+  // locale === "en-US": prefer nameEn, fall back to name
+  // locale === "zh-CN": prefer name, fall back to nameEn
   return tag.name || tag.nameEn;
 }
 
@@ -124,6 +125,7 @@ type Props = {
 
 export default function TagPicker({ category, tags, selected, onChange, onCreate, onDelete, onUpdate, editingTags, selectedOnly, compact, defaultColor, onDefaultColorChange }: Props) {
   const { locale, t } = useLocale();
+  const otherLocale: Locale = locale === "zh-CN" ? "en-US" : "zh-CN";
   const [localTags, setLocalTags] = useState(tags);
   useEffect(() => setLocalTags(tags), [tags]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -312,14 +314,14 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                 <input
                   ref={editNameInputRef}
                   className="input w-full"
-                  placeholder={t[category] + " (中文)"}
+                  placeholder={t[category]}
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }}
                 />
                 <input
                   className="input w-full"
-                  placeholder={t[category] + " (English)"}
+                  placeholder={messages[otherLocale][category]}
                   value={editNameEn}
                   onChange={(e) => setEditNameEn(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }}
@@ -378,7 +380,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                 </div>
               </div>
               <div className="mt-3 flex justify-end gap-2">
-                <button className="text-button" type="button" onClick={() => setEditTag(null)}>{locale === "en-US" ? "Cancel" : "取消"}</button>
+                <button className="text-button" type="button" onClick={() => setEditTag(null)}>{t.cancel}</button>
                 <button className="text-button primary-button" type="button" onClick={handleEditSave}>Save</button>
               </div>
             </div>
@@ -392,7 +394,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                 <input
                   ref={createNameInputRef}
                   className="input w-full"
-                  placeholder={t[category] + " (中文)"}
+                  placeholder={t[category]}
                   value={createName}
                   onChange={(e) => {
                     setCreateName(e.target.value);
@@ -414,7 +416,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                 <input
                   ref={createNameEnInputRef}
                   className="input w-full"
-                  placeholder={t[category] + " (English)"}
+                  placeholder={messages[otherLocale][category]}
                   value={createNameEn}
                   onChange={(e) => {
                     setCreateNameEn(e.target.value);
@@ -484,7 +486,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                 </div>
               </div>
               <div className="mt-4 flex justify-end gap-2">
-                <button className="text-button" type="button" onClick={() => setShowCreateDialog(false)}>{locale === "en-US" ? "Cancel" : "取消"}</button>
+                <button className="text-button" type="button" onClick={() => setShowCreateDialog(false)}>{t.cancel}</button>
                 <button className="text-button primary-button" type="button" onClick={handleCreateFromDialog}>{t.addTag}</button>
               </div>
             </div>
@@ -556,14 +558,14 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               <input
                 ref={editNameInputRef}
                 className="input w-full"
-                placeholder={t[category] + " (中文)"}
+                placeholder={t[category]}
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }}
               />
               <input
                 className="input w-full"
-                placeholder={t[category] + " (English)"}
+                placeholder={messages[otherLocale][category]}
                 value={editNameEn}
                 onChange={(e) => setEditNameEn(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }}
@@ -623,7 +625,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               </div>
             </div>
             <div className="mt-3 flex justify-end gap-2">
-              <button className="text-button" type="button" onClick={() => setEditTag(null)}>{locale === "en-US" ? "Cancel" : "取消"}</button>
+              <button className="text-button" type="button" onClick={() => setEditTag(null)}>{t.cancel}</button>
               <button className="text-button primary-button" type="button" onClick={handleEditSave}>Save</button>
             </div>
           </div>
@@ -638,7 +640,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               <input
                 ref={createNameInputRef}
                 className="input w-full"
-                placeholder={t[category] + " (中文)"}
+                placeholder={t[category]}
                 value={createName}
                 onChange={(e) => {
                   setCreateName(e.target.value);
@@ -660,7 +662,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               <input
                 ref={createNameEnInputRef}
                 className="input w-full"
-                placeholder={t[category] + " (English)"}
+                placeholder={messages[otherLocale][category]}
                 value={createNameEn}
                 onChange={(e) => {
                   setCreateNameEn(e.target.value);
@@ -732,7 +734,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
               </div>
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <button className="text-button" type="button" onClick={() => setShowCreateDialog(false)}>{locale === "en-US" ? "Cancel" : "取消"}</button>
+              <button className="text-button" type="button" onClick={() => setShowCreateDialog(false)}>{t.cancel}</button>
               <button className="text-button primary-button" type="button" onClick={handleCreateFromDialog}>{t.addTag}</button>
             </div>
           </div>
