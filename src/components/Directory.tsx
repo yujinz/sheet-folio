@@ -62,7 +62,7 @@ export default function Directory() {
         const parsed = JSON.parse(saved);
         if (typeof parsed.query === "string") setQuery(parsed.query);
         if (parsed.filters) setFilters(parsed.filters);
-        if (typeof parsed.difficultyFilter === "number") difficultyFilter.setValue(parsed.difficultyFilter);
+        if (parsed.difficultyFilter != null) difficultyFilter.setValue(parsed.difficultyFilter);
         if (parsed.sort) setSort(parsed.sort);
       }
     } catch {}
