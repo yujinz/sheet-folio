@@ -270,6 +270,71 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
     onChange(selected.filter((id) => id !== tag.id));
   }
 
+  // ── Dialog fragments (shared between compact & normal layouts) ──
+  const editDialog = editingTags && editTag && onUpdate && (
+    <div ref={editDialogRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setEditTag(null)}>
+      <div className="mx-4 w-full max-w-xs rounded-lg bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 text-sm font-semibold">{t.editTags}</div>
+        <div className="grid gap-2">
+          <input ref={editNameInputRef} className="input w-full" placeholder={t[category]} value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
+          <input className="input w-full" placeholder={messages[otherLocale][category]} value={editNameEn} onChange={(e) => setEditNameEn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
+          <div className="flex items-center gap-2">
+            {category === "pitch" && (
+              <>
+                {["♭", "♯", "♮"].map((mark) => (
+                  <button key={mark} className="pill-add-button" type="button" onClick={() => { if (editNameEn && !editName) { setEditNameEn(mark + editNameEn); } else { setEditName(mark + editName); } editNameInputRef.current?.focus(); }}>{mark}</button>
+                ))}
+                <button aria-label="Assign pitch color" className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap" style={{ background: "none" }} type="button" title="Assign color based on pitch octave" onClick={() => { const pitchName = locale === "en-US" ? (editNameEn || editName) : (editName || editNameEn); const c = pitchColorFromName(pitchName); if (c) setEditColor(c); }}><Music size={12} /> Assign color by pitch</button>
+              </>
+            )}
+            {category !== "pitch" && (
+              <button aria-label="Cycle tag color" className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap" style={{ background: "none" }} type="button" title="Next palette color" onClick={() => setEditColor(nextTagColor(editColor))}><Palette size={12} /> Cycle color</button>
+            )}
+            <input aria-label={t.tagColor} className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={editColor} onChange={(e) => setEditColor(e.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
+          </div>
+        </div>
+        <div className="mt-3 flex justify-end gap-2">
+          <button className="text-button" type="button" onClick={() => setEditTag(null)}>{t.cancel}</button>
+          <button className="text-button primary-button" type="button" onClick={handleEditSave}>{t.save}</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const createDialog = showCreateDialog && (
+    <div ref={createDialogRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowCreateDialog(false)}>
+      <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 text-sm font-semibold">{t.addTag}</div>
+        <div className="grid gap-3">
+          <input ref={createNameInputRef} className="input w-full" placeholder={t[category]} value={createName} onChange={(e) => { setCreateName(e.target.value); autoFillSourceRef.current = "name"; }} onFocus={() => setActiveCreateInput("name")} onKeyDown={(e) => { if (e.key === "Enter") { if (createNameEnInputRef.current && !createNameEn.trim()) { createNameEnInputRef.current.focus(); e.preventDefault(); } else { handleCreateFromDialog(); } } if (e.key === "Escape") setShowCreateDialog(false); }} />
+          <input ref={createNameEnInputRef} className="input w-full" placeholder={messages[otherLocale][category]} value={createNameEn} onChange={(e) => { setCreateNameEn(e.target.value); autoFillSourceRef.current = "nameEn"; }} onFocus={() => setActiveCreateInput("nameEn")} onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }} />
+          {category === "pitch" && (
+            <div className="flex items-center gap-1.5">
+              {["♭", "♯", "♮"].map((mark) => (
+                <button key={mark} className="pill-add-button" type="button" onClick={() => { const setter = activeCreateInput === "nameEn" ? setCreateNameEn : setCreateName; setter((value) => `${mark}${value}`); autoFillSourceRef.current = activeCreateInput === "nameEn" ? "nameEn" : "name"; if (activeCreateInput === "nameEn") { createNameEnInputRef.current?.focus(); } else { createNameInputRef.current?.focus(); } }}>{mark}</button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            {category === "pitch" ? (
+              <button aria-label="Assign pitch color" className={`inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs whitespace-nowrap cursor-pointer transition-colors ${detectedPitch ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--line)] bg-white"}`} type="button" title={detectedPitch ? `Assign color for ${detectedPitch}` : "Assign color based on pitch octave"} onClick={() => { const pitchName = locale === "en-US" ? (createNameEn || createName) : (createName || createNameEn); const c = pitchColorFromName(pitchName); if (c) setCreateColor(c); }}><Music size={12} /> Assign color by pitch</button>
+            ) : (
+              <button aria-label="Cycle tag color" className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--line)] bg-white px-3 text-xs whitespace-nowrap cursor-pointer" type="button" title="Next palette color" onClick={() => setCreateColor(nextTagColor(createColor))}><Palette size={12} /> Cycle color</button>
+            )}
+            <div className="ml-auto flex items-center gap-1">
+              <span className="text-xs text-[var(--muted)]">{t.tagColor}</span>
+              <input aria-label={t.tagColor} className="h-7 w-7 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={createColor} onChange={(e) => setCreateColor(e.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button className="text-button" type="button" onClick={() => setShowCreateDialog(false)}>{t.cancel}</button>
+          <button className="text-button primary-button" type="button" onClick={handleCreateFromDialog}>{t.addTag}</button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (compact) {
     return (
       <>
@@ -322,193 +387,8 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
             </span>
           )}
         </span>
-        {editingTags && editTag && onUpdate && (
-          <div ref={editDialogRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setEditTag(null)}>
-            <div className="mx-4 w-full max-w-xs rounded-lg bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-              <div className="mb-3 text-sm font-semibold">Edit Tag</div>
-              <div className="grid gap-2">
-                <input
-                  ref={editNameInputRef}
-                  className="input w-full"
-                  placeholder={t[category]}
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }}
-                />
-                <input
-                  className="input w-full"
-                  placeholder={messages[otherLocale][category]}
-                  value={editNameEn}
-                  onChange={(e) => setEditNameEn(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }}
-                />
-                <div className="flex items-center gap-2">
-                  {category === "pitch" && (
-                    <>
-                      {["♭", "♯", "♮"].map((mark) => (
-                        <button key={mark} className="pill-add-button" type="button" onClick={() => {
-                          if (editNameEn && !editName) {
-                            setEditNameEn(mark + editNameEn);
-                          } else {
-                            setEditName(mark + editName);
-                          }
-                          editNameInputRef.current?.focus();
-                        }}>
-                          {mark}
-                        </button>
-                      ))}
-                      <button
-                        aria-label="Assign pitch color"
-                        className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap"
-                        style={{ background: "none" }}
-                        type="button"
-                        title="Assign color based on pitch octave"
-                        onClick={() => {
-                          const pitchName = locale === "en-US" ? (editNameEn || editName) : (editName || editNameEn);
-                          const c = pitchColorFromName(pitchName);
-                          if (c) setEditColor(c);
-                        }}
-                      >
-                        <Music size={12} /> Assign color by pitch
-                      </button>
-                    </>
-                  )}
-                  {category !== "pitch" && (
-                    <button
-                      aria-label="Cycle tag color"
-                      className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap"
-                      style={{ background: "none" }}
-                      type="button"
-                      title="Next palette color"
-                      onClick={() => setEditColor(nextTagColor(editColor))}
-                    >
-                      <Palette size={12} /> Cycle color
-                    </button>
-                  )}
-                  <input
-                    aria-label={t.tagColor}
-                    className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0"
-                    type="color"
-                    value={editColor}
-                    onChange={(e) => setEditColor(e.target.value)}
-                    style={{ background: "none", WebkitAppearance: "none" }}
-                  />
-                </div>
-              </div>
-              <div className="mt-3 flex justify-end gap-2">
-                <button className="text-button" type="button" onClick={() => setEditTag(null)}>{t.cancel}</button>
-                <button className="text-button primary-button" type="button" onClick={handleEditSave}>Save</button>
-              </div>
-            </div>
-          </div>
-        )}
-        {showCreateDialog && (
-          <div ref={createDialogRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowCreateDialog(false)}>
-            <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-              <div className="mb-4 text-sm font-semibold">{t.addTag}</div>
-              <div className="grid gap-3">
-                <input
-                  ref={createNameInputRef}
-                  className="input w-full"
-                  placeholder={t[category]}
-                  value={createName}
-                  onChange={(e) => {
-                    setCreateName(e.target.value);
-                    autoFillSourceRef.current = "name";
-                  }}
-                  onFocus={() => setActiveCreateInput("name")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      if (createNameEnInputRef.current && !createNameEn.trim()) {
-                        createNameEnInputRef.current.focus();
-                        e.preventDefault();
-                      } else {
-                        handleCreateFromDialog();
-                      }
-                    }
-                    if (e.key === "Escape") setShowCreateDialog(false);
-                  }}
-                />
-                <input
-                  ref={createNameEnInputRef}
-                  className="input w-full"
-                  placeholder={messages[otherLocale][category]}
-                  value={createNameEn}
-                  onChange={(e) => {
-                    setCreateNameEn(e.target.value);
-                    autoFillSourceRef.current = "nameEn";
-                  }}
-                  onFocus={() => setActiveCreateInput("nameEn")}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }}
-                />
-                {category === "pitch" && (
-                  <div className="flex items-center gap-1.5">
-                    {["♭", "♯", "♮"].map((mark) => (
-                      <button key={mark} className="pill-add-button" type="button" onClick={() => {
-                        const setter = activeCreateInput === "nameEn" ? setCreateNameEn : setCreateName;
-                        setter((value) => `${mark}${value}`);
-                        autoFillSourceRef.current = activeCreateInput === "nameEn" ? "nameEn" : "name";
-                        if (activeCreateInput === "nameEn") {
-                          createNameEnInputRef.current?.focus();
-                        } else {
-                          createNameInputRef.current?.focus();
-                        }
-                      }}>
-                        {mark}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  {category === "pitch" ? (
-                    <button
-                      aria-label="Assign pitch color"
-                      className={`inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs whitespace-nowrap cursor-pointer transition-colors ${
-                        detectedPitch
-                          ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
-                          : "border-[var(--line)] bg-white"
-                      }`}
-                      type="button"
-                      title={detectedPitch ? `Assign color for ${detectedPitch}` : "Assign color based on pitch octave"}
-                      onClick={() => {
-                        const pitchName = locale === "en-US" ? (createNameEn || createName) : (createName || createNameEn);
-                        const c = pitchColorFromName(pitchName);
-                        if (c) setCreateColor(c);
-                      }}
-                    >
-                      <Music size={12} /> Assign color by pitch
-                    </button>
-                  ) : (
-                    <button
-                      aria-label="Cycle tag color"
-                      className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--line)] bg-white px-3 text-xs whitespace-nowrap cursor-pointer"
-                      type="button"
-                      title="Next palette color"
-                      onClick={() => setCreateColor(nextTagColor(createColor))}
-                    >
-                      <Palette size={12} /> Cycle color
-                    </button>
-                  )}
-                  <div className="ml-auto flex items-center gap-1">
-                    <span className="text-xs text-[var(--muted)]">{t.tagColor}</span>
-                    <input
-                      aria-label={t.tagColor}
-                      className="h-7 w-7 rounded-full overflow-hidden cursor-pointer border-0 p-0"
-                      type="color"
-                      value={createColor}
-                      onChange={(e) => setCreateColor(e.target.value)}
-                      style={{ background: "none", WebkitAppearance: "none" }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 flex justify-end gap-2">
-                <button className="text-button" type="button" onClick={() => setShowCreateDialog(false)}>{t.cancel}</button>
-                <button className="text-button primary-button" type="button" onClick={handleCreateFromDialog}>{t.addTag}</button>
-              </div>
-            </div>
-          </div>
-        )}
+        {editDialog}
+        {createDialog}
       </>
     );
   }
@@ -567,197 +447,9 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
         >
           <Plus size={14} />
         </button>
-      {editingTags && editTag && onUpdate && (
-        <div ref={editDialogRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setEditTag(null)}>
-          <div className="mx-4 w-full max-w-xs rounded-lg bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 text-sm font-semibold">Edit Tag</div>
-            <div className="grid gap-2">
-              <input
-                ref={editNameInputRef}
-                className="input w-full"
-                placeholder={t[category]}
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }}
-              />
-              <input
-                className="input w-full"
-                placeholder={messages[otherLocale][category]}
-                value={editNameEn}
-                onChange={(e) => setEditNameEn(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }}
-              />
-              <div className="flex items-center gap-2">
-                {category === "pitch" && (
-                  <>
-                    {["♭", "♯", "♮"].map((mark) => (
-                      <button key={mark} className="pill-add-button" type="button" onClick={() => {
-                        // Prepend accidental to whichever field is non-empty
-                        if (editNameEn && !editName) {
-                          setEditNameEn(mark + editNameEn);
-                        } else {
-                          setEditName(mark + editName);
-                        }
-                        editNameInputRef.current?.focus();
-                      }}>
-                        {mark}
-                      </button>
-                    ))}
-                    <button
-                      aria-label="Assign pitch color"
-                      className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap"
-                      style={{ background: "none" }}
-                      type="button"
-                      title="Assign color based on pitch octave"
-                      onClick={() => {
-                        const pitchName = locale === "en-US" ? (editNameEn || editName) : (editName || editNameEn);
-                        const c = pitchColorFromName(pitchName);
-                        if (c) setEditColor(c);
-                      }}
-                    >
-                      <Music size={12} /> Assign color by pitch
-                    </button>
-                  </>
-                )}
-                {category !== "pitch" && (
-                  <button
-                    aria-label="Cycle tag color"
-                    className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap"
-                    style={{ background: "none" }}
-                    type="button"
-                    title="Next palette color"
-                    onClick={() => setEditColor(nextTagColor(editColor))}
-                  >
-                    <Palette size={12} /> Cycle color
-                  </button>
-                )}
-                <input
-                  aria-label={t.tagColor}
-                  className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0"
-                  type="color"
-                  value={editColor}
-                  onChange={(e) => setEditColor(e.target.value)}
-                  style={{ background: "none", WebkitAppearance: "none" }}
-                />
-              </div>
-            </div>
-            <div className="mt-3 flex justify-end gap-2">
-              <button className="text-button" type="button" onClick={() => setEditTag(null)}>{t.cancel}</button>
-              <button className="text-button primary-button" type="button" onClick={handleEditSave}>Save</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {editDialog}
 
-      {showCreateDialog && (
-        <div ref={createDialogRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowCreateDialog(false)}>
-          <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-4 text-sm font-semibold">{t.addTag}</div>
-            <div className="grid gap-3">
-              <input
-                ref={createNameInputRef}
-                className="input w-full"
-                placeholder={t[category]}
-                value={createName}
-                onChange={(e) => {
-                  setCreateName(e.target.value);
-                  autoFillSourceRef.current = "name";
-                }}
-                onFocus={() => setActiveCreateInput("name")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    if (createNameEnInputRef.current && !createNameEn.trim()) {
-                      createNameEnInputRef.current.focus();
-                      e.preventDefault();
-                    } else {
-                      handleCreateFromDialog();
-                    }
-                  }
-                  if (e.key === "Escape") setShowCreateDialog(false);
-                }}
-              />
-              <input
-                ref={createNameEnInputRef}
-                className="input w-full"
-                placeholder={messages[otherLocale][category]}
-                value={createNameEn}
-                onChange={(e) => {
-                  setCreateNameEn(e.target.value);
-                  autoFillSourceRef.current = "nameEn";
-                }}
-                onFocus={() => setActiveCreateInput("nameEn")}
-                onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }}
-              />
-
-              {category === "pitch" && (
-                <div className="flex items-center gap-1.5">
-                  {["♭", "♯", "♮"].map((mark) => (
-                    <button key={mark} className="pill-add-button" type="button" onClick={() => {
-                      const setter = activeCreateInput === "nameEn" ? setCreateNameEn : setCreateName;
-                      setter((value) => `${mark}${value}`);
-                      autoFillSourceRef.current = activeCreateInput === "nameEn" ? "nameEn" : "name";
-                      if (activeCreateInput === "nameEn") {
-                        createNameEnInputRef.current?.focus();
-                      } else {
-                        createNameInputRef.current?.focus();
-                      }
-                    }}>
-                      {mark}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-center gap-2">
-                {category === "pitch" ? (
-                  <button
-                    aria-label="Assign pitch color"
-                    className={`inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs whitespace-nowrap cursor-pointer transition-colors ${
-                      detectedPitch
-                        ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
-                        : "border-[var(--line)] bg-white"
-                    }`}
-                    type="button"
-                    title={detectedPitch ? `Assign color for ${detectedPitch}` : "Assign color based on pitch octave"}
-                    onClick={() => {
-                      const pitchName = locale === "en-US" ? (createNameEn || createName) : (createName || createNameEn);
-                      const c = pitchColorFromName(pitchName);
-                      if (c) setCreateColor(c);
-                    }}
-                  >
-                    <Music size={12} /> Assign color by pitch
-                  </button>
-                ) : (
-                  <button
-                    aria-label="Cycle tag color"
-                    className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--line)] bg-white px-3 text-xs whitespace-nowrap cursor-pointer"
-                    type="button"
-                    title="Next palette color"
-                    onClick={() => setCreateColor(nextTagColor(createColor))}
-                  >
-                    <Palette size={12} /> Cycle color
-                  </button>
-                )}
-                <div className="ml-auto flex items-center gap-1">
-                  <span className="text-xs text-[var(--muted)]">{t.tagColor}</span>
-                  <input
-                    aria-label={t.tagColor}
-                    className="h-7 w-7 rounded-full overflow-hidden cursor-pointer border-0 p-0"
-                    type="color"
-                    value={createColor}
-                    onChange={(e) => setCreateColor(e.target.value)}
-                    style={{ background: "none", WebkitAppearance: "none" }}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button className="text-button" type="button" onClick={() => setShowCreateDialog(false)}>{t.cancel}</button>
-              <button className="text-button primary-button" type="button" onClick={handleCreateFromDialog}>{t.addTag}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {createDialog}
     </div>
   );
 }
