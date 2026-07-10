@@ -20,7 +20,7 @@ export type SongImage = {
   createdAt: string;
 };
 
-export type YoutubeLink = {
+export type VideoLink = {
   id: number;
   songId: number;
   label: string;
@@ -38,5 +38,5 @@ export type Song = {
   updatedAt: string;
   tags: Record<TagCategory, Tag[]>;
   images?: Record<ImageKind, SongImage[]>;
-  links?: YoutubeLink[];
+  links?: VideoLink[];
 };
