@@ -56,8 +56,8 @@ Array of tag objects:
 | Field    | Type   | Description                                    |
 |----------|--------|------------------------------------------------|
 | `id`     | number | Unique tag ID                                  |
-| `name`   | string | Chinese name (may be empty if only English)    |
-| `nameEn` | string | English name (may be empty if only Chinese)    |
+| `name`   | string | Primary name (e.g. Chinese) — may be empty if only alternate |
+| `nameEn` | string | Alternate name (e.g. English) — may be empty if only primary |
 | `color`  | string | Hex color code for display                     |
 | `category`| string | Any category name (free-text). Core: `"pitch"`, `"technique"`, `"rhythm"`. User-defined: e.g. `"genre"`, `"mood"`. |
 
@@ -102,8 +102,8 @@ Array of piece objects:
 | Field      | Type   | Description                                        |
 |------------|--------|----------------------------------------------------|
 | `id`       | number | Unique piece ID                                    |
-| `title`    | string | Chinese title (or English if Chinese unavailable)  |
-| `titleEn`  | string | English title (may be empty)                       |
+| `title`    | string | Primary title (e.g. Chinese) — may be empty if only alternate |
+| `titleEn`  | string | Alternate title (e.g. English) — may be empty if only primary |
 | `difficulty`| number| Difficulty level from 1 to 5                       |
 | `notes`    | string | Practice notes (may be empty)                      |
 

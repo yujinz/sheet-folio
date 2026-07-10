@@ -1,8 +1,8 @@
 # Sheet Folio
 
-A sheet music manager with a web UI accessible from both PC and iPad.
+A sheet music manager with a web UI accessible from both PC and iPad. The interface is available in Chinese (zh-CN) and English (en-US), but the data model supports arbitrary languages via primary and alternate name fields - designed for easy extension beyond the two currently implemented UI languages.
 
-App features: browse, search, and sort a directory of pieces; upload, delete, and drag-to-reorder sheet images; color-coded difficulty/technique/pitch/rhythm tags; scroll and page-flip sheet views; per-device zoom persistence; sheet source and video link management; full CRUD.
+App features: browse, search, and sort a directory of pieces; upload, delete, and reorder sheet images; color-coded difficulty/technique/pitch/rhythm tags; scroll and page-flip sheet views; per-device zoom persistence and favorate pieces; sheet source and video link management; full CRUD.
 
 ## Quick Start
 
@@ -26,6 +26,12 @@ Open `http://localhost:8888` in your browser. Stop with `docker compose down`. D
 > firewall=false
 > ```
 > Then restart WSL2 with `wsl --shutdown`, reopen your WSL2 terminal, and start docker.
+
+## License
+
+[AGPLv3](LICENSE) — you may use, modify, and distribute this software freely,
+but if you run it as a network service or distribute modified versions, you
+must make your changes available under the same license.
 
 > **Note on `network_mode: host`:** The `docker-compose.yml` uses `network_mode: host` instead of the more common `ports:` mapping, so that browsers on Windows can access the docker running inside WSL. This makes the container share the host's network stack directly without Docker's NAT/bridge layer. This is okay because:
 > - Sheet-folio is a LAN-only app with no reverse proxy or HTTPS requirement

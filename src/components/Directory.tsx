@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Heart, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
@@ -9,7 +9,8 @@ import { useLocale } from "@/lib/useLocale";
 import { messages } from "@/lib/i18n";
 import { CORE_CATEGORIES } from "@/lib/types";
 import { categoryKey, canAddCategory, isCoreCategoryLabel } from "@/lib/category";
-import type { Song, Tag } from "@/lib/types";
+import type { Song, Tag, TagCategory } from "@/lib/types";
+import { useSingleSelectFilter } from "@/lib/useSingleSelectFilter";
 
 type UserCategory = { key: string; labelZh: string; labelEn: string };
 
@@ -28,6 +29,16 @@ const categories = [...CORE_CATEGORIES];
 
 const STORAGE_KEY = "sheet-folio-directory-state";
 const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5] as const;
+
+function getFavorites(): number[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("sheet-folio-favorites");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
 
 const DIFFICULTY_COLORS = [
 	"#ecc484", // 1  maple
@@ -59,33 +70,32 @@ export default function Directory() {
   const [filters, setFilters] = useState<Record<string, number[]>>(
     () => Object.fromEntries(CORE_CATEGORIES.map((c) => [c, []]))
   );
-  const [difficultyFilters, setDifficultyFilters] = useState<number[]>(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.difficultyFilters)) return parsed.difficultyFilters;
-      }
-    } catch {}
-    return [];
-  });
+  const difficultyFilter = useSingleSelectFilter<number>();
   const [editingTags, setEditingTags] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.sort) return parsed.sort;
-      }
-    } catch {}
-    return { key: "difficulty", dir: "asc" };
-  });
-  const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(new Set());
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "difficulty", dir: "asc" });
+  const [titleSortDir, setTitleSortDir] = useState<"asc" | "desc">("asc");
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
 
   useEffect(() => {
     void refresh();
   }, []);
+
+  // Restore saved state from sessionStorage after hydration
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.query === "string") setQuery(parsed.query);
+        if (parsed.filters) setFilters(parsed.filters);
+        if (typeof parsed.difficultyFilter === "number") difficultyFilter.setValue(parsed.difficultyFilter);
+        if (parsed.sort) setSort(parsed.sort);
+        if (parsed.titleSortDir) setTitleSortDir(parsed.titleSortDir);
+      }
+    } catch {}
+  }, []);
+
+  const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(new Set());
 
   const [userCategories, setUserCategories] = useState<UserCategory[]>([]);
   const [showNewCategory, setShowNewCategory] = useState(false);
@@ -157,11 +167,13 @@ export default function Directory() {
     setDefaultColor((prev) => pickDefaultColor(tags, prev));
   }, [tags]);
 
-  // Save sort/query/filters to sessionStorage whenever they change
+  // Save sort/query/filters to sessionStorage whenever they change (merging with existing data to preserve scrollY etc.)
   useEffect(() => {
-    const state = { sort, query, filters, difficultyFilters, userCategories, hiddenCoreCategories };
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    const existing = saved ? JSON.parse(saved) : {};
+    const state = { ...existing, sort, query, filters, difficultyFilter: difficultyFilter.value, titleSortDir, userCategories, hiddenCoreCategories };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [sort, query, filters, difficultyFilters, userCategories, hiddenCoreCategories]);
+  }, [sort, query, filters, difficultyFilter.value, titleSortDir, userCategories, hiddenCoreCategories]);
 
   // Save scroll position on unmount (SPA navigation) and on pagehide (bfcache/unload)
   useEffect(() => {
@@ -412,7 +424,7 @@ export default function Directory() {
         const titleForSearch = locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
         if (!titleForSearch.toLowerCase().includes(query.toLowerCase())) return false;
       }
-      if (difficultyFilters.length > 0 && !difficultyFilters.includes(piece.difficulty)) {
+      if (difficultyFilter.value !== null && difficultyFilter.value !== piece.difficulty) {
         return false;
       }
       const allFilterCats = Object.keys(filters);
@@ -421,23 +433,43 @@ export default function Directory() {
       );
     });
     return [...filtered].sort((a, b) => {
+      // When sorting by title, favorites come first (primary sort)
+      if (sort.key === "title") {
+        const isFavA = getFavorites().includes(a.id) ? 0 : 1;
+        const isFavB = getFavorites().includes(b.id) ? 0 : 1;
+        if (isFavA !== isFavB) return isFavA - isFavB;
+        const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
+        const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
+        return titleSortDir === "asc" ? titleResult : -titleResult;
+      }
       const read = (piece: Song): string | number => {
         if (sort.key === "difficulty") return piece.difficulty;
         if (sort.key === "notes") return piece.notes;
-        if (sort.key === "title") return piece.id;
-        return piece.tags[sort.key].map((tag) => locale === "en-US" ? (tag.nameEn || tag.name) : tag.name).join(",");
+        return piece.tags[sort.key as TagCategory].map((tag) => locale === "en-US" ? (tag.nameEn || tag.name) : (tag.name || tag.nameEn)).join(",");
       };
       const aVal = read(a);
       const bVal = read(b);
-      const result = typeof aVal === "number" && typeof bVal === "number"
+      const primary = typeof aVal === "number" && typeof bVal === "number"
         ? aVal - bVal
         : String(aVal).localeCompare(String(bVal), locale, { numeric: true });
-      return sort.dir === "asc" ? result : -result;
+      if (primary !== 0) return sort.dir === "asc" ? primary : -primary;
+      // Secondary: favorites within the same sort-key value
+      const isFavA = getFavorites().includes(a.id) ? 0 : 1;
+      const isFavB = getFavorites().includes(b.id) ? 0 : 1;
+      if (isFavA !== isFavB) return isFavA - isFavB;
+      // Tertiary sort by title using user's last title sort direction
+      const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn);
+      const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
+      return titleSortDir === "asc" ? titleResult : -titleResult;
     });
-  }, [filters, locale, pieces, query, sort, difficultyFilters]);
+  }, [filters, locale, pieces, query, sort, titleSortDir, difficultyFilter.value]);
 
   function sortBy(key: SortKey) {
-    setSort((value) => ({ key, dir: value.key === key && value.dir === "asc" ? "desc" : "asc" }));
+    setSort((value) => {
+      const dir = value.key === key && value.dir === "asc" ? "desc" : "asc";
+      if (key === "title") setTitleSortDir(dir);
+      return { key, dir };
+    });
   }
 
   return (
@@ -462,9 +494,9 @@ export default function Directory() {
 
       <section className="relative px-4 py-4">
         <div className="absolute top-3 right-4 -mt-2 flex items-center gap-1">
-          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(Object.values(filters).some((ids) => ids.length > 0) || difficultyFilters.length > 0) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
+          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(Object.values(filters).some((ids) => ids.length > 0) || difficultyFilter.value !== null) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
             setFilters(Object.fromEntries(Object.keys(filters).map((k) => [k, []])));
-            setDifficultyFilters([]);
+            difficultyFilter.reset();
           }}>
             <RotateCcw size={12} /> {t.resetFilters}
           </button>
@@ -475,7 +507,7 @@ export default function Directory() {
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           <span className="text-xs font-semibold text-[var(--foreground)] shrink-0 w-[4.5rem]">{t.difficulty}</span>
           {DIFFICULTY_LEVELS.map((level) => {
-            const isActive = difficultyFilters.includes(level);
+            const isActive = difficultyFilter.value === level;
             const color = DIFFICULTY_COLORS[level - 1];
             return (
               <button
@@ -484,13 +516,8 @@ export default function Directory() {
                 style={{
                   background: color,
                   opacity: isActive ? 1 : 0.35,
-                  
                 }}
-                onClick={() =>
-                  setDifficultyFilters((prev) =>
-                    prev.includes(level) ? prev.filter((d) => d !== level) : [...prev, level]
-                  )
-                }
+                onClick={() => difficultyFilter.toggle(level)}
                 aria-pressed={isActive}
               >
                 {level}
@@ -714,7 +741,10 @@ export default function Directory() {
                   </select>
                 </td>
                 <td className="font-semibold" style={{ fontSize: 15 }}>
-                  <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn)}</Link>
+                  <span className="inline-flex items-center gap-1">
+                    {getFavorites().includes(piece.id) && <Heart size={13} fill="var(--accent)" style={{ color: "var(--accent)" }} />}
+                    <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn)}</Link>
+                  </span>
                 </td>
                 {categories.map((category) => (
                   <td key={category}>

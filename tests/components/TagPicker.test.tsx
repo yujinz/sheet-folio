@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+// @vitest-environment jsdom
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { tagDisplayName, pickDefaultColor } from "@/components/TagPicker";
 import type { Tag } from "@/lib/types";
 
@@ -166,5 +167,68 @@ describe("pickDefaultColor", () => {
     // First iteration picks #9e6aba(cnt=3), then #c46a9e(cnt=1<3) wins,
     // then #c45a8a(cnt=0<1) wins → answer is #c45a8a (first unused)
     expect(pickDefaultColor(tags, "#d4c04a")).toBe("#c45a8a");
+  });
+});
+
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import TagPicker from "@/components/TagPicker";
+
+vi.mock("@/lib/useLocale", () => ({
+  useLocale: () => ({
+    locale: "zh-CN",
+    t: {
+      pitch: "音高",
+      technique: "技巧",
+      rhythm: "节拍",
+      addTag: "新增标签",
+      removeTag: "移除标签",
+      tagColor: "标签颜色",
+      deleteTag: "删除标签",
+      tagExists: "标签已存在",
+      deleteTagConfirm: "确定删除？",
+      cancel: "取消",
+    },
+  }),
+}));
+
+// The compact mode was returning early and never rendering the create
+// dialog JSX, even though setShowCreateDialog(true) was called via the
+// dropdown's "__new__" option. This test guards against that regression.
+describe("TagPicker compact mode", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("opens the create tag dialog when '+ 新增标签' is selected from the dropdown", () => {
+    const tags = [
+      { id: 1, name: "高音", nameEn: "", color: "#2563eb", category: "pitch" as const },
+      { id: 2, name: "低音", nameEn: "", color: "#0891b2", category: "pitch" as const },
+    ];
+
+    render(
+      <TagPicker
+        compact
+        category="pitch"
+        tags={tags}
+        selected={[]}
+        onChange={() => {}}
+        onCreate={async (tag) => ({ ...tag, id: 3 })}
+      />
+    );
+
+    // The select should exist
+    const select = screen.getByLabelText("新增标签") as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+
+    // Select the "__new__" option to trigger the create dialog
+    fireEvent.change(select, { target: { value: "__new__" } });
+
+    // The create dialog should now be visible — "新增标签" appears as heading + button
+    expect(screen.getAllByText("新增标签").length).toBeGreaterThanOrEqual(2);
+    // The dialog should show input fields
+    expect(screen.getByPlaceholderText("音高")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Pitch")).toBeInTheDocument();
+    // Cancel button should be present
+    expect(screen.getByRole("button", { name: "取消" })).toBeInTheDocument();
   });
 });

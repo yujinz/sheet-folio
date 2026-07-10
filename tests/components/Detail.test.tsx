@@ -166,7 +166,7 @@ describe("Pager", () => {
       />
     );
 
-    const exitButton = screen.getByLabelText("Exit pager");
+    const exitButton = screen.getAllByLabelText("Exit pager")[0];
     await user.click(exitButton);
 
     expect(setIndex).toHaveBeenCalledWith(null);

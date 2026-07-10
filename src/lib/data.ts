@@ -16,7 +16,7 @@ export function groupTags(rows: Tag[]): Record<string, Tag[]> {
 }
 
 export function getSongs(): Song[] {
-  const allSongs = db.select().from(songs).orderBy(asc(songs.difficulty), asc(songs.title)).all();
+  const allSongs = db.select().from(songs).orderBy(asc(songs.difficulty), asc(sql`coalesce(${songs.title}, ${songs.titleEn})`)).all();
   const allTags = db.select().from(tags).all();
   const joins = db.select().from(songTags).all();
   const tagsById = new Map(allTags.map((tag) => [tag.id, tag]));
