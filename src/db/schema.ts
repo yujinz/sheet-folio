@@ -52,7 +52,7 @@ export const songImages = sqliteTable("song_images", {
   createdAt: text("created_at").notNull()
 });
 
-export const youtubeLinks = sqliteTable("youtube_links", {
+export const videoLinks = sqliteTable("video_links", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   songId: integer("song_id")
     .notNull()

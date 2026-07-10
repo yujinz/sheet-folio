@@ -339,8 +339,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "youtube_links": {
-      "name": "youtube_links",
+    "video_links": {
+      "name": "video_links",
       "columns": {
         "id": {
           "name": "id",
@@ -381,9 +381,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "youtube_links_song_id_songs_id_fk": {
-          "name": "youtube_links_song_id_songs_id_fk",
-          "tableFrom": "youtube_links",
+        "video_links_song_id_songs_id_fk": {
+          "name": "video_links_song_id_songs_id_fk",
+          "tableFrom": "video_links",
           "tableTo": "songs",
           "columnsFrom": [
             "song_id"

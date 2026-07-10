@@ -8,7 +8,7 @@ const testSongTitles = ["S1", "S2", "Detail Test", "Tag Test", "Order Test", "Re
 describe("Data layer integration", () => {
   afterAll(async () => {
     const { db } = await import("@/db");
-    // Delete test songs — FK cascades remove song_tags, song_images, youtube_links, device_zoom
+    // Delete test songs — FK cascades remove song_tags, song_images, video_links, device_zoom
     db.delete(schema.songs).where(inArray(schema.songs.title, testSongTitles)).run();
     // Delete test tags (those with timestamps)
     db.delete(schema.tags).where(sql`name LIKE 'custom-a-%' OR name LIKE 'custom-b-%' OR name LIKE 'custom-c-%'`).run();
