@@ -55,7 +55,7 @@ export const messages = {
     resetFilters: "重置筛选",
     addToFavorites: "收藏",
     removeFromFavorites: "取消收藏",
-    saveImage: "保存图片",
+    saveImage: "保存到相册",
     cancel: "取消"
   },
   "en-US": {
@@ -107,7 +107,7 @@ export const messages = {
     resetFilters: "Reset filters",
     addToFavorites: "Add to favorites",
     removeFromFavorites: "Remove from favorites",
-    saveImage: "Save image",
+    saveImage: "Save to Photos",
     cancel: "Cancel"
   }
 } as const;

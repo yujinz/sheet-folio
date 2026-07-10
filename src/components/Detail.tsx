@@ -484,14 +484,15 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
 }) {
   const { t } = useLocale();
   const image = images[index];
+
   return (
     <div className="fullscreen-view">
-      <div className="absolute right-3 top-3 z-20 flex gap-2">
+      <div className="absolute right-3 top-3 z-40 flex gap-2">
         {(["staff", "numbered"] as ImageKind[]).map((kind) => (
-          <button key={kind} className={`rounded-md bg-white/20 px-2.5 py-1.5 text-sm text-white backdrop-blur-sm transition-colors ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}>{t[kind]}</button>
+          <button key={kind} className={`select-none rounded-md bg-white/20 px-2.5 py-1.5 text-sm text-white backdrop-blur-sm transition-colors ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}>{t[kind]}</button>
         ))}
       </div>
-      <div className="absolute left-3 top-3 z-30 flex gap-2">
+      <div className="absolute left-3 top-3 z-40 flex gap-2 select-none">
         <button className="rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
           <XIcon size={24} />
         </button>
@@ -510,19 +511,24 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
           <Download size={24} />
         </button>
       </div>
-      <button className="absolute inset-y-0 left-0 w-1/3 z-10" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
+      <button className="absolute inset-y-0 left-0 w-1/3 z-30 select-none" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
         <div className="flex h-full items-center justify-start pl-2 opacity-30 hover:opacity-70 transition-opacity">
           <ChevronLeft size={40} />
         </div>
       </button>
-      <button className="absolute inset-y-0 left-1/3 w-1/3 z-10" aria-label={t.exitPager} onClick={() => setIndex(null)} />
-      <button className="absolute inset-y-0 right-0 w-1/3 z-10" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
+      <button className="absolute inset-y-0 right-0 w-1/3 z-30 select-none" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
         <div className="flex h-full items-center justify-end pr-2 opacity-30 hover:opacity-70 transition-opacity">
           <ChevronRight size={40} />
         </div>
       </button>
-      <div className="absolute inset-0 flex items-center justify-center">
-        {image && <img src={image.url} alt="" className="block max-h-full max-w-full object-contain" />}
+      {/* Image at z-20 above background, below nav buttons at z-30.
+          Tap center to exit, long-press to trigger iOS "Save to Photos". */}
+      <div
+        className="absolute inset-0 z-20 flex items-center justify-center"
+        style={{ userSelect: "none", WebkitTouchCallout: "default" }}
+        onClick={() => setIndex(null)}
+      >
+        {image && <img src={image.url} alt="" className="block max-h-full max-w-full object-contain" style={{ WebkitTouchCallout: "default" }} />}
       </div>
       {image?.sourceUrl && (
         <a
