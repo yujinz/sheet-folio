@@ -32,15 +32,21 @@ const IMG_OUT = path.join(OUTPUT_DIR, "images");
 // ---------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------
-type TagCategory = "pitch" | "technique" | "rhythm";
-type ImageKind = "staff" | "numbered";
+import type {
+  ExportedImage,
+  ExportedLink,
+  ExportedPiece,
+  ExportedTag,
+  ExportManifest,
+  ImageKind
+} from "../src/lib/export-types";
 
 interface TagRow {
   id: number;
   name: string;
   name_en: string;
   color: string;
-  category: TagCategory;
+  category: string;
 }
 
 interface SongRow {
@@ -64,7 +70,7 @@ interface SongImageRow {
   created_at: string;
 }
 
-interface YoutubeLinkRow {
+interface VideoLinkRow {
   id: number;
   song_id: number;
   label: string;
@@ -72,47 +78,7 @@ interface YoutubeLinkRow {
   sort_order: number;
 }
 
-// ---------------------------------------------------------------
-// Exported data types (clean, reusable JSON structures)
-// ---------------------------------------------------------------
-export type ExportedTag = {
-  id: number;
-  name: string;
-  nameEn: string;
-  color: string;
-  category: TagCategory;
-};
-
-export type ExportedImage = {
-  id: number;
-  filename: string;
-  sourceUrl: string | null;
-};
-
-export type ExportedLink = {
-  id: number;
-  label: string;
-  url: string;
-};
-
-export type ExportedPiece = {
-  id: number;
-  title: string;
-  titleEn: string;
-  difficulty: number;
-  notes: string;
-  tags: Record<TagCategory, ExportedTag[]>;
-  images: Record<ImageKind, ExportedImage[]>;
-  links: ExportedLink[];
-};
-
-export type ExportManifest = {
-  exportedAt: string;
-  pieceCount: number;
-  tagCount: number;
-  imageCount: number;
-  schemaVersion: number;
-};
+// Shared export types imported from ../src/lib/export-types.ts
 
 // ---------------------------------------------------------------
 // Read data from SQLite
@@ -130,25 +96,29 @@ function readData() {
   const tags = sqlite.prepare("SELECT * FROM tags ORDER BY id").all() as TagRow[];
   const songTags = sqlite.prepare("SELECT * FROM song_tags").all() as { song_id: number; tag_id: number }[];
   const images = sqlite.prepare("SELECT * FROM song_images ORDER BY sort_order, id").all() as SongImageRow[];
-  const links = sqlite.prepare("SELECT * FROM youtube_links ORDER BY sort_order, id").all() as YoutubeLinkRow[];
+  const links = sqlite.prepare("SELECT * FROM video_links ORDER BY sort_order, id").all() as VideoLinkRow[];
+  const singleSelectRows = sqlite.prepare("SELECT * FROM single_select_categories ORDER BY category").all() as { category: string }[];
 
   // Build tag map
   const tagMap = new Map(tags.map((t) => [t.id, t]));
 
-  // Group tags per piece per category
-  const songTagMap = new Map<number, Record<TagCategory, ExportedTag[]>>();
+  // Group tags per piece per category (dynamic, not hardcoded)
+  const songTagMap = new Map<number, Record<string, ExportedTag[]>>();
   for (const st of songTags) {
     const tag = tagMap.get(st.tag_id);
     if (!tag) continue;
+    const cat = tag.category as string;
     if (!songTagMap.has(st.song_id)) {
-      songTagMap.set(st.song_id, { pitch: [], technique: [], rhythm: [] });
+      songTagMap.set(st.song_id, {});
     }
-    songTagMap.get(st.song_id)![tag.category].push({
+    const pieceTags = songTagMap.get(st.song_id)!;
+    if (!pieceTags[cat]) pieceTags[cat] = [];
+    pieceTags[cat].push({
       id: tag.id,
       name: tag.name,
       nameEn: tag.name_en,
       color: tag.color,
-      category: tag.category
+      category: cat
     });
   }
 
@@ -180,7 +150,7 @@ function readData() {
 
   sqlite.close();
 
-  return { songs, tags, songTagMap, songImageMap, songLinkMap };
+  return { songs, tags, songTagMap, songImageMap, songLinkMap, singleSelectRows };
 }
 
 // ---------------------------------------------------------------
@@ -222,8 +192,8 @@ async function copyImages(songImageMap: Map<number, Record<ImageKind, SongImageR
 // ---------------------------------------------------------------
 async function main() {
   console.log("📖 Reading data from", DB_PATH);
-  const { songs, tags, songTagMap, songImageMap, songLinkMap } = readData();
-  console.log(`   Found ${songs.length} pieces, ${tags.length} tags`);
+  const { songs, tags, songTagMap, songImageMap, songLinkMap, singleSelectRows } = readData();
+  console.log(`   Found ${songs.length} pieces, ${tags.length} tags, ${singleSelectRows.length} single-select categories`);
 
   // Prepare output directories
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -236,7 +206,7 @@ async function main() {
     titleEn: s.title_en,
     difficulty: s.difficulty,
     notes: s.notes,
-    tags: songTagMap.get(s.id) ?? { pitch: [], technique: [], rhythm: [] },
+    tags: songTagMap.get(s.id) ?? {},
     images: songImageMap.get(s.id) ?? { staff: [], numbered: [] },
     links: songLinkMap.get(s.id) ?? []
   }));
@@ -285,13 +255,21 @@ async function main() {
     "utf-8"
   );
 
+  // Write single-select-categories.json
+  console.log("📝 Writing single-select-categories.json...");
+  fs.writeFileSync(
+    path.join(OUTPUT_DIR, "single-select-categories.json"),
+    JSON.stringify(singleSelectRows.map((r) => r.category), null, 2),
+    "utf-8"
+  );
+
   // Write manifest.json
   const manifest: ExportManifest = {
     exportedAt: new Date().toISOString(),
     pieceCount: exportedPieces.length,
     tagCount: exportedTags.length,
     imageCount,
-    schemaVersion: 1
+    schemaVersion: 2
   };
   console.log("📝 Writing manifest.json...");
   fs.writeFileSync(

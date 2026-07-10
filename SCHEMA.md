@@ -8,13 +8,14 @@ Any downstream tool (static site generator, backup system, migration pipeline) c
 
 ```
 export-data/
-  manifest.json     # Export metadata
-  pieces.json       # Array of pieces with tags, images, links
-  tags.json         # Array of all tags
-  images/           # Re-encoded images with EXIF stripped
+  manifest.json                    # Export metadata
+  pieces.json                      # Array of pieces with tags, images, links
+  tags.json                        # Array of all tags
+  single-select-categories.json    # Array of single-select category names (v2+)
+  images/                          # Re-encoded images with EXIF stripped
     {pieceId}/
-      staff/        # Staff notation images
-      numbered/     # Numbered notation images
+      staff/                       # Staff notation images
+      numbered/                    # Numbered notation images
 ```
 
 ## File: `manifest.json`
@@ -25,7 +26,7 @@ export-data/
   "pieceCount": 42,
   "tagCount": 7,
   "imageCount": 156,
-  "schemaVersion": 1
+  "schemaVersion": 2
 }
 ```
 
@@ -35,7 +36,7 @@ export-data/
 | `pieceCount`   | number | Number of pieces in the export         |
 | `tagCount`     | number | Number of tags                         |
 | `imageCount`   | number | Number of image files copied           |
-| `schemaVersion`| number | Schema version (currently 1)           |
+| `schemaVersion`| number | Schema version (currently 2)           |
 
 ## File: `tags.json`
 
@@ -148,7 +149,7 @@ Each link object:
 |--------|--------|----------------------------|
 | `id`   | number | Unique link ID             |
 | `label`| string | Display label (e.g. "Tutorial") |
-| `url`  | string | URL (e.g. YouTube link)    |
+| `url`  | string | URL (e.g. Video link)    |
 
 ## Image Paths
 
