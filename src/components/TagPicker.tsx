@@ -29,6 +29,15 @@ function pitchOctaveInfo(name: string): { octave: number; note: number; accident
   return { octave: match[3] ? parseInt(match[3]) : 4, note, accidental: accMap[acc] ?? 0 };
 }
 
+/** Numeric sort key for pitch tags — lower = lower pitch (rainbow order). */
+function pitchSortKey(tag: Tag): number {
+  const info = pitchOctaveInfo(tag.name) ?? pitchOctaveInfo(tag.nameEn);
+  if (!info) return -1;
+  const { octave, note, accidental } = info;
+  // octave spans 100, note spans 10, accidental adjusts within note
+  return octave * 100 + note * 10 + Math.round(accidental * 10);
+}
+
 function hslToHex(h: number, s: number, l: number): string {
   // Normalize: h ∈ [0, 360), s,l ∈ [0, 100]
   h = ((h % 360) + 360) % 360;
@@ -128,10 +137,15 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
   const otherLocale: Locale = locale === "zh-CN" ? "en-US" : "zh-CN";
   const [localTags, setLocalTags] = useState(tags);
   useEffect(() => setLocalTags(tags), [tags]);
+  // Sort pitch tags by pitch value (low→high) for rainbow ordering
+  const sortedLocalTags = useMemo(() => {
+    if (category !== "pitch") return localTags;
+    return [...localTags].sort((a, b) => pitchSortKey(a) - pitchSortKey(b));
+  }, [localTags, category]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
-  const visibleTags = selectedOnly ? localTags.filter((tag) => selectedSet.has(tag.id)) : localTags;
-  const selectedTags = localTags.filter((tag) => selectedSet.has(tag.id));
-  const availableTags = localTags.filter((tag) => !selectedSet.has(tag.id));
+  const visibleTags = selectedOnly ? sortedLocalTags.filter((tag) => selectedSet.has(tag.id)) : sortedLocalTags;
+  const selectedTags = sortedLocalTags.filter((tag) => selectedSet.has(tag.id));
+  const availableTags = sortedLocalTags.filter((tag) => !selectedSet.has(tag.id));
   const [selectValue, setSelectValue] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createName, setCreateName] = useState("");
@@ -152,22 +166,24 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
   }, [createName, createNameEn, category]);
 
   // Auto-fill the other pitch field when a valid pitch is detected
+  // Uses an equality guard (createNameEn !== trimmed) instead of a one-shot ref
+  // to ensure subsequent edits to the same field still re-sync.
   useEffect(() => {
     if (category !== "pitch") return;
 
     const source = autoFillSourceRef.current;
-    autoFillSourceRef.current = null; // prevent re-entry loops
+    autoFillSourceRef.current = null;
 
     if (!source) return;
 
     if (source === "name") {
       const trimmed = createName.trim();
-      if (PITCH_RE.test(trimmed)) {
+      if (PITCH_RE.test(trimmed) && createNameEn !== trimmed) {
         setCreateNameEn(trimmed);
       }
     } else {
       const trimmed = createNameEn.trim();
-      if (PITCH_RE.test(trimmed)) {
+      if (PITCH_RE.test(trimmed) && createName !== trimmed) {
         setCreateName(trimmed);
       }
     }
@@ -431,6 +447,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                       <button key={mark} className="pill-add-button" type="button" onClick={() => {
                         const setter = activeCreateInput === "nameEn" ? setCreateNameEn : setCreateName;
                         setter((value) => `${mark}${value}`);
+                        autoFillSourceRef.current = activeCreateInput === "nameEn" ? "nameEn" : "name";
                         if (activeCreateInput === "nameEn") {
                           createNameEnInputRef.current?.focus();
                         } else {
@@ -678,6 +695,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
                     <button key={mark} className="pill-add-button" type="button" onClick={() => {
                       const setter = activeCreateInput === "nameEn" ? setCreateNameEn : setCreateName;
                       setter((value) => `${mark}${value}`);
+                      autoFillSourceRef.current = activeCreateInput === "nameEn" ? "nameEn" : "name";
                       if (activeCreateInput === "nameEn") {
                         createNameEnInputRef.current?.focus();
                       } else {
