@@ -265,7 +265,9 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
   }
 
   async function deleteTag(tag: Tag) {
-    if (!onDelete || !confirm(t.deleteTagConfirm)) return;
+    if (!onDelete) return;
+    const hasSongs = (tag as Tag & { songCount?: number }).songCount;
+    if (hasSongs && !confirm(t.deleteTagConfirm)) return;
     await onDelete(tag);
     onChange(selected.filter((id) => id !== tag.id));
   }

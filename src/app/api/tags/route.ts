@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { tags } from "@/db/schema";
+import { songTags, tags } from "@/db/schema";
 import { apiError, serverError } from "@/lib/api";
 
 const tagSchema = z.object({
@@ -13,7 +14,20 @@ const tagSchema = z.object({
 
 export async function GET() {
   try {
-    return NextResponse.json(db.select().from(tags).all());
+    const rows = db
+      .select({
+        id: tags.id,
+        name: tags.name,
+        nameEn: tags.nameEn,
+        color: tags.color,
+        category: tags.category,
+        songCount: sql<number>`count(${songTags.songId})`.mapWith(Number),
+      })
+      .from(tags)
+      .leftJoin(songTags, sql`${tags.id} = ${songTags.tagId}`)
+      .groupBy(tags.id)
+      .all();
+    return NextResponse.json(rows);
   } catch (error) {
     return serverError(error);
   }
