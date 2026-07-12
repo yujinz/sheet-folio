@@ -242,11 +242,23 @@ if [[ -n "$R2_BUCKET" ]]; then
 
   local_exp_name="$(basename "$exp_archive")"
 
-  info "Uploading $local_exp_name ..."
-  aws s3 cp "$exp_archive" "s3://${R2_BUCKET}/${local_exp_name}" $endpoint_flag
+  # Extract SHA from filename (format: export-YYYYMMDD_HHMMSS-<sha12>.tar.gz)
+  local sha
+  sha="${local_exp_name##*-}"
+  sha="${sha%.tar.gz}"
 
-  # Prune R2 — keep last KEEP archives with the export- prefix
-  r2_prune "$R2_BUCKET" "export-" "$KEEP" "$R2_ENDPOINT"
+  # Check if this SHA already exists on R2
+  local r2_objects
+  r2_objects="$(r2_list_objects "$R2_BUCKET" "$R2_ENDPOINT")"
+  if echo "$r2_objects" | grep -q "$sha"; then
+    info "SHA $sha already exists on R2 — skipping upload"
+  else
+    info "Uploading $local_exp_name ..."
+    aws s3 cp "$exp_archive" "s3://${R2_BUCKET}/${local_exp_name}" $endpoint_flag
+
+    # Only prune R2 when we actually added a new object
+    r2_prune "$R2_BUCKET" "export-" "$KEEP" "$R2_ENDPOINT"
+  fi
 
   info "R2 backup complete"
 fi
