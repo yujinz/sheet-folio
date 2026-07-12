@@ -57,11 +57,11 @@ VOLUME_SRC="volumes/app"
 EXPORT_DEFAULT="export-data"
 
 # ------------------------------------------------------------------
-# Args
+# Args (CLI overrides .env values)
 # ------------------------------------------------------------------
 EXPORT_DIR="$EXPORT_DEFAULT"
-R2_BUCKET=""
-R2_ENDPOINT=""
+R2_BUCKET="${R2_BUCKET:-}"
+R2_ENDPOINT="${R2_ENDPOINT:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -79,8 +79,8 @@ EXPORT_DIR="$(realpath -m "$EXPORT_DIR")"
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
-info()  { local m="$*"; log "  $m"; echo "==> $m" >&2; }
-err()   { local m="$*"; log "  ERROR: $m"; echo "ERROR: $m" >&2; }
+info()  { local m="$*"; log "  $m"; echo "  $m" >&2; }
+err()   { local m="$*"; log "  ERROR: $m"; echo "  ERROR: $m" >&2; }
 ts()    { date +%Y%m%d_%H%M%S; }
 
 # sha256() -> prints first 12 hex chars of stdin's sha256
@@ -243,12 +243,11 @@ if [[ -n "$R2_BUCKET" ]]; then
   local_exp_name="$(basename "$exp_archive")"
 
   # Extract SHA from filename (format: export-YYYYMMDD_HHMMSS-<sha12>.tar.gz)
-  local sha
   sha="${local_exp_name##*-}"
   sha="${sha%.tar.gz}"
 
   # Check if this SHA already exists on R2
-  local r2_objects
+  r2_objects
   r2_objects="$(r2_list_objects "$R2_BUCKET" "$R2_ENDPOINT")"
   if echo "$r2_objects" | grep -q "$sha"; then
     info "SHA $sha already exists on R2 — skipping upload"
