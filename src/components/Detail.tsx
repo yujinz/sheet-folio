@@ -540,6 +540,13 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
           {t.source}: {image.sourceUrl}
         </a>
       )}
+      <Link
+        href="/"
+        className="absolute bottom-3 right-3 z-40 flex items-center justify-center rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm hover:bg-white/40 transition-colors"
+        aria-label={t.backToDirectory}
+      >
+        <House size={24} />
+      </Link>
     </div>
   );
 }

@@ -313,7 +313,7 @@ export default function TagPicker({ category, tags, selected, onChange, onCreate
           {category === "pitch" && (
             <div className="flex items-center gap-1.5">
               {["♭", "♯", "♮"].map((mark) => (
-                <button key={mark} className="pill-add-button" type="button" onClick={() => { const setter = activeCreateInput === "nameEn" ? setCreateNameEn : setCreateName; setter((value) => `${mark}${value}`); autoFillSourceRef.current = activeCreateInput === "nameEn" ? "nameEn" : "name"; if (activeCreateInput === "nameEn") { createNameEnInputRef.current?.focus(); } else { createNameInputRef.current?.focus(); } }}>{mark}</button>
+                <button key={mark} className="pill-add-button" type="button" onClick={() => { const ref = activeCreateInput === "nameEn" ? createNameEnInputRef : createNameInputRef; const input = ref.current; const cursor = input?.selectionStart ?? (activeCreateInput === "nameEn" ? createNameEn.length : createName.length); const setter = activeCreateInput === "nameEn" ? setCreateNameEn : setCreateName; setter((value) => value.slice(0, cursor) + mark + value.slice(cursor)); input?.focus(); }}>{mark}</button>
               ))}
             </div>
           )}
