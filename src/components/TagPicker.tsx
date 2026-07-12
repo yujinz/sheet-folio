@@ -273,7 +273,9 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
     try {
       const created = await onCreate({ name: trimmed || trimmedAlt, nameAlt: trimmedAlt, color: createColor, category });
       setLocalTags((prev) => [...prev, created]);
-      if (compact) onChange([...selected, created.id]);
+      if (compact) {
+        onChange(singleSelect ? [created.id] : [...selected, created.id]);
+      }
       setShowCreateDialog(false);
       setCreateName("");
       setCreateNameAlt("");
@@ -366,33 +368,37 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
   if (compact) {
     if (singleSelect) {
       return (
-        <span className="inline-flex flex-wrap items-start gap-2">
-          <select
-            key={localTags.map(t => t.id).join(',')}
-            aria-label={categoryLabel}
-            className="select tag-add-select"
-            value={selected.length > 0 ? String(selected[0]) : ""}
-            onChange={async (event) => {
-              const val = event.target.value;
-              if (val === "__new__") {
-                setCreateName("");
-                setCreateNameAlt("");
-                setShowCreateDialog(true);
-              } else if (val === "") {
-                onChange([]);
-              } else {
-                const id = Number(val);
-                if (id) onChange([id]);
-              }
-            }}
-          >
-            <option value="">{t.choose}</option>
-            {localTags.map((tag) => (
-              <option key={tag.id} value={tag.id}>{tagDisplayName(tag, locale)}</option>
-            ))}
-            <option value="__new__">+ {t.addTag}</option>
-          </select>
-        </span>
+        <>
+          <span className="inline-flex flex-wrap items-start gap-2">
+            <select
+              key={localTags.map(t => t.id).join(',')}
+              aria-label={categoryLabel}
+              className="select tag-add-select"
+              value={selected.length > 0 ? String(selected[0]) : ""}
+              onChange={async (event) => {
+                const val = event.target.value;
+                if (val === "__new__") {
+                  setCreateName("");
+                  setCreateNameAlt("");
+                  setShowCreateDialog(true);
+                } else if (val === "") {
+                  onChange([]);
+                } else {
+                  const id = Number(val);
+                  if (id) onChange([id]);
+                }
+              }}
+            >
+              <option value="">{t.choose}</option>
+              {localTags.map((tag) => (
+                <option key={tag.id} value={tag.id}>{tagDisplayName(tag, locale)}</option>
+              ))}
+              <option value="__new__">+ {t.addTag}</option>
+            </select>
+          </span>
+          {editDialog}
+          {createDialog}
+        </>
       );
     }
     return (

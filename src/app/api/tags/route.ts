@@ -34,7 +34,7 @@ export async function GET() {
       .select({
         id: tags.id,
         name: tags.name,
-        nameEn: tags.nameEn,
+        nameAlt: tags.nameAlt,
         color: tags.color,
         category: tags.category,
         songCount: sql<number>`count(${songTags.songId})`.mapWith(Number),
