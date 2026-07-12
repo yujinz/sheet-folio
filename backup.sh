@@ -14,6 +14,10 @@
 #   AWS_ENDPOINT_URL_S3     — (optional) R2 endpoint (if not in --r2-endpoint)
 # ============================================================================
 # Quick log check: tail -6 $HOME/logs/sheet-folio-backup.log
+
+# cron runs with a minimal PATH; extend it so `aws` CLI is found
+export PATH="/usr/local/bin:$HOME/.local/bin:$PATH"
+
 set -euo pipefail
 
 LOG_FILE="$HOME/logs/sheet-folio-backup.log"
@@ -99,29 +103,37 @@ make_archive() {
 
   mkdir -p "$out"
 
-  local tmpfile
-  tmpfile="$(mktemp "/tmp/${prefix}-XXXXXX.tar.gz")"
+  # Compute SHA over file content only (exclude tar metadata like mtime)
+  # by making a reproducible tarball with --sort and --mtime.
+  local content_sha
+  content_sha="$(
+    tar -czf /dev/stdout \
+      --sort=name \
+      --mtime='1970-01-01 00:00:00' \
+      -C "$(dirname "$src")" "$(basename "$src")" \
+      | sha_prefix
+  )"
 
-  info "Packing $src -> $(basename "$tmpfile") ..."
-  tar -czf "$tmpfile" -C "$(dirname "$src")" "$(basename "$src")"
-
-  local sha
-  sha="$(sha_prefix < "$tmpfile")"
-  local ts_val
-  ts_val="$(ts)"
-  local final_name="${prefix}-${ts_val}-${sha}.tar.gz"
-  local dst="${out}/${final_name}"
-
-  # Dedup: if a file with the same SHA already exists, just touch it
-  for existing in "${out}/${prefix}-"*"-${sha}.tar.gz"; do
+  # Dedup: if a file with the same content SHA already exists, just touch it
+  for existing in "${out}/${prefix}-"*"-${content_sha}.tar.gz"; do
     if [[ -f "$existing" ]]; then
-      info "SHA $sha already exists as $(basename "$existing"), touching & skipping ..."
+      info "Content SHA $content_sha already exists as $(basename "$existing"), touching & skipping ..."
       touch "$existing"
-      rm -f "$tmpfile"
       echo "$existing"
       return
     fi
   done
+
+  # No match — build the real tarball (with real mtimes preserved)
+  local tmpfile
+  tmpfile="$(mktemp "/tmp/${prefix}-XXXXXX.tar.gz")"
+  info "Packing $src -> $(basename "$tmpfile") ..."
+  tar -czf "$tmpfile" -C "$(dirname "$src")" "$(basename "$src")"
+
+  local ts_val
+  ts_val="$(ts)"
+  local final_name="${prefix}-${ts_val}-${content_sha}.tar.gz"
+  local dst="${out}/${final_name}"
 
   mv "$tmpfile" "$dst"
   echo "$dst"
