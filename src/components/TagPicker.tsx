@@ -131,22 +131,23 @@ type Props = {
   selectedOnly?: boolean;
   compact?: boolean;
   singleSelect?: boolean;
+  isPitchCategory?: boolean;
   defaultColor?: string;
   onDefaultColorChange?: (color: string) => void;
   onRenameCategory?: () => void;
   onDeleteCategory?: () => void;
 };
 
-export default function TagPicker({ category, label, tags, selected, onChange, onCreate, onDelete, onUpdate, editingTags, selectedOnly, compact, singleSelect, defaultColor, onDefaultColorChange, onRenameCategory, onDeleteCategory }: Props) {
+export default function TagPicker({ category, label, tags, selected, onChange, onCreate, onDelete, onUpdate, editingTags, selectedOnly, compact, singleSelect, defaultColor, onDefaultColorChange, onRenameCategory, onDeleteCategory, isPitchCategory }: Props) {
   const { locale, t } = useLocale();
   const otherLocale: Locale = locale === "zh-CN" ? "en-US" : "zh-CN";
   const [localTags, setLocalTags] = useState(tags);
   useEffect(() => setLocalTags(tags), [tags]);
   // Sort pitch tags by pitch value (low→high) for rainbow ordering
   const sortedLocalTags = useMemo(() => {
-    if (category !== "pitch") return localTags;
+    if (!isPitchCategory) return localTags;
     return [...localTags].sort((a, b) => pitchSortKey(a) - pitchSortKey(b));
-  }, [localTags, category]);
+  }, [localTags, isPitchCategory]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const visibleTags = selectedOnly ? sortedLocalTags.filter((tag) => selectedSet.has(tag.id)) : sortedLocalTags;
   const selectedTags = sortedLocalTags.filter((tag) => selectedSet.has(tag.id));
@@ -165,17 +166,17 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
 
   // Whether the current create-dialog input is a recognized pitch
   const detectedPitch = useMemo(() => {
-    if (category !== "pitch") return null;
+    if (!isPitchCategory) return null;
     const name = (createName || createNameAlt).trim();
     const m = name.match(PITCH_RE);
     return m ? m[0] : null;
-  }, [createName, createNameAlt, category]);
+  }, [createName, createNameAlt, isPitchCategory]);
 
   // Auto-fill the other pitch field when a valid pitch is detected
   // Uses an equality guard (createNameAlt !== trimmed) instead of a one-shot ref
   // to ensure subsequent edits to the same field still re-sync.
   useEffect(() => {
-    if (category !== "pitch") return;
+    if (!isPitchCategory) return;
 
     const source = autoFillSourceRef.current;
     autoFillSourceRef.current = null;
@@ -193,7 +194,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
         setCreateName(trimmed);
       }
     }
-  }, [createName, createNameAlt, category]);
+  }, [createName, createNameAlt, isPitchCategory]);
 
   // Sync defaultColor from parent when it changes
   useEffect(() => {
@@ -304,7 +305,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
           <input ref={editNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
           <input className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={editNameAlt} onChange={(e) => setEditNameAlt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
           <div className="flex items-center gap-2">
-            {category === "pitch" && (
+            {isPitchCategory && (
               <>
                 {["♭", "♯", "♮"].map((mark) => (
                   <button key={mark} className="pill-add-button" type="button" onClick={() => { if (editNameAlt && !editName) { setEditNameAlt(mark + editNameAlt); } else { setEditName(mark + editName); } editNameInputRef.current?.focus(); }}>{mark}</button>
@@ -312,7 +313,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
                 <button aria-label="Assign pitch color" className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap" style={{ background: "none" }} type="button" title="Assign color based on pitch octave" onClick={() => { const pitchName = locale === "en-US" ? (editNameAlt || editName) : (editName || editNameAlt); const c = pitchColorFromName(pitchName); if (c) setEditColor(c); }}><Music size={12} /> Assign color by pitch</button>
               </>
             )}
-            {category !== "pitch" && (
+            {!isPitchCategory && (
               <button aria-label="Cycle tag color" className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap" style={{ background: "none" }} type="button" title="Next palette color" onClick={() => setEditColor(nextTagColor(editColor))}><Palette size={12} /> Cycle color</button>
             )}
             <input aria-label={t.tagColor} className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={editColor} onChange={(e) => setEditColor(e.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
@@ -333,7 +334,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
         <div className="grid gap-3">
           <input ref={createNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={createName} onChange={(e) => { setCreateName(e.target.value); autoFillSourceRef.current = "name"; }} onFocus={() => setActiveCreateInput("name")} onKeyDown={(e) => { if (e.key === "Enter") { if (createNameAltInputRef.current && !createNameAlt.trim()) { createNameAltInputRef.current.focus(); e.preventDefault(); } else { handleCreateFromDialog(); } } if (e.key === "Escape") setShowCreateDialog(false); }} />
           <input ref={createNameAltInputRef} className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={createNameAlt} onChange={(e) => { setCreateNameAlt(e.target.value); autoFillSourceRef.current = "nameAlt"; }} onFocus={() => setActiveCreateInput("nameAlt")} onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }} />
-          {category === "pitch" && (
+          {isPitchCategory && (
             <div className="flex items-center gap-1.5">
               {["♭", "♯", "♮"].map((mark) => (
                 <button key={mark} className="pill-add-button" type="button" onClick={() => { const setter = activeCreateInput === "nameAlt" ? setCreateNameAlt : setCreateName; setter((value) => `${mark}${value}`); autoFillSourceRef.current = activeCreateInput === "nameAlt" ? "nameAlt" : "name"; if (activeCreateInput === "nameAlt") { createNameAltInputRef.current?.focus(); } else { createNameInputRef.current?.focus(); } }}>{mark}</button>
@@ -341,7 +342,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
             </div>
           )}
           <div className="flex items-center gap-2">
-            {category === "pitch" ? (
+            {isPitchCategory ? (
               <button aria-label="Assign pitch color" className={`inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs whitespace-nowrap cursor-pointer transition-colors ${detectedPitch ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--line)] bg-white"}`} type="button" title={detectedPitch ? `Assign color for ${detectedPitch}` : "Assign color based on pitch octave"} onClick={() => { const pitchName = locale === "en-US" ? (createNameAlt || createName) : (createName || createNameAlt); const c = pitchColorFromName(pitchName); if (c) setCreateColor(c); }}><Music size={12} /> Assign color by pitch</button>
             ) : (
               <button aria-label="Cycle tag color" className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--line)] bg-white px-3 text-xs whitespace-nowrap cursor-pointer" type="button" title="Next palette color" onClick={() => setCreateColor(nextTagColor(createColor))}><Palette size={12} /> Cycle color</button>

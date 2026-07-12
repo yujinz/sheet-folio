@@ -293,6 +293,14 @@ export default function Directory() {
     return userCategories.find((c) => c.key === key);
   }
 
+  /** Check whether a category key represents the pitch category in either language. */
+  function isPitchKey(key: string): boolean {
+    if (!key) return false;
+    const lower = key.toLowerCase();
+    return (messages["zh-CN"] as Record<string, string>).pitch === lower
+        || (messages["en-US"] as Record<string, string>).pitch.toLowerCase() === lower;
+  }
+
   // Ensure filters has entries for extra categories
   useEffect(() => {
     setFilters((prev) => {
@@ -563,6 +571,7 @@ export default function Directory() {
               ) : (
                 <TagPicker
                   category={category}
+                  isPitchCategory={isPitchKey(category)}
                   label={userCat ? categoryDisplayName(userCat, locale) : (isCore ? undefined : getCategoryLabel(userCategories, category, locale))}
                   tags={tags.filter((tag) => tag.category === category)}
                   selected={filters[category] ?? []}
@@ -668,7 +677,7 @@ export default function Directory() {
             <tr>
               <th style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
               <th style={{ width: 200 }}><button onClick={() => sortBy("title")}>{t.title} {sort.key === "title" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
-              {categories.map((category) => <th key={category} style={{ width: 170 }}><button onClick={() => sortBy(category)}>{t[category]}</button></th>)}
+              {categories.filter((cat) => !hiddenCoreCategories.includes(cat)).map((category) => <th key={category} style={{ width: 170 }}><button onClick={() => sortBy(category)}>{t[category]}</button></th>)}
               {extraCategoryKeys.map((key) => <th key={key} style={{ width: 170 }}>{getCategoryLabel(userCategories, key, locale)}</th>)}
               <th style={{ width: 170 }}><button onClick={() => sortBy("notes")}>{t.notes}</button></th>
             </tr>
@@ -676,7 +685,7 @@ export default function Directory() {
           <tbody>
             {visible.map((piece) => {
               function buildTagIds(category: string, ids: number[]) {
-                return [...categories, ...extraCategoryKeys].flatMap((cat) =>
+                return [...categories.filter((cat) => !hiddenCoreCategories.includes(cat)), ...extraCategoryKeys].flatMap((cat) =>
                   cat === category ? ids : (piece.tags[cat]?.map((tag) => tag.id) ?? [])
                 );
               }
@@ -693,11 +702,12 @@ export default function Directory() {
                     <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}</Link>
                   </span>
                 </td>
-                {categories.map((category) => (
+                {categories.filter((cat) => !hiddenCoreCategories.includes(cat)).map((category) => (
                   <td key={category}>
                     <TagPicker
                       compact
                       selectedOnly
+                      isPitchCategory={isPitchKey(category)}
                       singleSelect={singleSelectCategories.has(category)}
                       category={category}
                       tags={tags.filter((tag) => tag.category === category)}
@@ -714,6 +724,7 @@ export default function Directory() {
                     <TagPicker
                       compact
                       selectedOnly
+                      isPitchCategory={isPitchKey(key)}
                       singleSelect={singleSelectCategories.has(key)}
                       category={key}
                       label={getCategoryLabel(userCategories, key, locale)}
