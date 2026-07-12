@@ -7,7 +7,7 @@ function makeTag(overrides: Partial<Tag> = {}): Tag {
   return {
     id: 1,
     name: "高音",
-    nameEn: "High pitch",
+    nameAlt: "High pitch",
     color: "#2563eb",
     category: "pitch",
     ...overrides,
@@ -16,48 +16,48 @@ function makeTag(overrides: Partial<Tag> = {}): Tag {
 
 describe("tagDisplayName", () => {
   describe("when locale is en-US", () => {
-    it("returns nameEn when both name and nameEn are present", () => {
-      const tag = makeTag({ name: "高音", nameEn: "High pitch" });
+    it("returns nameAlt when both name and nameAlt are present", () => {
+      const tag = makeTag({ name: "高音", nameAlt: "High pitch" });
       expect(tagDisplayName(tag, "en-US")).toBe("High pitch");
     });
 
-    it("falls back to name when nameEn is empty", () => {
-      const tag = makeTag({ name: "高音", nameEn: "" });
+    it("falls back to name when nameAlt is empty", () => {
+      const tag = makeTag({ name: "高音", nameAlt: "" });
       expect(tagDisplayName(tag, "en-US")).toBe("高音");
     });
 
-    it("falls back to name when nameEn is undefined-like (empty string)", () => {
-      const tag = makeTag({ name: "连音", nameEn: "" });
+    it("falls back to name when nameAlt is undefined-like (empty string)", () => {
+      const tag = makeTag({ name: "连音", nameAlt: "" });
       expect(tagDisplayName(tag, "en-US")).toBe("连音");
     });
   });
 
   describe("when locale is zh-CN", () => {
-    it("returns name when both name and nameEn are present", () => {
-      const tag = makeTag({ name: "高音", nameEn: "High pitch" });
+    it("returns name when both name and nameAlt are present", () => {
+      const tag = makeTag({ name: "高音", nameAlt: "High pitch" });
       expect(tagDisplayName(tag, "zh-CN")).toBe("高音");
     });
 
-    it("falls back to nameEn when name is empty", () => {
-      const tag = makeTag({ name: "", nameEn: "High pitch" });
+    it("falls back to nameAlt when name is empty", () => {
+      const tag = makeTag({ name: "", nameAlt: "High pitch" });
       expect(tagDisplayName(tag, "zh-CN")).toBe("High pitch");
     });
 
-    it("falls back to nameEn when name is empty string", () => {
-      const tag = makeTag({ name: "", nameEn: "Technique" });
+    it("falls back to nameAlt when name is empty string", () => {
+      const tag = makeTag({ name: "", nameAlt: "Technique" });
       expect(tagDisplayName(tag, "zh-CN")).toBe("Technique");
     });
   });
 
   describe("edge cases", () => {
     it("handles tag with only Chinese name", () => {
-      const tag = makeTag({ name: "高音", nameEn: "" });
+      const tag = makeTag({ name: "高音", nameAlt: "" });
       expect(tagDisplayName(tag, "en-US")).toBe("高音");
       expect(tagDisplayName(tag, "zh-CN")).toBe("高音");
     });
 
     it("handles tag with only English name", () => {
-      const tag = makeTag({ name: "", nameEn: "High pitch" });
+      const tag = makeTag({ name: "", nameAlt: "High pitch" });
       expect(tagDisplayName(tag, "en-US")).toBe("High pitch");
       expect(tagDisplayName(tag, "zh-CN")).toBe("High pitch");
     });
@@ -73,7 +73,7 @@ const FIRST_COLOR = "#9e6aba";
 const SECOND_COLOR = "#c46a9e";
 
 function tag(color: string, overrides: Partial<Tag> = {}): Tag {
-  return { id: 1, name: "tag", nameEn: "", color, category: "pitch", ...overrides };
+  return { id: 1, name: "tag", nameAlt: "", color, category: "pitch", ...overrides };
 }
 
 describe("pickDefaultColor", () => {
@@ -201,8 +201,8 @@ describe("TagPicker compact mode", () => {
 
   it("opens the create tag dialog when '+ 新增标签' is selected from the dropdown", () => {
     const tags = [
-      { id: 1, name: "高音", nameEn: "", color: "#2563eb", category: "pitch" as const },
-      { id: 2, name: "低音", nameEn: "", color: "#0891b2", category: "pitch" as const },
+      { id: 1, name: "高音", nameAlt: "", color: "#2563eb", category: "pitch" as const },
+      { id: 2, name: "低音", nameAlt: "", color: "#0891b2", category: "pitch" as const },
     ];
 
     render(

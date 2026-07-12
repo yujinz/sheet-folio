@@ -8,13 +8,14 @@ Any downstream tool (static site generator, backup system, migration pipeline) c
 
 ```
 export-data/
-  manifest.json     # Export metadata
-  pieces.json       # Array of pieces with tags, images, links
-  tags.json         # Array of all tags
-  images/           # Re-encoded images with EXIF stripped
+  manifest.json                    # Export metadata
+  pieces.json                      # Array of pieces with tags, images, links
+  tags.json                        # Array of all tags
+  single-select-categories.json    # Array of single-select category names (v2+)
+  images/                          # Re-encoded images with EXIF stripped
     {pieceId}/
-      staff/        # Staff notation images
-      numbered/     # Numbered notation images
+      staff/                       # Staff notation images
+      numbered/                    # Numbered notation images
 ```
 
 ## File: `manifest.json`
@@ -25,7 +26,7 @@ export-data/
   "pieceCount": 42,
   "tagCount": 7,
   "imageCount": 156,
-  "schemaVersion": 1
+  "schemaVersion": 2
 }
 ```
 
@@ -35,7 +36,7 @@ export-data/
 | `pieceCount`   | number | Number of pieces in the export         |
 | `tagCount`     | number | Number of tags                         |
 | `imageCount`   | number | Number of image files copied           |
-| `schemaVersion`| number | Schema version (currently 1)           |
+| `schemaVersion`| number | Schema version (currently 2)           |
 
 ## File: `tags.json`
 
@@ -46,7 +47,7 @@ Array of tag objects:
   {
     "id": 1,
     "name": "高音",
-    "nameEn": "High notes",
+    "nameAlt": "High notes",
     "color": "#2563eb",
     "category": "pitch"
   }
@@ -57,9 +58,11 @@ Array of tag objects:
 |----------|--------|------------------------------------------------|
 | `id`     | number | Unique tag ID                                  |
 | `name`   | string | Primary name (e.g. Chinese) — may be empty if only alternate |
-| `nameEn` | string | Alternate name (e.g. English) — may be empty if only primary |
+| `nameAlt` | string | Alternate name (e.g. English) — may be empty if only primary |
 | `color`  | string | Hex color code for display                     |
-| `category`| string | One of: `"pitch"`, `"technique"`, `"rhythm"` |
+| `category`| string | Any category name (free-text). Core: `"pitch"`, `"technique"`, `"rhythm"`. User-defined: e.g. `"genre"`, `"mood"`. |
+
+> The three core categories (`pitch`, `technique`, `rhythm`) are seeded automatically when the app is first created. They can be renamed or deleted like any other category.
 
 ## File: `pieces.json`
 
@@ -70,16 +73,16 @@ Array of piece objects:
   {
     "id": 1,
     "title": "欢乐颂",
-    "titleEn": "Ode to Joy",
+    "titleAlt": "Ode to Joy",
     "difficulty": 1,
     "notes": "Some practice notes",
     "tags": {
       "pitch": [],
       "technique": [
-        { "id": 3, "name": "连音", "nameEn": "Legato", "color": "#ea580c", "category": "technique" }
+        { "id": 3, "name": "连音", "nameAlt": "Legato", "color": "#ea580c", "category": "technique" }
       ],
       "rhythm": [
-        { "id": 6, "name": "附点", "nameEn": "Dotted", "color": "#c026d3", "category": "rhythm" }
+        { "id": 6, "name": "附点", "nameAlt": "Dotted", "color": "#c026d3", "category": "rhythm" }
       ]
     },
     "images": {
@@ -101,19 +104,25 @@ Array of piece objects:
 |------------|--------|----------------------------------------------------|
 | `id`       | number | Unique piece ID                                    |
 | `title`    | string | Primary title (e.g. Chinese) — may be empty if only alternate |
-| `titleEn`  | string | Alternate title (e.g. English) — may be empty if only primary |
+| `titleAlt`  | string | Alternate title (e.g. English) — may be empty if only primary |
 | `difficulty`| number| Difficulty level from 1 to 5                       |
 | `notes`    | string | Practice notes (may be empty)                      |
 
 ### tags (within piece)
 
-| Field    | Type   | Description                           |
-|----------|--------|---------------------------------------|
-| `pitch`  | array  | Array of tag objects in pitch category|
-| `technique`| array| Array of tag objects in technique     |
-| `rhythm` | array  | Array of tag objects in rhythm        |
+Tags are grouped by category into `Record<string, Tag[]>`. Each key is a category name, and the value is an array of tag objects in that category (can be empty).
 
-Each tag object in these arrays has the same structure as in `tags.json`.
+Categories registered in `single_select_categories` are single-select — a piece can have at most one tag from that category (enforced by the API on write).
+
+```json
+{
+  "technique": [{ "id": 3, "name": "连音", "nameAlt": "Legato", "color": "#ea580c", "category": "technique" }],
+  "rhythm": [{ "id": 6, "name": "附点", "nameAlt": "Dotted", "color": "#c026d3", "category": "rhythm" }],
+  "genre": [{ "id": 10, "name": "巴洛克", "nameAlt": "Baroque", "color": "#059669", "category": "genre" }]
+}
+```
+
+Each tag object has the same structure as in `tags.json`.
 
 ### images (within piece)
 
@@ -140,7 +149,7 @@ Each link object:
 |--------|--------|----------------------------|
 | `id`   | number | Unique link ID             |
 | `label`| string | Display label (e.g. "Tutorial") |
-| `url`  | string | URL (e.g. YouTube link)    |
+| `url`  | string | URL (e.g. Video link)    |
 
 ## Image Paths
 
@@ -158,8 +167,19 @@ images/{pieceId}/{kind}/{filename}
 
 All images have EXIF metadata stripped using sharp during export.
 
+## File: `single-select-categories.json`
+
+Array of category names that are configured as single-select (optional — absent if none):
+
+```json
+["genre", "mood"]
+```
+
+Each entry is a category key from the `tags` table. When a category appears here, a piece may have at most one tag from that category. The frontend renders radio buttons instead of checkboxes for these categories.
+
 ## Schema Version History
 
 | Version | Notes                                       |
 |---------|---------------------------------------------|
+| 2       | Added `single-select-categories.json`.      |
 | 1       | Initial schema                              |

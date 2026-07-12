@@ -5,6 +5,9 @@ export default defineConfig({
   test: {
     setupFiles: ["./tests/setup.ts"],
     include: ["tests/**/*.test.{ts,tsx}"],
+    env: {
+      DB_PATH: "./data/test-sheet-folio.db"
+    }
   },
   resolve: {
     alias: {

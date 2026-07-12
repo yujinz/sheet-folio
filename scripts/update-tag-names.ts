@@ -17,13 +17,13 @@ const updates: [string, string][] = [
   ["三连音", "Triplet"],
 ];
 
-const stmt = sqlite.prepare("UPDATE tags SET name_en = ? WHERE name = ? AND (name_en IS NULL OR name_en = '')");
+const stmt = sqlite.prepare("UPDATE tags SET name_alt = ? WHERE name = ? AND (name_alt IS NULL OR name_alt = '')");
 let updated = 0;
-for (const [name, nameEn] of updates) {
-  const info = stmt.run(nameEn, name);
+for (const [name, nameAlt] of updates) {
+  const info = stmt.run(nameAlt, name);
   if (info.changes > 0) {
     updated += info.changes;
-    console.log(`  Updated "${name}" → "${nameEn}"`);
+    console.log(`  Updated "${name}" → "${nameAlt}"`);
   }
 }
 

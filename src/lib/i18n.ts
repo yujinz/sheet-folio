@@ -52,11 +52,18 @@ export const messages = {
     noImages: "暂无图片",
     titleRequired: "请至少用一种语言填写曲名",
     tagExists: "该分类下已存在同名标签",
+    newCategory: "新分类",
     resetFilters: "重置筛选",
+    single: "单选",
+    singleSelect: "单选",
+    choose: "选择",
+    add: "添加",
     addToFavorites: "收藏",
     removeFromFavorites: "取消收藏",
     saveImage: "保存到相册",
-    cancel: "取消"
+    cancel: "取消",
+    categoryNameZh: "分类名称 (中文)",
+    categoryNameEn: "Category name (English)"
   },
   "en-US": {
     appTitle: "Sheet Music Manager",
@@ -105,10 +112,17 @@ export const messages = {
     titleRequired: "Enter a title in at least one language",
     tagExists: "A tag with this name already exists in this category",
     resetFilters: "Reset filters",
+    newCategory: "New Category",
+    single: "Single",
+    singleSelect: "Single",
+    choose: "Choose",
+    add: "Add",
     addToFavorites: "Add to favorites",
     removeFromFavorites: "Remove from favorites",
     saveImage: "Save to Photos",
-    cancel: "Cancel"
+    cancel: "Cancel",
+    categoryNameZh: "Category name (Chinese)",
+    categoryNameEn: "分类名称 (英文)"
   }
 } as const;
 

@@ -36,11 +36,11 @@ function createDb() {
     ["rhythm", "三连音", "Triplet", "#7c3aed"]
   ] as const;
 
-  const insertPreset = sqlite.prepare("INSERT OR IGNORE INTO tags (category, name, name_en, color) VALUES (?, ?, ?, ?)");
-  const updatePresetNameEn = sqlite.prepare("UPDATE tags SET name_en = ? WHERE name = ? AND (name_en IS NULL OR name_en = '')");
+  const insertPreset = sqlite.prepare("INSERT OR IGNORE INTO tags (category, name, name_alt, color) VALUES (?, ?, ?, ?)");
+  const updatePresetNameAlt = sqlite.prepare("UPDATE tags SET name_alt = ? WHERE name = ? AND (name_alt IS NULL OR name_alt = '')");
   for (const preset of presets) {
     insertPreset.run(preset[0], preset[1], preset[2], preset[3]);
-    updatePresetNameEn.run(preset[2], preset[1]);
+    updatePresetNameAlt.run(preset[2], preset[1]);
   }
 
   return { db, sqlite };

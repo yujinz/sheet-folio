@@ -1,23 +1,22 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { deviceZoom, songImages, songs, songTags, tags, youtubeLinks } from "@/db/schema";
-import type { ImageKind, Song, Tag, TagCategory } from "@/lib/types";
-
-const categories: TagCategory[] = ["pitch", "technique", "rhythm"];
+import { deviceZoom, songImages, songs, songTags, tags, videoLinks } from "@/db/schema";
+import { CORE_CATEGORIES } from "@/lib/types";
+import type { ImageKind, Song, Tag } from "@/lib/types";
 
 export function nowIso() {
   return new Date().toISOString();
 }
 
-export function groupTags(rows: Tag[]) {
-  return categories.reduce<Record<TagCategory, Tag[]>>((acc, category) => {
-    acc[category] = rows.filter((tag) => tag.category === category);
-    return acc;
-  }, { pitch: [], technique: [], rhythm: [] });
+export function groupTags(rows: Tag[]): Record<string, Tag[]> {
+  const cats = new Set(rows.map((tag) => tag.category));
+  // Always include core categories so frontend can safely access them
+  for (const core of CORE_CATEGORIES) cats.add(core);
+  return Object.fromEntries([...cats].map((cat) => [cat, rows.filter((tag) => tag.category === cat)])) as Record<string, Tag[]>;
 }
 
 export function getSongs(): Song[] {
-  const allSongs = db.select().from(songs).orderBy(asc(songs.difficulty), asc(sql`coalesce(${songs.title}, ${songs.titleEn})`)).all();
+  const allSongs = db.select().from(songs).orderBy(asc(songs.difficulty), asc(sql`coalesce(${songs.title}, ${songs.titleAlt})`)).all();
   const allTags = db.select().from(tags).all();
   const joins = db.select().from(songTags).all();
   const tagsById = new Map(allTags.map((tag) => [tag.id, tag]));
@@ -38,14 +37,13 @@ export function getSong(id: number): Song | null {
   const song = db.select().from(songs).where(eq(songs.id, id)).get();
   if (!song) return null;
   const selectedTags = db
-    .select({ id: tags.id, name: tags.name, nameEn: tags.nameEn, color: tags.color, category: tags.category })
+    .select({ id: tags.id, name: tags.name, nameAlt: tags.nameAlt, color: tags.color, category: tags.category })
     .from(songTags)
     .innerJoin(tags, eq(songTags.tagId, tags.id))
     .where(eq(songTags.songId, id))
     .all() as Tag[];
   const images = db.select().from(songImages).where(eq(songImages.songId, id)).orderBy(asc(songImages.sortOrder), asc(songImages.id)).all();
-  const links = db.select().from(youtubeLinks).where(eq(youtubeLinks.songId, id)).orderBy(asc(youtubeLinks.sortOrder), asc(youtubeLinks.id)).all();
-
+  const links = db.select().from(videoLinks).where(eq(videoLinks.songId, id)).orderBy(asc(videoLinks.sortOrder), asc(videoLinks.id)).all();
   return {
     ...song,
     tags: groupTags(selectedTags),

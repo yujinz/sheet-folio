@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from "vitest";
-import { inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import * as schema from "@/db/schema";
 
 // Clean up test data after all tests
@@ -8,7 +8,7 @@ const testSongTitles = ["S1", "S2", "Detail Test", "Tag Test", "Order Test", "Re
 describe("Data layer integration", () => {
   afterAll(async () => {
     const { db } = await import("@/db");
-    // Delete test songs — FK cascades remove song_tags, song_images, youtube_links, device_zoom
+    // Delete test songs — FK cascades remove song_tags, song_images, video_links, device_zoom
     db.delete(schema.songs).where(inArray(schema.songs.title, testSongTitles)).run();
     // Delete test tags (those with timestamps)
     db.delete(schema.tags).where(sql`name LIKE 'custom-a-%' OR name LIKE 'custom-b-%' OR name LIKE 'custom-c-%'`).run();
@@ -60,9 +60,9 @@ describe("Data layer integration", () => {
     const time = nowIso();
     const song = db.insert(schema.songs).values({ title: "Tag Test", difficulty: 1, notes: "", createdAt: time, updatedAt: time }).returning().get();
     const ts = Date.now();
-    const tag1 = db.insert(schema.tags).values({ name: `custom-a-${ts}`, nameEn: "", color: "#ff0000", category: "pitch" }).returning().get();
-    const tag2 = db.insert(schema.tags).values({ name: `custom-b-${ts}`, nameEn: "", color: "#00ff00", category: "technique" }).returning().get();
-    const tag3 = db.insert(schema.tags).values({ name: `custom-c-${ts}`, nameEn: "", color: "#0000ff", category: "rhythm" }).returning().get();
+    const tag1 = db.insert(schema.tags).values({ name: `custom-a-${ts}`, nameAlt: "", color: "#ff0000", category: "pitch" }).returning().get();
+    const tag2 = db.insert(schema.tags).values({ name: `custom-b-${ts}`, nameAlt: "", color: "#00ff00", category: "technique" }).returning().get();
+    const tag3 = db.insert(schema.tags).values({ name: `custom-c-${ts}`, nameAlt: "", color: "#0000ff", category: "rhythm" }).returning().get();
 
     setSongTags(song.id, [tag1.id, tag2.id, tag3.id]);
     expect(getSong(song.id)!.tags.pitch.some((t) => t.id === tag1.id)).toBe(true);
@@ -127,5 +127,15 @@ describe("Data layer integration", () => {
     expect(names).toContain("装饰音");
     expect(names).toContain("附点");
     expect(names).toContain("三连音");
+  });
+
+  it("single-select categories can be inserted, read, and deleted", async () => {
+    const { db } = await import("@/db");
+    db.insert(schema.singleSelectCategories).values({ category: "test-genre" }).run();
+    const rows = db.select().from(schema.singleSelectCategories).all();
+    expect(rows.map((r) => r.category)).toContain("test-genre");
+    db.delete(schema.singleSelectCategories).where(eq(schema.singleSelectCategories.category, "test-genre")).run();
+    const after = db.select().from(schema.singleSelectCategories).all();
+    expect(after.map((r) => r.category)).not.toContain("test-genre");
   });
 });

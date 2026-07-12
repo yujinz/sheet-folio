@@ -1,9 +1,9 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const songs = sqliteTable("songs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull(),
-  titleEn: text("title_en").notNull().default(""),
+  titleAlt: text("title_alt").notNull().default(""),
   difficulty: integer("difficulty").notNull(),
   notes: text("notes").notNull(),
   createdAt: text("created_at").notNull(),
@@ -15,9 +15,9 @@ export const tags = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     name: text("name").notNull(),
-    nameEn: text("name_en").notNull().default(""),
+    nameAlt: text("name_alt").notNull().default(""),
     color: text("color").notNull(),
-    category: text("category", { enum: ["pitch", "technique", "rhythm"] }).notNull()
+    category: text("category").notNull()
   },
   (table) => ({
     uniqueName: uniqueIndex("tags_category_name_idx").on(table.category, table.name)
@@ -52,7 +52,7 @@ export const songImages = sqliteTable("song_images", {
   createdAt: text("created_at").notNull()
 });
 
-export const youtubeLinks = sqliteTable("youtube_links", {
+export const videoLinks = sqliteTable("video_links", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   songId: integer("song_id")
     .notNull()
@@ -60,6 +60,10 @@ export const youtubeLinks = sqliteTable("youtube_links", {
   label: text("label").notNull(),
   url: text("url").notNull(),
   sortOrder: integer("sort_order").notNull().default(0)
+});
+
+export const singleSelectCategories = sqliteTable("single_select_categories", {
+  category: text("category").primaryKey()
 });
 
 export const deviceZoom = sqliteTable(

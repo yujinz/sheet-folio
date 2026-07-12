@@ -5,9 +5,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
+import { CORE_CATEGORIES } from "@/lib/types";
 import type { ImageKind, Song, SongImage, Tag, TagCategory, VideoLink } from "@/lib/types";
 
-const categories: TagCategory[] = ["pitch", "technique", "rhythm"];
+const categories = [...CORE_CATEGORIES];
 
 function generateId() {
   // crypto.randomUUID() requires secure context (HTTPS), use fallback for HTTP
@@ -33,6 +34,7 @@ export default function Detail({ songId }: { songId: number }) {
   const { t, locale } = useLocale();
   const [piece, setPiece] = useState<Song | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<ImageKind>("staff");
   const [editingImages, setEditingImages] = useState(false);
   const [pageIndex, setPageIndex] = useState<number | null>(null);
@@ -40,7 +42,7 @@ export default function Detail({ songId }: { songId: number }) {
   const clampZoom = (z: number) => Math.min(130, Math.max(25, z));
   const headerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
-  const titleEnRef = useRef<HTMLInputElement>(null);
+  const titleAltRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDirtyRef = useRef(false);
@@ -57,6 +59,9 @@ export default function Detail({ songId }: { songId: number }) {
 
   useEffect(() => {
     void refresh();
+    fetch("/api/single-select-categories")
+      .then((res) => res.json())
+      .then((rows) => setSingleSelectCategories(new Set(rows as string[])));
     const deviceId = getDeviceId();
     fetch(`/api/device-zoom?deviceId=${deviceId}&songId=${songId}`)
       .then((res) => res.json())
@@ -187,14 +192,24 @@ export default function Detail({ songId }: { songId: number }) {
       const body: Record<string, string> = { notes };
       // Only one title input is rendered (based on locale); preserve the other from current piece state
       if (locale === "en-US") {
+        const titleAlt = titleAltRef.current?.value ?? "";
         body.title = piece?.title ?? "";
-        body.titleEn = titleEnRef.current?.value ?? "";
+        body.titleAlt = titleAlt;
+        // Auto-mirror: if primary title is empty, copy the alt title
+        if (!body.title.trim() && titleAlt.trim()) {
+          body.title = titleAlt;
+        }
       } else {
-        body.title = titleRef.current?.value ?? "";
-        body.titleEn = piece?.titleEn ?? "";
+        const title = titleRef.current?.value ?? "";
+        body.title = title;
+        body.titleAlt = piece?.titleAlt ?? "";
+        // Auto-mirror: if alt title is empty, copy the primary title
+        if (!body.titleAlt.trim() && title.trim()) {
+          body.titleAlt = title;
+        }
       }
       // Safety net: don't save if both titles would be empty
-      if (body.title.trim() === "" && body.titleEn.trim() === "") return;
+      if (body.title.trim() === "" && body.titleAlt.trim() === "") return;
       void fetch(`/api/pieces/${songId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -207,14 +222,14 @@ export default function Detail({ songId }: { songId: number }) {
   }
 
   function handleTitleBlur() {
-    const currentValue = (titleRef.current ?? titleEnRef.current)?.value ?? "";
+    const currentValue = (titleRef.current ?? titleAltRef.current)?.value ?? "";
     const newTitle = locale === "en-US" ? (piece?.title ?? "") : currentValue;
-    const newTitleEn = locale === "en-US" ? currentValue : (piece?.titleEn ?? "");
-    if (newTitle.trim() === "" && newTitleEn.trim() === "") {
+    const newTitleAlt = locale === "en-US" ? currentValue : (piece?.titleAlt ?? "");
+    if (newTitle.trim() === "" && newTitleAlt.trim() === "") {
       // Revert the input to its previous valid value
-      const fallback = piece?.title || piece?.titleEn || "";
+      const fallback = piece?.title || piece?.titleAlt || "";
       if (titleRef.current) titleRef.current.value = fallback;
-      if (titleEnRef.current) titleEnRef.current.value = fallback;
+      if (titleAltRef.current) titleAltRef.current.value = fallback;
       alert(t.titleRequired);
     }
   }
@@ -253,10 +268,10 @@ export default function Detail({ songId }: { songId: number }) {
           <div className="flex items-center gap-2 flex-1">
             <Link className="icon-button shrink-0" href="/" aria-label={t.backToDirectory}><House size={16} /></Link>
             <input
-              ref={locale === "en-US" ? titleEnRef : titleRef}
+              ref={locale === "en-US" ? titleAltRef : titleRef}
               key={`title-${songId}-${locale}`}
               className="input max-w-lg min-w-[100px] flex-1 text-base font-semibold"
-              defaultValue={locale === "en-US" ? (piece.titleEn || piece.title) : (piece.title || piece.titleEn)}
+              defaultValue={locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}
               onChange={scheduleSave}
               onBlur={handleTitleBlur}
             />
@@ -280,17 +295,29 @@ export default function Detail({ songId }: { songId: number }) {
           <select className="select tag-add-select text-center" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => patch({ difficulty: Number(event.target.value) })}>
             {[1, 2, 3, 4, 5].map((score) => <option key={score}>{score}</option>)}
           </select>
-          {categories.map((category) => (
-            <TagPicker
-              key={category}
-              compact
-              category={category}
-              tags={tags.filter((tag) => tag.category === category)}
-              selected={piece.tags[category].map((tag) => tag.id)}
-              onCreate={createTag}
-              onChange={(ids) => patch({ tagIds: categories.flatMap((cat) => cat === category ? ids : piece.tags[cat].map((tag) => tag.id)) })}
-            />
-          ))}
+          {(() => {
+            const allCats = [...categories, ...tags.reduce<string[]>((acc, tag) => {
+              if (!CORE_CATEGORIES.includes(tag.category as typeof CORE_CATEGORIES[number]) && !acc.includes(tag.category)) acc.push(tag.category);
+              return acc;
+            }, [])];
+            function buildTagIds(category: string, ids: number[]) {
+              return allCats.flatMap((cat) =>
+                cat === category ? ids : (piece!.tags[cat]?.map((tag) => tag.id) ?? [])
+              );
+            }
+            return allCats.map((category) => (
+              <TagPicker
+                key={category}
+                compact
+                singleSelect={singleSelectCategories.has(category)}
+                category={category}
+                tags={tags.filter((tag) => tag.category === category)}
+                selected={piece.tags[category]?.map((tag) => tag.id) ?? []}
+                onCreate={createTag}
+                onChange={(ids) => patch({ tagIds: buildTagIds(category, ids) })}
+              />
+            ));
+          })()}
         </div>
       </header>
 
