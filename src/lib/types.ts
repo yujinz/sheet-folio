@@ -7,7 +7,7 @@ export type ImageKind = "staff" | "numbered";
 export type Tag = {
   id: number;
   name: string;
-  nameEn: string;
+  nameAlt: string;
   color: string;
   category: TagCategory;
 };
@@ -34,7 +34,7 @@ export type VideoLink = {
 export type Song = {
   id: number;
   title: string;
-  titleEn: string;
+  titleAlt: string;
   difficulty: number;
   notes: string;
   createdAt: string;

@@ -13,34 +13,34 @@ describe("createSongSchema", () => {
   });
 
   it("rejects when both titles are empty strings", () => {
-    const result = createSongSchema.safeParse({ title: "", titleEn: "" });
+    const result = createSongSchema.safeParse({ title: "", titleAlt: "" });
     expect(result.success).toBe(false);
   });
 
   it("rejects when both titles are whitespace", () => {
-    const result = createSongSchema.safeParse({ title: "   ", titleEn: "  " });
+    const result = createSongSchema.safeParse({ title: "   ", titleAlt: "  " });
     expect(result.success).toBe(false);
   });
 
   it("accepts when title is non-empty", () => {
-    const result = createSongSchema.safeParse({ title: "欢乐颂", titleEn: "" });
+    const result = createSongSchema.safeParse({ title: "欢乐颂", titleAlt: "" });
     expect(result.success).toBe(true);
   });
 
-  it("accepts when titleEn is non-empty", () => {
-    const result = createSongSchema.safeParse({ title: "", titleEn: "Ode to Joy" });
+  it("accepts when titleAlt is non-empty", () => {
+    const result = createSongSchema.safeParse({ title: "", titleAlt: "Ode to Joy" });
     expect(result.success).toBe(true);
   });
 
   it("accepts when both are non-empty", () => {
-    const result = createSongSchema.safeParse({ title: "欢乐颂", titleEn: "Ode to Joy" });
+    const result = createSongSchema.safeParse({ title: "欢乐颂", titleAlt: "Ode to Joy" });
     expect(result.success).toBe(true);
   });
 });
 
 describe("updateSongSchema", () => {
-  it("rejects when both title and titleEn are set to empty", () => {
-    const result = updateSongSchema.safeParse({ title: "", titleEn: "" });
+  it("rejects when both title and titleAlt are set to empty", () => {
+    const result = updateSongSchema.safeParse({ title: "", titleAlt: "" });
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].message).toBe("At least one title (Chinese or English) must be non-empty");
@@ -48,37 +48,37 @@ describe("updateSongSchema", () => {
   });
 
   it("rejects when both are set to whitespace", () => {
-    const result = updateSongSchema.safeParse({ title: "   ", titleEn: "  " });
+    const result = updateSongSchema.safeParse({ title: "   ", titleAlt: "  " });
     expect(result.success).toBe(false);
   });
 
-  it("accepts when only title is provided (empty) but titleEn is omitted", () => {
+  it("accepts when only title is provided (empty) but titleAlt is omitted", () => {
     const result = updateSongSchema.safeParse({ title: "" });
     expect(result.success).toBe(true);
   });
 
-  it("accepts when only titleEn is provided (empty) but title is omitted", () => {
-    const result = updateSongSchema.safeParse({ titleEn: "" });
+  it("accepts when only titleAlt is provided (empty) but title is omitted", () => {
+    const result = updateSongSchema.safeParse({ titleAlt: "" });
     expect(result.success).toBe(true);
   });
 
-  it("accepts when neither title nor titleEn is provided", () => {
+  it("accepts when neither title nor titleAlt is provided", () => {
     const result = updateSongSchema.safeParse({ notes: "just notes" });
     expect(result.success).toBe(true);
   });
 
-  it("accepts when title is non-empty and titleEn is empty", () => {
-    const result = updateSongSchema.safeParse({ title: "欢乐颂", titleEn: "" });
+  it("accepts when title is non-empty and titleAlt is empty", () => {
+    const result = updateSongSchema.safeParse({ title: "欢乐颂", titleAlt: "" });
     expect(result.success).toBe(true);
   });
 
-  it("accepts when titleEn is non-empty and title is empty", () => {
-    const result = updateSongSchema.safeParse({ title: "", titleEn: "Ode to Joy" });
+  it("accepts when titleAlt is non-empty and title is empty", () => {
+    const result = updateSongSchema.safeParse({ title: "", titleAlt: "Ode to Joy" });
     expect(result.success).toBe(true);
   });
 
   it("accepts when both are non-empty", () => {
-    const result = updateSongSchema.safeParse({ title: "欢乐颂", titleEn: "Ode to Joy" });
+    const result = updateSongSchema.safeParse({ title: "欢乐颂", titleAlt: "Ode to Joy" });
     expect(result.success).toBe(true);
   });
 
@@ -92,14 +92,14 @@ describe("tagSchema", () => {
   it("accepts a valid tag", () => {
     const result = tagSchema.safeParse({
       name: "高音",
-      nameEn: "High pitch",
+      nameAlt: "High pitch",
       color: "#2563eb",
       category: "pitch",
     });
     expect(result.success).toBe(true);
   });
 
-  it("defaults nameEn to empty string", () => {
+  it("defaults nameAlt to empty string", () => {
     const result = tagSchema.safeParse({
       name: "高音",
       color: "#2563eb",
@@ -107,14 +107,14 @@ describe("tagSchema", () => {
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.nameEn).toBe("");
+      expect(result.data.nameAlt).toBe("");
     }
   });
 
   it("rejects empty name", () => {
     const result = tagSchema.safeParse({
       name: "  ",
-      nameEn: "",
+      nameAlt: "",
       color: "#2563eb",
       category: "pitch",
     });

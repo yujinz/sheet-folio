@@ -6,7 +6,7 @@ export type ImageKind = "staff" | "numbered";
 export type ExportedTag = {
   id: number;
   name: string;
-  nameEn: string;
+  nameAlt: string;
   color: string;
   category: string;
 };
@@ -26,7 +26,7 @@ export type ExportedLink = {
 export type ExportedPiece = {
   id: number;
   title: string;
-  titleEn: string;
+  titleAlt: string;
   difficulty: number;
   notes: string;
   tags: Record<string, ExportedTag[]>;

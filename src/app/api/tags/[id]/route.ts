@@ -7,7 +7,7 @@ import { apiError, serverError } from "@/lib/api";
 
 const updateSchema = z.object({
   name: z.string().trim().min(1).optional(),
-  nameEn: z.string().optional(),
+  nameAlt: z.string().optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   category: z.string().min(1).optional(),
 });
@@ -20,17 +20,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const tagId = Number(id);
     const existing = db.select().from(tags).where(eq(tags.id, tagId)).get();
     if (!existing) return apiError("Tag not found", 404);
-    const { name: newName, nameEn: newNameEn, category: newCategory } = body.data;
-    // If name or nameEn is changing, check for duplicates against both fields
-    if (newName !== undefined || newNameEn !== undefined || newCategory !== undefined) {
+    const { name: newName, nameAlt: newNameAlt, category: newCategory } = body.data;
+    // If name or nameAlt is changing, check for duplicates against both fields
+    if (newName !== undefined || newNameAlt !== undefined || newCategory !== undefined) {
       const checkCategory = newCategory ?? existing.category;
       const checkName = newName ?? existing.name;
-      const checkNameEn = newNameEn !== undefined ? newNameEn : existing.nameEn;
+      const checkNameAlt = newNameAlt !== undefined ? newNameAlt : existing.nameAlt;
       const nameConditions = [eq(tags.name, checkName)];
-      if (checkNameEn) {
-        nameConditions.push(eq(tags.name, checkNameEn));
-        nameConditions.push(eq(tags.nameEn, checkName));
-        nameConditions.push(eq(tags.nameEn, checkNameEn));
+      if (checkNameAlt) {
+        nameConditions.push(eq(tags.name, checkNameAlt));
+        nameConditions.push(eq(tags.nameAlt, checkName));
+        nameConditions.push(eq(tags.nameAlt, checkNameAlt));
       }
       const dup = db.select().from(tags).where(
         and(eq(tags.category, checkCategory), ne(tags.id, tagId), or(...nameConditions))

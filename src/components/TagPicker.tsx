@@ -7,10 +7,10 @@ import { type Locale, messages } from "@/lib/i18n";
 import type { Tag, TagCategory } from "@/lib/types";
 
 export function tagDisplayName(tag: Tag, locale: Locale): string {
-  if (locale === "en-US") return tag.nameEn || tag.name;
-  // locale === "en-US": prefer nameEn, fall back to name
-  // locale === "zh-CN": prefer name, fall back to nameEn
-  return tag.name || tag.nameEn;
+  if (locale === "en-US") return tag.nameAlt || tag.name;
+  // locale === "en-US": prefer nameAlt, fall back to name
+  // locale === "zh-CN": prefer name, fall back to nameAlt
+  return tag.name || tag.nameAlt;
 }
 
 // --- Pitch color helpers ---
@@ -31,7 +31,7 @@ function pitchOctaveInfo(name: string): { octave: number; note: number; accident
 
 /** Numeric sort key for pitch tags — lower = lower pitch (rainbow order). */
 function pitchSortKey(tag: Tag): number {
-  const info = pitchOctaveInfo(tag.name) ?? pitchOctaveInfo(tag.nameEn);
+  const info = pitchOctaveInfo(tag.name) ?? pitchOctaveInfo(tag.nameAlt);
   if (!info) return -1;
   const { octave, note, accidental } = info;
   // octave spans 100, note spans 10, accidental adjusts within note
@@ -155,24 +155,24 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
   const [selectValue, setSelectValue] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createName, setCreateName] = useState("");
-  const [createNameEn, setCreateNameEn] = useState("");
+  const [createNameAlt, setCreateNameAlt] = useState("");
   const [createColor, setCreateColor] = useState(defaultColor ?? pickDefaultColor(tags, "#4a6fa5"));
   const createDialogRef = useRef<HTMLDivElement>(null);
   const createNameInputRef = useRef<HTMLInputElement>(null);
-  const createNameEnInputRef = useRef<HTMLInputElement>(null);
-  const [activeCreateInput, setActiveCreateInput] = useState<"name" | "nameEn">("name");
-  const autoFillSourceRef = useRef<"name" | "nameEn" | null>(null);
+  const createNameAltInputRef = useRef<HTMLInputElement>(null);
+  const [activeCreateInput, setActiveCreateInput] = useState<"name" | "nameAlt">("name");
+  const autoFillSourceRef = useRef<"name" | "nameAlt" | null>(null);
 
   // Whether the current create-dialog input is a recognized pitch
   const detectedPitch = useMemo(() => {
     if (category !== "pitch") return null;
-    const name = (createName || createNameEn).trim();
+    const name = (createName || createNameAlt).trim();
     const m = name.match(PITCH_RE);
     return m ? m[0] : null;
-  }, [createName, createNameEn, category]);
+  }, [createName, createNameAlt, category]);
 
   // Auto-fill the other pitch field when a valid pitch is detected
-  // Uses an equality guard (createNameEn !== trimmed) instead of a one-shot ref
+  // Uses an equality guard (createNameAlt !== trimmed) instead of a one-shot ref
   // to ensure subsequent edits to the same field still re-sync.
   useEffect(() => {
     if (category !== "pitch") return;
@@ -184,16 +184,16 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
 
     if (source === "name") {
       const trimmed = createName.trim();
-      if (PITCH_RE.test(trimmed) && createNameEn !== trimmed) {
-        setCreateNameEn(trimmed);
+      if (PITCH_RE.test(trimmed) && createNameAlt !== trimmed) {
+        setCreateNameAlt(trimmed);
       }
     } else {
-      const trimmed = createNameEn.trim();
+      const trimmed = createNameAlt.trim();
       if (PITCH_RE.test(trimmed) && createName !== trimmed) {
         setCreateName(trimmed);
       }
     }
-  }, [createName, createNameEn, category]);
+  }, [createName, createNameAlt, category]);
 
   // Sync defaultColor from parent when it changes
   useEffect(() => {
@@ -205,7 +205,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
   // Edit dialog state
   const [editTag, setEditTag] = useState<Tag | null>(null);
   const [editName, setEditName] = useState("");
-  const [editNameEn, setEditNameEn] = useState("");
+  const [editNameAlt, setEditNameAlt] = useState("");
   const [editColor, setEditColor] = useState("");
   const editNameInputRef = useRef<HTMLInputElement>(null);
   const editDialogRef = useRef<HTMLDivElement>(null);
@@ -219,26 +219,26 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
   function openEditDialog(tag: Tag) {
     setEditTag(tag);
     setEditName(tag.name);
-    setEditNameEn(tag.nameEn);
+    setEditNameAlt(tag.nameAlt);
     setEditColor(tag.color);
   }
 
   async function handleEditSave() {
     if (!editTag || !onUpdate) return;
     const trimmed = editName.trim();
-    const trimmedEn = editNameEn.trim();
-    if (!trimmed && !trimmedEn) return;
+    const trimmedAlt = editNameAlt.trim();
+    if (!trimmed && !trimmedAlt) return;
     const original = editTag;
-    const newName = trimmed || trimmedEn;
-    const newNameEn = trimmedEn;
+    const newName = trimmed || trimmedAlt;
+    const newNameAlt = trimmedAlt;
     // Client-side duplicate check: same category, any name field matches
     const dup = localTags.find((t) => {
       if (t.id === original.id || t.category !== original.category) return false;
       return (
         t.name === newName ||
-        t.name === newNameEn ||
-        (newNameEn && (t.nameEn === newName || t.nameEn === newNameEn)) ||
-        (t.nameEn && t.nameEn === newName)
+        t.name === newNameAlt ||
+        (newNameAlt && (t.nameAlt === newName || t.nameAlt === newNameAlt)) ||
+        (t.nameAlt && t.nameAlt === newName)
       );
     });
     if (dup) {
@@ -246,7 +246,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
       return;
     }
     // Update local state optimistically
-    const updated: Tag = { ...original, name: newName, nameEn: trimmedEn, color: editColor };
+    const updated: Tag = { ...original, name: newName, nameAlt: trimmedAlt, color: editColor };
     setLocalTags((prev) => prev.map((t) => t.id === updated.id ? updated : t));
     setEditTag(null);
     // Trigger parent update — the parent will PATCH the API and refresh
@@ -267,15 +267,15 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
 
   async function handleCreateFromDialog() {
     const trimmed = createName.trim();
-    const trimmedEn = createNameEn.trim();
-    if (!trimmed && !trimmedEn) return;
+    const trimmedAlt = createNameAlt.trim();
+    if (!trimmed && !trimmedAlt) return;
     try {
-      const created = await onCreate({ name: trimmed || trimmedEn, nameEn: trimmedEn, color: createColor, category });
+      const created = await onCreate({ name: trimmed || trimmedAlt, nameAlt: trimmedAlt, color: createColor, category });
       setLocalTags((prev) => [...prev, created]);
       if (compact) onChange([...selected, created.id]);
       setShowCreateDialog(false);
       setCreateName("");
-      setCreateNameEn("");
+      setCreateNameAlt("");
     } catch {
       alert(t.tagExists);
     }
@@ -302,14 +302,14 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
         <div className="mb-3 text-sm font-semibold">{t.editTags}</div>
         <div className="grid gap-2">
           <input ref={editNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
-          <input className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={editNameEn} onChange={(e) => setEditNameEn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
+          <input className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={editNameAlt} onChange={(e) => setEditNameAlt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
           <div className="flex items-center gap-2">
             {category === "pitch" && (
               <>
                 {["♭", "♯", "♮"].map((mark) => (
-                  <button key={mark} className="pill-add-button" type="button" onClick={() => { if (editNameEn && !editName) { setEditNameEn(mark + editNameEn); } else { setEditName(mark + editName); } editNameInputRef.current?.focus(); }}>{mark}</button>
+                  <button key={mark} className="pill-add-button" type="button" onClick={() => { if (editNameAlt && !editName) { setEditNameAlt(mark + editNameAlt); } else { setEditName(mark + editName); } editNameInputRef.current?.focus(); }}>{mark}</button>
                 ))}
-                <button aria-label="Assign pitch color" className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap" style={{ background: "none" }} type="button" title="Assign color based on pitch octave" onClick={() => { const pitchName = locale === "en-US" ? (editNameEn || editName) : (editName || editNameEn); const c = pitchColorFromName(pitchName); if (c) setEditColor(c); }}><Music size={12} /> Assign color by pitch</button>
+                <button aria-label="Assign pitch color" className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap" style={{ background: "none" }} type="button" title="Assign color based on pitch octave" onClick={() => { const pitchName = locale === "en-US" ? (editNameAlt || editName) : (editName || editNameAlt); const c = pitchColorFromName(pitchName); if (c) setEditColor(c); }}><Music size={12} /> Assign color by pitch</button>
               </>
             )}
             {category !== "pitch" && (
@@ -331,18 +331,18 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
       <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 text-sm font-semibold">{t.addTag}</div>
         <div className="grid gap-3">
-          <input ref={createNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={createName} onChange={(e) => { setCreateName(e.target.value); autoFillSourceRef.current = "name"; }} onFocus={() => setActiveCreateInput("name")} onKeyDown={(e) => { if (e.key === "Enter") { if (createNameEnInputRef.current && !createNameEn.trim()) { createNameEnInputRef.current.focus(); e.preventDefault(); } else { handleCreateFromDialog(); } } if (e.key === "Escape") setShowCreateDialog(false); }} />
-          <input ref={createNameEnInputRef} className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={createNameEn} onChange={(e) => { setCreateNameEn(e.target.value); autoFillSourceRef.current = "nameEn"; }} onFocus={() => setActiveCreateInput("nameEn")} onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }} />
+          <input ref={createNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={createName} onChange={(e) => { setCreateName(e.target.value); autoFillSourceRef.current = "name"; }} onFocus={() => setActiveCreateInput("name")} onKeyDown={(e) => { if (e.key === "Enter") { if (createNameAltInputRef.current && !createNameAlt.trim()) { createNameAltInputRef.current.focus(); e.preventDefault(); } else { handleCreateFromDialog(); } } if (e.key === "Escape") setShowCreateDialog(false); }} />
+          <input ref={createNameAltInputRef} className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={createNameAlt} onChange={(e) => { setCreateNameAlt(e.target.value); autoFillSourceRef.current = "nameAlt"; }} onFocus={() => setActiveCreateInput("nameAlt")} onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }} />
           {category === "pitch" && (
             <div className="flex items-center gap-1.5">
               {["♭", "♯", "♮"].map((mark) => (
-                <button key={mark} className="pill-add-button" type="button" onClick={() => { const setter = activeCreateInput === "nameEn" ? setCreateNameEn : setCreateName; setter((value) => `${mark}${value}`); autoFillSourceRef.current = activeCreateInput === "nameEn" ? "nameEn" : "name"; if (activeCreateInput === "nameEn") { createNameEnInputRef.current?.focus(); } else { createNameInputRef.current?.focus(); } }}>{mark}</button>
+                <button key={mark} className="pill-add-button" type="button" onClick={() => { const setter = activeCreateInput === "nameAlt" ? setCreateNameAlt : setCreateName; setter((value) => `${mark}${value}`); autoFillSourceRef.current = activeCreateInput === "nameAlt" ? "nameAlt" : "name"; if (activeCreateInput === "nameAlt") { createNameAltInputRef.current?.focus(); } else { createNameInputRef.current?.focus(); } }}>{mark}</button>
               ))}
             </div>
           )}
           <div className="flex items-center gap-2">
             {category === "pitch" ? (
-              <button aria-label="Assign pitch color" className={`inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs whitespace-nowrap cursor-pointer transition-colors ${detectedPitch ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--line)] bg-white"}`} type="button" title={detectedPitch ? `Assign color for ${detectedPitch}` : "Assign color based on pitch octave"} onClick={() => { const pitchName = locale === "en-US" ? (createNameEn || createName) : (createName || createNameEn); const c = pitchColorFromName(pitchName); if (c) setCreateColor(c); }}><Music size={12} /> Assign color by pitch</button>
+              <button aria-label="Assign pitch color" className={`inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs whitespace-nowrap cursor-pointer transition-colors ${detectedPitch ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--line)] bg-white"}`} type="button" title={detectedPitch ? `Assign color for ${detectedPitch}` : "Assign color based on pitch octave"} onClick={() => { const pitchName = locale === "en-US" ? (createNameAlt || createName) : (createName || createNameAlt); const c = pitchColorFromName(pitchName); if (c) setCreateColor(c); }}><Music size={12} /> Assign color by pitch</button>
             ) : (
               <button aria-label="Cycle tag color" className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--line)] bg-white px-3 text-xs whitespace-nowrap cursor-pointer" type="button" title="Next palette color" onClick={() => setCreateColor(nextTagColor(createColor))}><Palette size={12} /> Cycle color</button>
             )}
@@ -373,7 +373,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
               const val = event.target.value;
               if (val === "__new__") {
                 setCreateName("");
-                setCreateNameEn("");
+                setCreateNameAlt("");
                 setShowCreateDialog(true);
               } else if (val === "") {
                 onChange([]);
@@ -405,7 +405,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
               setSelectValue("");
               if (val === "__new__") {
                 setCreateName("");
-                setCreateNameEn("");
+                setCreateNameAlt("");
                 setShowCreateDialog(true);
               } else {
                 const id = Number(val);
@@ -520,7 +520,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
           type="button"
           onClick={() => {
             setCreateName("");
-            setCreateNameEn("");
+            setCreateNameAlt("");
             setShowCreateDialog(true);
           }}
         >

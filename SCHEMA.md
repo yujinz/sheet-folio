@@ -47,7 +47,7 @@ Array of tag objects:
   {
     "id": 1,
     "name": "高音",
-    "nameEn": "High notes",
+    "nameAlt": "High notes",
     "color": "#2563eb",
     "category": "pitch"
   }
@@ -58,7 +58,7 @@ Array of tag objects:
 |----------|--------|------------------------------------------------|
 | `id`     | number | Unique tag ID                                  |
 | `name`   | string | Primary name (e.g. Chinese) — may be empty if only alternate |
-| `nameEn` | string | Alternate name (e.g. English) — may be empty if only primary |
+| `nameAlt` | string | Alternate name (e.g. English) — may be empty if only primary |
 | `color`  | string | Hex color code for display                     |
 | `category`| string | Any category name (free-text). Core: `"pitch"`, `"technique"`, `"rhythm"`. User-defined: e.g. `"genre"`, `"mood"`. |
 
@@ -73,16 +73,16 @@ Array of piece objects:
   {
     "id": 1,
     "title": "欢乐颂",
-    "titleEn": "Ode to Joy",
+    "titleAlt": "Ode to Joy",
     "difficulty": 1,
     "notes": "Some practice notes",
     "tags": {
       "pitch": [],
       "technique": [
-        { "id": 3, "name": "连音", "nameEn": "Legato", "color": "#ea580c", "category": "technique" }
+        { "id": 3, "name": "连音", "nameAlt": "Legato", "color": "#ea580c", "category": "technique" }
       ],
       "rhythm": [
-        { "id": 6, "name": "附点", "nameEn": "Dotted", "color": "#c026d3", "category": "rhythm" }
+        { "id": 6, "name": "附点", "nameAlt": "Dotted", "color": "#c026d3", "category": "rhythm" }
       ]
     },
     "images": {
@@ -104,7 +104,7 @@ Array of piece objects:
 |------------|--------|----------------------------------------------------|
 | `id`       | number | Unique piece ID                                    |
 | `title`    | string | Primary title (e.g. Chinese) — may be empty if only alternate |
-| `titleEn`  | string | Alternate title (e.g. English) — may be empty if only primary |
+| `titleAlt`  | string | Alternate title (e.g. English) — may be empty if only primary |
 | `difficulty`| number| Difficulty level from 1 to 5                       |
 | `notes`    | string | Practice notes (may be empty)                      |
 
@@ -116,9 +116,9 @@ Categories registered in `single_select_categories` are single-select — a piec
 
 ```json
 {
-  "technique": [{ "id": 3, "name": "连音", "nameEn": "Legato", "color": "#ea580c", "category": "technique" }],
-  "rhythm": [{ "id": 6, "name": "附点", "nameEn": "Dotted", "color": "#c026d3", "category": "rhythm" }],
-  "genre": [{ "id": 10, "name": "巴洛克", "nameEn": "Baroque", "color": "#059669", "category": "genre" }]
+  "technique": [{ "id": 3, "name": "连音", "nameAlt": "Legato", "color": "#ea580c", "category": "technique" }],
+  "rhythm": [{ "id": 6, "name": "附点", "nameAlt": "Dotted", "color": "#c026d3", "category": "rhythm" }],
+  "genre": [{ "id": 10, "name": "巴洛克", "nameAlt": "Baroque", "color": "#059669", "category": "genre" }]
 }
 ```
 

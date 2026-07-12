@@ -8,15 +8,15 @@ import { apiError, serverError } from "@/lib/api";
 
 export const updateSongSchema = z.object({
   title: z.string().optional(),
-  titleEn: z.string().optional(),
+  titleAlt: z.string().optional(),
   difficulty: z.number().int().min(1).max(5).optional(),
   notes: z.string().optional(),
   tagIds: z.array(z.number().int()).optional()
 }).refine((data) => {
-  // At least one of title or titleEn must be non-empty
+  // At least one of title or titleAlt must be non-empty
   const title = data.title;
-  const titleEn = data.titleEn;
-  if (title !== undefined && title.trim() === "" && titleEn !== undefined && titleEn.trim() === "") return false;
+  const titleAlt = data.titleAlt;
+  if (title !== undefined && title.trim() === "" && titleAlt !== undefined && titleAlt.trim() === "") return false;
   return true;
 }, { message: "At least one title (Chinese or English) must be non-empty" });
 
@@ -40,7 +40,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const update: Partial<typeof songs.$inferInsert> = { updatedAt: nowIso() };
     if (body.data.title !== undefined) update.title = body.data.title;
-    if (body.data.titleEn !== undefined) update.titleEn = body.data.titleEn;
+    if (body.data.titleAlt !== undefined) update.titleAlt = body.data.titleAlt;
     if (body.data.difficulty !== undefined) update.difficulty = body.data.difficulty;
     if (body.data.notes !== undefined) update.notes = body.data.notes;
 

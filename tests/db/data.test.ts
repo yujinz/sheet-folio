@@ -60,9 +60,9 @@ describe("Data layer integration", () => {
     const time = nowIso();
     const song = db.insert(schema.songs).values({ title: "Tag Test", difficulty: 1, notes: "", createdAt: time, updatedAt: time }).returning().get();
     const ts = Date.now();
-    const tag1 = db.insert(schema.tags).values({ name: `custom-a-${ts}`, nameEn: "", color: "#ff0000", category: "pitch" }).returning().get();
-    const tag2 = db.insert(schema.tags).values({ name: `custom-b-${ts}`, nameEn: "", color: "#00ff00", category: "technique" }).returning().get();
-    const tag3 = db.insert(schema.tags).values({ name: `custom-c-${ts}`, nameEn: "", color: "#0000ff", category: "rhythm" }).returning().get();
+    const tag1 = db.insert(schema.tags).values({ name: `custom-a-${ts}`, nameAlt: "", color: "#ff0000", category: "pitch" }).returning().get();
+    const tag2 = db.insert(schema.tags).values({ name: `custom-b-${ts}`, nameAlt: "", color: "#00ff00", category: "technique" }).returning().get();
+    const tag3 = db.insert(schema.tags).values({ name: `custom-c-${ts}`, nameAlt: "", color: "#0000ff", category: "rhythm" }).returning().get();
 
     setSongTags(song.id, [tag1.id, tag2.id, tag3.id]);
     expect(getSong(song.id)!.tags.pitch.some((t) => t.id === tag1.id)).toBe(true);

@@ -44,7 +44,7 @@ import type {
 interface TagRow {
   id: number;
   name: string;
-  name_en: string;
+  name_alt: string;
   color: string;
   category: string;
 }
@@ -52,7 +52,7 @@ interface TagRow {
 interface SongRow {
   id: number;
   title: string;
-  title_en: string;
+  title_alt: string;
   difficulty: number;
   notes: string;
   created_at: string;
@@ -116,7 +116,7 @@ function readData() {
     pieceTags[cat].push({
       id: tag.id,
       name: tag.name,
-      nameEn: tag.name_en,
+      nameAlt: tag.name_alt,
       color: tag.color,
       category: cat
     });
@@ -203,7 +203,7 @@ async function main() {
   const exportedPieces: ExportedPiece[] = songs.map((s) => ({
     id: s.id,
     title: s.title,
-    titleEn: s.title_en,
+    titleAlt: s.title_alt,
     difficulty: s.difficulty,
     notes: s.notes,
     tags: songTagMap.get(s.id) ?? {},
@@ -215,7 +215,7 @@ async function main() {
   const exportedTags: ExportedTag[] = tags.map((t) => ({
     id: t.id,
     name: t.name,
-    nameEn: t.name_en,
+    nameAlt: t.name_alt,
     color: t.color,
     category: t.category
   }));
