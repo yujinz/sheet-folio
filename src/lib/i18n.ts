@@ -61,7 +61,9 @@ export const messages = {
     addToFavorites: "收藏",
     removeFromFavorites: "取消收藏",
     saveImage: "保存到相册",
-    cancel: "取消"
+    cancel: "取消",
+    categoryNameZh: "分类名称 (中文)",
+    categoryNameEn: "Category name (English)"
   },
   "en-US": {
     appTitle: "Sheet Music Manager",
@@ -118,7 +120,9 @@ export const messages = {
     addToFavorites: "Add to favorites",
     removeFromFavorites: "Remove from favorites",
     saveImage: "Save to Photos",
-    cancel: "Cancel"
+    cancel: "Cancel",
+    categoryNameZh: "Category name (Chinese)",
+    categoryNameEn: "分类名称 (英文)"
   }
 } as const;
 

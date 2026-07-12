@@ -545,7 +545,7 @@ export default function Directory() {
                     ref={renameZhRef}
                     className="input"
                     style={{ width: "7rem", fontSize: "12px" }}
-                    placeholder="分类名称 (中文)"
+                    placeholder={t.categoryNameZh}
                     value={renameZh}
                     onChange={(e) => setRenameZh(e.target.value)}
                     onKeyDown={(e) => {
@@ -557,7 +557,7 @@ export default function Directory() {
                     ref={renameAltRef}
                     className="input"
                     style={{ width: "7rem", fontSize: "12px" }}
-                    placeholder="Category (English)"
+                    placeholder={t.categoryNameEn}
                     value={renameAlt}
                     onChange={(e) => setRenameAlt(e.target.value)}
                     onKeyDown={(e) => {
@@ -565,8 +565,8 @@ export default function Directory() {
                       if (e.key === "Escape") setRenamingCategory(null);
                     }}
                   />
-                  <button className="text-button primary-button" type="button" style={{ fontSize: "12px" }} onClick={() => renameCategory(category, renameZh, renameAlt)}>{locale === "zh-CN" ? "保存" : "Save"}</button>
-                  <button className="text-button" type="button" style={{ fontSize: "12px" }} onClick={() => setRenamingCategory(null)}>{locale === "zh-CN" ? "取消" : "Cancel"}</button>
+                  <button className="text-button primary-button" type="button" style={{ fontSize: "12px" }} onClick={() => renameCategory(category, renameZh, renameAlt)}>{t.save}</button>
+                  <button className="text-button" type="button" style={{ fontSize: "12px" }} onClick={() => setRenamingCategory(null)}>{t.cancel}</button>
                 </div>
               ) : (
                 <TagPicker
@@ -616,7 +616,7 @@ export default function Directory() {
                   ref={newCategoryNameZhRef}
                   className="input"
                   style={{ width: "8rem", fontSize: "12px" }}
-                  placeholder="分类名称 (中文)"
+                  placeholder={t.categoryNameZh}
                   value={newCategoryNameZh}
                   onChange={(e) => setNewCategoryNameZh(e.target.value)}
                   onKeyDown={(e) => {
@@ -628,7 +628,7 @@ export default function Directory() {
                   ref={newCategoryNameAltRef}
                   className="input"
                   style={{ width: "8rem", fontSize: "12px" }}
-                  placeholder="Category name (English)"
+                  placeholder={t.categoryNameEn}
                   value={newCategoryNameAlt}
                   onChange={(e) => setNewCategoryNameAlt(e.target.value)}
                   onKeyDown={(e) => {
@@ -656,7 +656,7 @@ export default function Directory() {
                   style={{ fontSize: "13px" }}
                   onClick={() => addCategory(newCategoryNameZh, newCategoryNameAlt)}
                 >
-                  <Plus size={14} /> Add
+                  <Plus size={14} /> {t.add}
                 </button>
                 <button
                   className="icon-button"

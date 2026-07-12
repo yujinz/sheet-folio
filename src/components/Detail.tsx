@@ -192,11 +192,21 @@ export default function Detail({ songId }: { songId: number }) {
       const body: Record<string, string> = { notes };
       // Only one title input is rendered (based on locale); preserve the other from current piece state
       if (locale === "en-US") {
+        const titleAlt = titleAltRef.current?.value ?? "";
         body.title = piece?.title ?? "";
-        body.titleAlt = titleAltRef.current?.value ?? "";
+        body.titleAlt = titleAlt;
+        // Auto-mirror: if primary title is empty, copy the alt title
+        if (!body.title.trim() && titleAlt.trim()) {
+          body.title = titleAlt;
+        }
       } else {
-        body.title = titleRef.current?.value ?? "";
+        const title = titleRef.current?.value ?? "";
+        body.title = title;
         body.titleAlt = piece?.titleAlt ?? "";
+        // Auto-mirror: if alt title is empty, copy the primary title
+        if (!body.titleAlt.trim() && title.trim()) {
+          body.titleAlt = title;
+        }
       }
       // Safety net: don't save if both titles would be empty
       if (body.title.trim() === "" && body.titleAlt.trim() === "") return;
