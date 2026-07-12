@@ -413,7 +413,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
               }
             }}
           >
-            <option value="" disabled hidden>{(t as any)[category]}</option>
+            <option value="" disabled hidden>{label ?? (t as any)[category] ?? category}</option>
             {availableTags.map((tag) => (
               <option key={tag.id} value={tag.id}>{tagDisplayName(tag, locale)}</option>
             ))}

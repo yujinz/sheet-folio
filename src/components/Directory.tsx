@@ -526,8 +526,9 @@ export default function Directory() {
           })}
         </div>
         <div className="grid gap-2 lg:grid-cols-3">
-          {categories.filter((cat) => !hiddenCoreCategories.includes(cat)).map((category) => {
-            const userCat = userCategories.find((c) => c.key === category);
+          {[...categories.filter((cat) => !hiddenCoreCategories.includes(cat)), ...extraCategoryKeys].map((category) => {
+            const isCore = CORE_CATEGORIES.includes(category as typeof CORE_CATEGORIES[number]);
+            const userCat = isCore ? userCategories.find((c) => c.key === category) : undefined;
             return (
             <div key={category}>
               {editingTags && renamingCategory === category ? (
@@ -562,7 +563,7 @@ export default function Directory() {
               ) : (
                 <TagPicker
                   category={category}
-                  label={userCat ? categoryDisplayName(userCat, locale) : undefined}
+                  label={userCat ? categoryDisplayName(userCat, locale) : (isCore ? undefined : getCategoryLabel(userCategories, category, locale))}
                   tags={tags.filter((tag) => tag.category === category)}
                   selected={filters[category] ?? []}
                   onChange={(ids) => setFilters((value) => ({ ...value, [category]: ids }))}
@@ -574,71 +575,17 @@ export default function Directory() {
                   defaultColor={defaultColor}
                   onDefaultColorChange={setDefaultColor}
                   onRenameCategory={() => setRenamingCategory(category)}
+                  onDeleteCategory={isCore ? undefined : () => removeCategory(category)}
                 />
               )}
             </div>
           );}
         )}
         </div>
-          {extraCategoryKeys.length > 0 && (
-          <div className="grid gap-2 lg:grid-cols-3">
-            {extraCategoryKeys.map((key) => (
-                <div key={key}>
-                  {renamingCategory === key ? (
-                    <div className="flex flex-wrap items-center gap-1 p-1">
-                      <input
-                        ref={renameZhRef}
-                        className="input"
-                        style={{ width: "7rem", fontSize: "12px" }}
-                        placeholder="分类名称 (中文)"
-                        value={renameZh}
-                        onChange={(e) => setRenameZh(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") renameAltRef.current?.focus();
-                          if (e.key === "Escape") setRenamingCategory(null);
-                        }}
-                      />
-                      <input
-                        ref={renameAltRef}
-                        className="input"
-                        style={{ width: "7rem", fontSize: "12px" }}
-                        placeholder="Category (English)"
-                        value={renameAlt}
-                        onChange={(e) => setRenameAlt(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") { renameCategory(key, renameZh, renameAlt); }
-                          if (e.key === "Escape") setRenamingCategory(null);
-                        }}
-                      />
-                      <button className="text-button primary-button" type="button" style={{ fontSize: "12px" }} onClick={() => renameCategory(key, renameZh, renameAlt)}>{locale === "zh-CN" ? "保存" : "Save"}</button>
-                      <button className="text-button" type="button" style={{ fontSize: "12px" }} onClick={() => setRenamingCategory(null)}>{locale === "zh-CN" ? "取消" : "Cancel"}</button>
-                    </div>
-                  ) : (
-                    <TagPicker
-                      category={key}
-                      label={getCategoryLabel(userCategories, key, locale)}
-                      tags={tags.filter((tag) => tag.category === key)}
-                      selected={filters[key] ?? []}
-                      onChange={(ids) => setFilters((value) => ({ ...value, [key]: ids }))}
-                      onCreate={createTag}
-                      onDelete={deleteTag}
-                      onUpdate={updateTag}
-                      editingTags={editingTags}
-                      singleSelect={singleSelectCategories.has(key)}
-                      defaultColor={defaultColor}
-                      onDefaultColorChange={setDefaultColor}
-                      onRenameCategory={() => setRenamingCategory(key)}
-                      onDeleteCategory={() => removeCategory(key)}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-            )}
           {editingTags && (
           <div className="mt-3">
             <div className="mb-2 flex items-center gap-2">
-              <span className="text-xs font-semibold text-[var(--foreground)]">{t.other}</span>
+              <span className="text-xs font-semibold text-[var(--foreground)]">{t.newCategory}</span>
                 <button
                   className="icon-button"
                   style={{ width: 24, height: 24, minWidth: 24, minHeight: 24 }}
