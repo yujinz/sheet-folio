@@ -13,7 +13,26 @@
 #   AWS_SECRET_ACCESS_KEY   — R2 secret key
 #   AWS_ENDPOINT_URL_S3     — (optional) R2 endpoint (if not in --r2-endpoint)
 # ============================================================================
+# Quick log check: tail -6 $HOME/logs/sheet-folio-backup.log
 set -euo pipefail
+
+LOG_FILE="$HOME/logs/sheet-folio-backup.log"
+
+# Verbose mode: when stderr goes to terminal (interactive run), print progress to console too.
+# When stderr is redirected (cron: 2>> file), stay quiet and only log to file.
+if [ -t 2 ]; then
+  VERBOSE=true
+else
+  VERBOSE=false
+fi
+
+log() {
+  local msg="[$(date)] $1"
+  echo "$msg" >> "$LOG_FILE"
+  $VERBOSE && echo "$msg" >&2 || true
+}
+
+trap 's=$?; log "$( [ $s -eq 0 ] && echo COMPLETE || echo "FAILED (exit: $s)")"' EXIT
 
 cd "$(dirname "$0")"
 
@@ -51,8 +70,8 @@ EXPORT_DIR="$(realpath -m "$EXPORT_DIR")"
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
-info()  { echo "==> $*" >&2; }
-err()   { echo "ERROR: $*" >&2; }
+info()  { local m="$*"; log "  $m"; echo "==> $m" >&2; }
+err()   { local m="$*"; log "  ERROR: $m"; echo "ERROR: $m" >&2; }
 ts()    { date +%Y%m%d_%H%M%S; }
 
 # sha256() -> prints first 12 hex chars of stdin's sha256
