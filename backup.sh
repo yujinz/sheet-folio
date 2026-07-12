@@ -37,6 +37,15 @@ trap 's=$?; log "$( [ $s -eq 0 ] && echo COMPLETE || echo "FAILED (exit: $s)")"'
 cd "$(dirname "$0")"
 
 # ------------------------------------------------------------------
+# Auto-load .env file if present (keeps credentials out of the repo)
+# ------------------------------------------------------------------
+if [[ -f .env ]]; then
+  set -a
+  source .env
+  set +a
+fi
+
+# ------------------------------------------------------------------
 # Config
 # ------------------------------------------------------------------
 BACKUP_ROOT="${HOME}/backups/sheet-folio"
