@@ -247,7 +247,6 @@ if [[ -n "$R2_BUCKET" ]]; then
   sha="${sha%.tar.gz}"
 
   # Check if this SHA already exists on R2
-  r2_objects
   r2_objects="$(r2_list_objects "$R2_BUCKET" "$R2_ENDPOINT")"
   if echo "$r2_objects" | grep -q "$sha"; then
     info "SHA $sha already exists on R2 — skipping upload"
