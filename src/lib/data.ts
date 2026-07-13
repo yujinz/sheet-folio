@@ -16,7 +16,7 @@ export function groupTags(rows: Tag[]): Record<string, Tag[]> {
 }
 
 export function getSongs(): Song[] {
-  const allSongs = db.select().from(songs).orderBy(asc(songs.difficulty), asc(songs.title)).all();
+  const allSongs = db.select().from(songs).orderBy(asc(songs.difficulty), asc(sql`coalesce(${songs.title}, ${songs.titleAlt})`)).all();
   const allTags = db.select().from(tags).all();
   const joins = db.select().from(songTags).all();
   const tagsById = new Map(allTags.map((tag) => [tag.id, tag]));
@@ -44,7 +44,6 @@ export function getSong(id: number): Song | null {
     .all() as Tag[];
   const images = db.select().from(songImages).where(eq(songImages.songId, id)).orderBy(asc(songImages.sortOrder), asc(songImages.id)).all();
   const links = db.select().from(videoLinks).where(eq(videoLinks.songId, id)).orderBy(asc(videoLinks.sortOrder), asc(videoLinks.id)).all();
-
   return {
     ...song,
     tags: groupTags(selectedTags),

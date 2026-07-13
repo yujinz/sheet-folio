@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Images, Plus, Trash2, Upload, X, X as XIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Heart, House, Images, Plus, Trash2, Upload, X, X as XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
@@ -34,6 +34,7 @@ export default function Detail({ songId }: { songId: number }) {
   const { t, locale } = useLocale();
   const [piece, setPiece] = useState<Song | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<ImageKind>("staff");
   const [editingImages, setEditingImages] = useState(false);
   const [pageIndex, setPageIndex] = useState<number | null>(null);
@@ -47,9 +48,20 @@ export default function Detail({ songId }: { songId: number }) {
   const isDirtyRef = useRef(false);
   const imagesSectionRef = useRef<HTMLDivElement>(null);
   const hasScrolledToImages = useRef(false);
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sheet-folio-favorites");
+      if (raw) setFavoriteIds(JSON.parse(raw));
+    } catch {}
+  }, []);
 
   useEffect(() => {
     void refresh();
+    fetch("/api/single-select-categories")
+      .then((res) => res.json())
+      .then((rows) => setSingleSelectCategories(new Set(rows as string[])));
     const deviceId = getDeviceId();
     fetch(`/api/device-zoom?deviceId=${deviceId}&songId=${songId}`)
       .then((res) => res.json())
@@ -163,6 +175,14 @@ export default function Detail({ songId }: { songId: number }) {
     location.href = "/";
   }
 
+  function toggleFavorite() {
+    const next = favoriteIds.includes(songId)
+      ? favoriteIds.filter((id) => id !== songId)
+      : [...favoriteIds, songId];
+    setFavoriteIds(next);
+    localStorage.setItem("sheet-folio-favorites", JSON.stringify(next));
+  }
+
   // Debounced save — reads values from refs (uncontrolled inputs)
   function scheduleSave() {
     isDirtyRef.current = true;
@@ -172,11 +192,21 @@ export default function Detail({ songId }: { songId: number }) {
       const body: Record<string, string> = { notes };
       // Only one title input is rendered (based on locale); preserve the other from current piece state
       if (locale === "en-US") {
+        const titleAlt = titleAltRef.current?.value ?? "";
         body.title = piece?.title ?? "";
-        body.titleAlt = titleAltRef.current?.value ?? "";
+        body.titleAlt = titleAlt;
+        // Auto-mirror: if primary title is empty, copy the alt title
+        if (!body.title.trim() && titleAlt.trim()) {
+          body.title = titleAlt;
+        }
       } else {
-        body.title = titleRef.current?.value ?? "";
+        const title = titleRef.current?.value ?? "";
+        body.title = title;
         body.titleAlt = piece?.titleAlt ?? "";
+        // Auto-mirror: if alt title is empty, copy the primary title
+        if (!body.titleAlt.trim() && title.trim()) {
+          body.titleAlt = title;
+        }
       }
       // Safety net: don't save if both titles would be empty
       if (body.title.trim() === "" && body.titleAlt.trim() === "") return;
@@ -197,7 +227,7 @@ export default function Detail({ songId }: { songId: number }) {
     const newTitleAlt = locale === "en-US" ? currentValue : (piece?.titleAlt ?? "");
     if (newTitle.trim() === "" && newTitleAlt.trim() === "") {
       // Revert the input to its previous valid value
-      const fallback = piece?.titleAlt || piece?.title || "";
+      const fallback = piece?.title || piece?.titleAlt || "";
       if (titleRef.current) titleRef.current.value = fallback;
       if (titleAltRef.current) titleAltRef.current.value = fallback;
       alert(t.titleRequired);
@@ -235,20 +265,22 @@ export default function Detail({ songId }: { songId: number }) {
     <main className="sheet-page">
       <header ref={headerRef} className="grid gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Link className="icon-button" href="/" aria-label={t.backToDirectory}><ArrowLeft size={16} /></Link>
-          <input
-            ref={locale === "en-US" ? titleAltRef : titleRef}
-            key={`title-${songId}-${locale}`}
-            className="input max-w-lg text-xl font-semibold"
-            defaultValue={locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}
-            onChange={scheduleSave}
-            onBlur={handleTitleBlur}
-          />
-          <button className="text-button" type="button" onClick={() => setEditingImages((value) => !value)}>
-            {editingImages ? <X size={16} /> : <Images size={16} />} {editingImages ? t.viewImages : t.editImages}
+          <div className="flex items-center gap-2 flex-1">
+            <Link className="icon-button shrink-0" href="/" aria-label={t.backToDirectory}><House size={16} /></Link>
+            <input
+              ref={locale === "en-US" ? titleAltRef : titleRef}
+              key={`title-${songId}-${locale}`}
+              className="input max-w-lg min-w-[100px] flex-1 text-base font-semibold"
+              defaultValue={locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}
+              onChange={scheduleSave}
+              onBlur={handleTitleBlur}
+            />
+          </div>
+          <button className="icon-button" type="button" onClick={toggleFavorite} aria-label={favoriteIds.includes(songId) ? t.removeFromFavorites : t.addToFavorites}>
+            <Heart size={15} fill={favoriteIds.includes(songId) ? "currentColor" : "none"} style={favoriteIds.includes(songId) ? { color: "var(--accent)" } : undefined} />
           </button>
-          <button className="icon-button danger-button ml-auto" type="button" onClick={deletePiece} aria-label={t.deletePiece}><Trash2 size={15} /></button>
-          <LocaleSwitch />
+          <button className="icon-button danger-button" type="button" onClick={deletePiece} aria-label={t.deletePiece}><Trash2 size={15} /></button>
+          <LocaleSwitch className="ml-auto" />
         </div>
         <textarea
           ref={notesRef}
@@ -261,7 +293,7 @@ export default function Detail({ songId }: { songId: number }) {
         />
         <div className="flex flex-nowrap items-center gap-3 overflow-x-auto">
           <select className="select tag-add-select text-center" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => patch({ difficulty: Number(event.target.value) })}>
-            {[1, 2, 3, 4, 5].map((score) => <option key={score}>{score}</option>)}
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => <option key={score}>{score}</option>)}
           </select>
           {(() => {
             const allCats = [...categories, ...tags.reduce<string[]>((acc, tag) => {
@@ -277,6 +309,7 @@ export default function Detail({ songId }: { songId: number }) {
               <TagPicker
                 key={category}
                 compact
+                singleSelect={singleSelectCategories.has(category)}
                 category={category}
                 tags={tags.filter((tag) => tag.category === category)}
                 selected={piece.tags[category]?.map((tag) => tag.id) ?? []}
@@ -297,13 +330,13 @@ export default function Detail({ songId }: { songId: number }) {
           ))}
         </div>
         <div className="pointer-events-auto flex items-center gap-1">
-          <Link className="flex items-center justify-center rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm hover:bg-white/90" href="/" aria-label={t.backToDirectory}>
-            <ArrowLeft size={14} />
-          </Link>
+          <button className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur-sm ${!editingImages ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--foreground)]"}`} type="button" onClick={() => setEditingImages((value) => !value)}>
+            <Images size={14} /> {editingImages ? t.viewImages : t.editImages}
+          </button>
           {!editingImages && (
             <label className="flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm">
               {t.zoom}
-              <input type="range" min="25" max="130" value={zoom} onChange={(event) => setZoom(clampZoom(Number(event.target.value)))} className="w-20" />
+              <input type="range" min="25" max="130" value={zoom} onChange={(event) => setZoom(clampZoom(Number(event.target.value)))} className="w-20 accent-[var(--accent)]" />
             </label>
           )}
         </div>
@@ -316,6 +349,9 @@ export default function Detail({ songId }: { songId: number }) {
           <Browser images={images} zoom={zoom} onOpen={setPageIndex} links={piece.links ?? []} setLinks={saveLinks} />
         )}
       </div>
+      <Link className="fixed bottom-4 right-4 z-30 icon-button bg-white/80 backdrop-blur-sm shadow-md hover:bg-white" href="/" aria-label={t.backToDirectory}>
+        <House size={16} />
+      </Link>
 
       {pageIndex !== null && (
         <Pager images={images} tab={tab} setTab={setTab} index={pageIndex} setIndex={setPageIndex} zoom={zoom} />
@@ -475,28 +511,51 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
 }) {
   const { t } = useLocale();
   const image = images[index];
+
   return (
     <div className="fullscreen-view">
-      <div className="absolute right-3 top-3 z-20 flex gap-2">
+      <div className="absolute right-3 top-3 z-40 flex gap-2">
         {(["staff", "numbered"] as ImageKind[]).map((kind) => (
-          <button key={kind} className={`rounded-md bg-white/20 px-2 py-1 text-sm text-white backdrop-blur-sm ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}>{t[kind]}</button>
+          <button key={kind} className={`select-none rounded-md bg-white/20 px-2.5 py-1.5 text-sm text-white backdrop-blur-sm transition-colors ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}>{t[kind]}</button>
         ))}
       </div>
-      <button className="absolute left-3 top-3 z-30 rounded-md bg-white/20 px-3 py-2 text-white backdrop-blur-sm hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
-        <XIcon size={24} />
-      </button>
-      <button className="absolute inset-0 left-0 right-1/2 z-10" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
-        <div className="flex h-full w-16 items-center justify-center opacity-30 hover:opacity-70 transition-opacity">
+      <div className="absolute left-3 top-3 z-40 flex gap-2 select-none">
+        <button className="rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
+          <XIcon size={24} />
+        </button>
+        <button
+          className="rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm hover:bg-white/40 transition-colors"
+          aria-label={t.saveImage}
+          onClick={() => {
+            const a = document.createElement("a");
+            a.href = image.url;
+            a.download = image.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }}
+        >
+          <Download size={24} />
+        </button>
+      </div>
+      <button className="absolute inset-y-0 left-0 w-1/3 z-30 select-none" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
+        <div className="flex h-full items-center justify-start pl-2 opacity-30 hover:opacity-70 transition-opacity">
           <ChevronLeft size={40} />
         </div>
       </button>
-      <button className="absolute inset-0 left-1/2 right-0 z-10" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
-        <div className="flex h-full w-16 items-center justify-center opacity-30 hover:opacity-70 transition-opacity ml-auto">
+      <button className="absolute inset-y-0 right-0 w-1/3 z-30 select-none" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
+        <div className="flex h-full items-center justify-end pr-2 opacity-30 hover:opacity-70 transition-opacity">
           <ChevronRight size={40} />
         </div>
       </button>
-      <div className="absolute inset-0 flex items-center justify-center">
-        {image && <img src={image.url} alt="" className="block max-h-full max-w-full object-contain" />}
+      {/* Image at z-20 above background, below nav buttons at z-30.
+          Tap center to exit, long-press to trigger iOS "Save to Photos". */}
+      <div
+        className="absolute inset-0 z-20 flex items-center justify-center"
+        style={{ userSelect: "none", WebkitTouchCallout: "default" }}
+        onClick={() => setIndex(null)}
+      >
+        {image && <img src={image.url} alt="" className="block max-h-full max-w-full object-contain" style={{ WebkitTouchCallout: "default" }} />}
       </div>
       {image?.sourceUrl && (
         <a
@@ -508,6 +567,13 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
           {t.source}: {image.sourceUrl}
         </a>
       )}
+      <Link
+        href="/"
+        className="absolute bottom-3 right-3 z-40 flex items-center justify-center rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm hover:bg-white/40 transition-colors"
+        aria-label={t.backToDirectory}
+      >
+        <House size={24} />
+      </Link>
     </div>
   );
 }

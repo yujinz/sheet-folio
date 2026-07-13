@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
@@ -9,12 +9,13 @@ import { useLocale } from "@/lib/useLocale";
 import { messages } from "@/lib/i18n";
 import { CORE_CATEGORIES } from "@/lib/types";
 import { categoryKey, canAddCategory, isCoreCategoryLabel } from "@/lib/category";
-import type { Song, Tag } from "@/lib/types";
+import type { Song, Tag, TagCategory } from "@/lib/types";
+import { useSingleSelectFilter } from "@/lib/useSingleSelectFilter";
 
-type UserCategory = { key: string; labelZh: string; labelEn: string };
+type UserCategory = { key: string; labelZh: string; labelAlt: string };
 
 function categoryDisplayName(cat: UserCategory, locale: string): string {
-  return locale === "en-US" ? cat.labelEn : cat.labelZh;
+  return locale === "en-US" ? cat.labelAlt : cat.labelZh;
 }
 
 function getCategoryLabel(categories: UserCategory[], key: string, locale: string): string {
@@ -22,12 +23,22 @@ function getCategoryLabel(categories: UserCategory[], key: string, locale: strin
   return found ? categoryDisplayName(found, locale) : key;
 }
 
-type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "notes";
+type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "notes" | "createdAt";
 
 const categories = [...CORE_CATEGORIES];
 
 const STORAGE_KEY = "sheet-folio-directory-state";
-const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5] as const;
+const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
+function getFavorites(): number[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("sheet-folio-favorites");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
 
 const DIFFICULTY_COLORS = [
 	"#ecc484", // 1  maple
@@ -59,44 +70,47 @@ export default function Directory() {
   const [filters, setFilters] = useState<Record<string, number[]>>(
     () => Object.fromEntries(CORE_CATEGORIES.map((c) => [c, []]))
   );
-  const [difficultyFilters, setDifficultyFilters] = useState<number[]>(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.difficultyFilters)) return parsed.difficultyFilters;
-      }
-    } catch {}
-    return [];
-  });
+  const difficultyFilter = useSingleSelectFilter<number>();
   const [editingTags, setEditingTags] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.sort) return parsed.sort;
-      }
-    } catch {}
-    return { key: "difficulty", dir: "asc" };
-  });
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "difficulty", dir: "asc" });
+  const [titleSortDir, setTitleSortDir] = useState<"asc" | "desc">("asc");
+  const [createdAtSortDir, setCreatedAtSortDir] = useState<"asc" | "desc">("desc");
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
 
   useEffect(() => {
     void refresh();
   }, []);
 
+  // Restore saved state from sessionStorage after hydration
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.query === "string") setQuery(parsed.query);
+        if (parsed.filters) setFilters(parsed.filters);
+        if (typeof parsed.difficultyFilter === "number") difficultyFilter.setValue(parsed.difficultyFilter);
+        if (parsed.sort) setSort(parsed.sort);
+        if (parsed.titleSortDir) setTitleSortDir(parsed.titleSortDir);
+        if (parsed.createdAtSortDir) setCreatedAtSortDir(parsed.createdAtSortDir);
+      }
+    } catch {}
+  }, []);
+
+  const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(new Set());
+
   const [userCategories, setUserCategories] = useState<UserCategory[]>([]);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryNameZh, setNewCategoryNameZh] = useState("");
-  const [newCategoryNameEn, setNewCategoryNameEn] = useState("");
+  const [newCategoryNameAlt, setNewCategoryNameAlt] = useState("");
+  const [newCategorySingleSelect, setNewCategorySingleSelect] = useState(false);
 
   // Category rename state
   const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
   const [renameZh, setRenameZh] = useState("");
-  const [renameEn, setRenameEn] = useState("");
+  const [renameAlt, setRenameAlt] = useState("");
   const renameZhRef = useRef<HTMLInputElement>(null);
-  const renameEnRef = useRef<HTMLInputElement>(null);
+  const renameAltRef = useRef<HTMLInputElement>(null);
   const [hiddenCoreCategories, setHiddenCoreCategories] = useState<string[]>([]);
 
   useEffect(() => {
@@ -104,13 +118,13 @@ export default function Directory() {
       const uc = userCategories.find((c) => c.key === renamingCategory);
       if (uc) {
         setRenameZh(uc.labelZh);
-        setRenameEn(uc.labelEn);
+        setRenameAlt(uc.labelAlt);
       } else {
         // Core category — use bilingual i18n labels as defaults
         const zhLabels = messages["zh-CN"] as Record<string, string>;
-        const enLabels = messages["en-US"] as Record<string, string>;
+        const altLabels = messages["en-US"] as Record<string, string>;
         setRenameZh(zhLabels[renamingCategory] || renamingCategory);
-        setRenameEn(enLabels[renamingCategory] || renamingCategory);
+        setRenameAlt(altLabels[renamingCategory] || renamingCategory);
       }
       setTimeout(() => renameZhRef.current?.focus(), 50);
     }
@@ -142,12 +156,12 @@ export default function Directory() {
     if (!editingTags) {
       setShowNewCategory(false);
       setNewCategoryNameZh("");
-      setNewCategoryNameEn("");
+      setNewCategoryNameAlt("");
       setRenamingCategory(null);
     }
   }, [editingTags]);
   const newCategoryNameZhRef = useRef<HTMLInputElement>(null);
-  const newCategoryNameEnRef = useRef<HTMLInputElement>(null);
+  const newCategoryNameAltRef = useRef<HTMLInputElement>(null);
 
   // Recalculate default color when tags are loaded
   useEffect(() => {
@@ -155,11 +169,13 @@ export default function Directory() {
     setDefaultColor((prev) => pickDefaultColor(tags, prev));
   }, [tags]);
 
-  // Save sort/query/filters to sessionStorage whenever they change
+  // Save sort/query/filters to sessionStorage whenever they change (merging with existing data to preserve scrollY etc.)
   useEffect(() => {
-    const state = { sort, query, filters, difficultyFilters, userCategories, hiddenCoreCategories };
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    const existing = saved ? JSON.parse(saved) : {};
+    const state = { ...existing, sort, query, filters, difficultyFilter: difficultyFilter.value, titleSortDir, createdAtSortDir, userCategories, hiddenCoreCategories };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [sort, query, filters, difficultyFilters, userCategories, hiddenCoreCategories]);
+  }, [sort, query, filters, difficultyFilter.value, titleSortDir, createdAtSortDir, userCategories, hiddenCoreCategories]);
 
   // Save scroll position on unmount (SPA navigation) and on pagehide (bfcache/unload)
   useEffect(() => {
@@ -195,12 +211,14 @@ export default function Directory() {
   }, [pieces]);
 
   async function refresh() {
-    const [pieceRows, tagRows] = await Promise.all([
+    const [pieceRows, tagRows, ssRows] = await Promise.all([
       fetch("/api/pieces").then((res) => res.json()),
-      fetch("/api/tags").then((res) => res.json())
+      fetch("/api/tags").then((res) => res.json()),
+      fetch("/api/single-select-categories").then((res) => res.json())
     ]);
     setPieces(pieceRows);
     setTags(tagRows);
+    setSingleSelectCategories(new Set(ssRows as string[]));
   }
 
   async function createPiece() {
@@ -277,6 +295,14 @@ export default function Directory() {
     return userCategories.find((c) => c.key === key);
   }
 
+  /** Check whether a category key represents the pitch category in either language. */
+  function isPitchKey(key: string): boolean {
+    if (!key) return false;
+    const lower = key.toLowerCase();
+    return (messages["zh-CN"] as Record<string, string>).pitch === lower
+        || (messages["en-US"] as Record<string, string>).pitch.toLowerCase() === lower;
+  }
+
   // Ensure filters has entries for extra categories
   useEffect(() => {
     setFilters((prev) => {
@@ -294,29 +320,38 @@ export default function Directory() {
 
   function addCategory(zh: string, en: string) {
     const trimmedZh = zh.trim();
-    const trimmedEn = en.trim();
-    const key = categoryKey(trimmedZh, trimmedEn);
+    const trimmedAlt = en.trim();
+    const key = categoryKey(trimmedZh, trimmedAlt);
     if (!key) return;
     const keyCheck = canAddCategory(key, extraCategoryKeys);
     if (!keyCheck.valid) {
       alert(keyCheck.reason!);
       return;
     }
-    if (isCoreCategoryLabel(trimmedZh) || isCoreCategoryLabel(trimmedEn)) {
+    if (isCoreCategoryLabel(trimmedZh) || isCoreCategoryLabel(trimmedAlt)) {
       alert("This name matches a built-in category. Use a different name.");
       return;
     }
-    setUserCategories((prev) => [...prev, { key, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh }]);
+    setUserCategories((prev) => [...prev, { key, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh }]);
     setFilters((prev) => ({ ...prev, [key]: [] }));
+    if (newCategorySingleSelect) {
+      fetch("/api/single-select-categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: key })
+      });
+      setSingleSelectCategories((prev) => new Set([...prev, key]));
+    }
     setNewCategoryNameZh("");
-    setNewCategoryNameEn("");
+    setNewCategoryNameAlt("");
+    setNewCategorySingleSelect(false);
     setShowNewCategory(false);
   }
 
   async function removeCategory(key: string) {
     const catTags = tags.filter((t) => t.category === key);
     const tagCount = catTags.length;
-    const label = getUserCategory(key)?.labelEn || key;
+    const label = getUserCategory(key)?.labelAlt || key;
     const msg = tagCount > 0
       ? `Delete category "${label}" and its ${tagCount} tag${tagCount > 1 ? "s" : ""}? Tags will be removed from all pieces.`
       : `Remove "${label}" from the filter area?`;
@@ -336,15 +371,15 @@ export default function Directory() {
   async function renameCategory(oldKey: string, zh: string, en: string) {
     const isCore = CORE_CATEGORIES.includes(oldKey as typeof CORE_CATEGORIES[number]);
     const trimmedZh = zh.trim();
-    const trimmedEn = en.trim();
-    if (!trimmedZh && !trimmedEn) return;
+    const trimmedAlt = en.trim();
+    if (!trimmedZh && !trimmedAlt) return;
     // For core categories, rename the key itself so it becomes a custom category
-    const newKey = (trimmedEn || trimmedZh).toLowerCase().replace(/\s+/g, "-");
+    const newKey = (trimmedAlt || trimmedZh).toLowerCase().replace(/\s+/g, "-");
     if (!newKey || newKey === oldKey) {
       // Update labels for any category (core or custom)
       setUserCategories((prev) => {
         const existing = prev.findIndex((c) => c.key === oldKey);
-        const updated = { key: oldKey, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh };
+        const updated = { key: oldKey, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh };
         if (existing >= 0) {
           return prev.map((c) => c.key === oldKey ? updated : c);
         }
@@ -384,14 +419,19 @@ export default function Directory() {
       setUserCategories((prev) => prev.filter((c) => c.key !== oldKey));
       setHiddenCoreCategories((prev) => prev.filter((k) => k !== newKey));
     } else if (!isCore) {
-      setUserCategories((prev) => prev.map((c) => c.key === oldKey ? { key: newKey, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh } : c));
+      setUserCategories((prev) => prev.map((c) => c.key === oldKey ? { key: newKey, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh } : c));
     } else {
-      setUserCategories((prev) => [...prev, { key: newKey, labelZh: trimmedZh || trimmedEn, labelEn: trimmedEn || trimmedZh }]);
+      setUserCategories((prev) => [...prev, { key: newKey, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh }]);
       setHiddenCoreCategories((prev) => [...prev, oldKey]);
     }
     setRenamingCategory(null);
     await refresh();
   }
+
+  const availableDifficulties = useMemo(() => {
+    const used = new Set(pieces.map((p) => p.difficulty));
+    return DIFFICULTY_LEVELS.filter((level) => used.has(level));
+  }, [pieces]);
 
   const visible = useMemo(() => {
     const filtered = pieces.filter((piece) => {
@@ -399,7 +439,7 @@ export default function Directory() {
         const titleForSearch = locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt);
         if (!titleForSearch.toLowerCase().includes(query.toLowerCase())) return false;
       }
-      if (difficultyFilters.length > 0 && !difficultyFilters.includes(piece.difficulty)) {
+      if (difficultyFilter.value !== null && difficultyFilter.value !== piece.difficulty) {
         return false;
       }
       const allFilterCats = Object.keys(filters);
@@ -408,23 +448,51 @@ export default function Directory() {
       );
     });
     return [...filtered].sort((a, b) => {
+      // When sorting by title, favorites come first (primary sort)
+      if (sort.key === "title") {
+        const isFavA = getFavorites().includes(a.id) ? 0 : 1;
+        const isFavB = getFavorites().includes(b.id) ? 0 : 1;
+        if (isFavA !== isFavB) return isFavA - isFavB;
+        const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt);
+        const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
+        return titleSortDir === "asc" ? titleResult : -titleResult;
+      }
+      if (sort.key === "createdAt") {
+        const isFavA = getFavorites().includes(a.id) ? 0 : 1;
+        const isFavB = getFavorites().includes(b.id) ? 0 : 1;
+        if (isFavA !== isFavB) return isFavA - isFavB;
+        const result = a.createdAt.localeCompare(b.createdAt);
+        return createdAtSortDir === "asc" ? result : -result;
+      }
       const read = (piece: Song): string | number => {
         if (sort.key === "difficulty") return piece.difficulty;
         if (sort.key === "notes") return piece.notes;
-        if (sort.key === "title") return piece.id;
-        return piece.tags[sort.key].map((tag) => locale === "en-US" ? (tag.nameAlt || tag.name) : tag.name).join(",");
+        return piece.tags[sort.key as TagCategory].map((tag) => locale === "en-US" ? (tag.nameAlt || tag.name) : (tag.name || tag.nameAlt)).join(",");
       };
       const aVal = read(a);
       const bVal = read(b);
-      const result = typeof aVal === "number" && typeof bVal === "number"
+      const primary = typeof aVal === "number" && typeof bVal === "number"
         ? aVal - bVal
         : String(aVal).localeCompare(String(bVal), locale, { numeric: true });
-      return sort.dir === "asc" ? result : -result;
+      if (primary !== 0) return sort.dir === "asc" ? primary : -primary;
+      // Secondary: favorites within the same sort-key value
+      const isFavA = getFavorites().includes(a.id) ? 0 : 1;
+      const isFavB = getFavorites().includes(b.id) ? 0 : 1;
+      if (isFavA !== isFavB) return isFavA - isFavB;
+      // Tertiary sort by title using user's last title sort direction
+      const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt);
+      const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
+      return titleSortDir === "asc" ? titleResult : -titleResult;
     });
-  }, [filters, locale, pieces, query, sort, difficultyFilters]);
+  }, [filters, locale, pieces, query, sort, titleSortDir, createdAtSortDir, difficultyFilter.value]);
 
   function sortBy(key: SortKey) {
-    setSort((value) => ({ key, dir: value.key === key && value.dir === "asc" ? "desc" : "asc" }));
+    setSort((value) => {
+      const dir = value.key === key && value.dir === "asc" ? "desc" : "asc";
+      if (key === "title") setTitleSortDir(dir);
+      if (key === "createdAt") setCreatedAtSortDir(dir);
+      return { key, dir };
+    });
   }
 
   return (
@@ -449,9 +517,9 @@ export default function Directory() {
 
       <section className="relative px-4 py-4">
         <div className="absolute top-3 right-4 -mt-2 flex items-center gap-1">
-          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(Object.values(filters).some((ids) => ids.length > 0) || difficultyFilters.length > 0) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
+          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(Object.values(filters).some((ids) => ids.length > 0) || difficultyFilter.value !== null) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
             setFilters(Object.fromEntries(Object.keys(filters).map((k) => [k, []])));
-            setDifficultyFilters([]);
+            difficultyFilter.reset();
           }}>
             <RotateCcw size={12} /> {t.resetFilters}
           </button>
@@ -461,8 +529,8 @@ export default function Directory() {
         </div>
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           <span className="text-xs font-semibold text-[var(--foreground)] shrink-0 w-[4.5rem]">{t.difficulty}</span>
-          {DIFFICULTY_LEVELS.map((level) => {
-            const isActive = difficultyFilters.includes(level);
+          {availableDifficulties.map((level) => {
+            const isActive = difficultyFilter.value === level;
             const color = DIFFICULTY_COLORS[level - 1];
             return (
               <button
@@ -471,13 +539,8 @@ export default function Directory() {
                 style={{
                   background: color,
                   opacity: isActive ? 1 : 0.35,
-                  
                 }}
-                onClick={() =>
-                  setDifficultyFilters((prev) =>
-                    prev.includes(level) ? prev.filter((d) => d !== level) : [...prev, level]
-                  )
-                }
+                onClick={() => difficultyFilter.toggle(level)}
                 aria-pressed={isActive}
               >
                 {level}
@@ -486,8 +549,9 @@ export default function Directory() {
           })}
         </div>
         <div className="grid gap-2 lg:grid-cols-3">
-          {categories.filter((cat) => !hiddenCoreCategories.includes(cat)).map((category) => {
-            const userCat = userCategories.find((c) => c.key === category);
+          {[...categories.filter((cat) => !hiddenCoreCategories.includes(cat)), ...extraCategoryKeys].map((category) => {
+            const isCore = CORE_CATEGORIES.includes(category as typeof CORE_CATEGORIES[number]);
+            const userCat = isCore ? userCategories.find((c) => c.key === category) : undefined;
             return (
             <div key={category}>
               {editingTags && renamingCategory === category ? (
@@ -496,33 +560,34 @@ export default function Directory() {
                     ref={renameZhRef}
                     className="input"
                     style={{ width: "7rem", fontSize: "12px" }}
-                    placeholder="分类名称 (中文)"
+                    placeholder={t.categoryNameZh}
                     value={renameZh}
                     onChange={(e) => setRenameZh(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") renameEnRef.current?.focus();
+                      if (e.key === "Enter") renameAltRef.current?.focus();
                       if (e.key === "Escape") setRenamingCategory(null);
                     }}
                   />
                   <input
-                    ref={renameEnRef}
+                    ref={renameAltRef}
                     className="input"
                     style={{ width: "7rem", fontSize: "12px" }}
-                    placeholder="Category (English)"
-                    value={renameEn}
-                    onChange={(e) => setRenameEn(e.target.value)}
+                    placeholder={t.categoryNameEn}
+                    value={renameAlt}
+                    onChange={(e) => setRenameAlt(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") { renameCategory(category, renameZh, renameEn); }
+                      if (e.key === "Enter") { renameCategory(category, renameZh, renameAlt); }
                       if (e.key === "Escape") setRenamingCategory(null);
                     }}
                   />
-                  <button className="text-button primary-button" type="button" style={{ fontSize: "12px" }} onClick={() => renameCategory(category, renameZh, renameEn)}>{locale === "zh-CN" ? "保存" : "Save"}</button>
-                  <button className="text-button" type="button" style={{ fontSize: "12px" }} onClick={() => setRenamingCategory(null)}>{locale === "zh-CN" ? "取消" : "Cancel"}</button>
+                  <button className="text-button primary-button" type="button" style={{ fontSize: "12px" }} onClick={() => renameCategory(category, renameZh, renameAlt)}>{t.save}</button>
+                  <button className="text-button" type="button" style={{ fontSize: "12px" }} onClick={() => setRenamingCategory(null)}>{t.cancel}</button>
                 </div>
               ) : (
                 <TagPicker
                   category={category}
-                  label={userCat ? categoryDisplayName(userCat, locale) : undefined}
+                  isPitchCategory={isPitchKey(category)}
+                  label={userCat ? categoryDisplayName(userCat, locale) : (isCore ? undefined : getCategoryLabel(userCategories, category, locale))}
                   tags={tags.filter((tag) => tag.category === category)}
                   selected={filters[category] ?? []}
                   onChange={(ids) => setFilters((value) => ({ ...value, [category]: ids }))}
@@ -530,73 +595,21 @@ export default function Directory() {
                   onDelete={deleteTag}
                   onUpdate={updateTag}
                   editingTags={editingTags}
+                  singleSelect={singleSelectCategories.has(category)}
                   defaultColor={defaultColor}
                   onDefaultColorChange={setDefaultColor}
                   onRenameCategory={() => setRenamingCategory(category)}
+                  onDeleteCategory={isCore ? undefined : () => removeCategory(category)}
                 />
               )}
             </div>
           );}
         )}
         </div>
-          {extraCategoryKeys.length > 0 && (
-          <div className="grid gap-2 lg:grid-cols-3">
-            {extraCategoryKeys.map((key) => (
-                <div key={key}>
-                  {renamingCategory === key ? (
-                    <div className="flex flex-wrap items-center gap-1 p-1">
-                      <input
-                        ref={renameZhRef}
-                        className="input"
-                        style={{ width: "7rem", fontSize: "12px" }}
-                        placeholder="分类名称 (中文)"
-                        value={renameZh}
-                        onChange={(e) => setRenameZh(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") renameEnRef.current?.focus();
-                          if (e.key === "Escape") setRenamingCategory(null);
-                        }}
-                      />
-                      <input
-                        ref={renameEnRef}
-                        className="input"
-                        style={{ width: "7rem", fontSize: "12px" }}
-                        placeholder="Category (English)"
-                        value={renameEn}
-                        onChange={(e) => setRenameEn(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") { renameCategory(key, renameZh, renameEn); }
-                          if (e.key === "Escape") setRenamingCategory(null);
-                        }}
-                      />
-                      <button className="text-button primary-button" type="button" style={{ fontSize: "12px" }} onClick={() => renameCategory(key, renameZh, renameEn)}>{locale === "zh-CN" ? "保存" : "Save"}</button>
-                      <button className="text-button" type="button" style={{ fontSize: "12px" }} onClick={() => setRenamingCategory(null)}>{locale === "zh-CN" ? "取消" : "Cancel"}</button>
-                    </div>
-                  ) : (
-                    <TagPicker
-                      category={key}
-                      label={getCategoryLabel(userCategories, key, locale)}
-                      tags={tags.filter((tag) => tag.category === key)}
-                      selected={filters[key] ?? []}
-                      onChange={(ids) => setFilters((value) => ({ ...value, [key]: ids }))}
-                      onCreate={createTag}
-                      onDelete={deleteTag}
-                      onUpdate={updateTag}
-                      editingTags={editingTags}
-                      defaultColor={defaultColor}
-                      onDefaultColorChange={setDefaultColor}
-                      onRenameCategory={() => setRenamingCategory(key)}
-                      onDeleteCategory={() => removeCategory(key)}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-            )}
           {editingTags && (
           <div className="mt-3">
             <div className="mb-2 flex items-center gap-2">
-              <span className="text-xs font-semibold text-[var(--foreground)]">{t.other}</span>
+              <span className="text-xs font-semibold text-[var(--foreground)]">{t.newCategory}</span>
                 <button
                   className="icon-button"
                   style={{ width: 24, height: 24, minWidth: 24, minHeight: 24 }}
@@ -605,7 +618,7 @@ export default function Directory() {
                   onClick={() => {
                     setShowNewCategory(true);
                     setNewCategoryNameZh("");
-                    setNewCategoryNameEn("");
+                    setNewCategoryNameAlt("");
                     setTimeout(() => newCategoryNameZhRef.current?.focus(), 50);
                   }}
                 >
@@ -618,41 +631,52 @@ export default function Directory() {
                   ref={newCategoryNameZhRef}
                   className="input"
                   style={{ width: "8rem", fontSize: "12px" }}
-                  placeholder="分类名称 (中文)"
+                  placeholder={t.categoryNameZh}
                   value={newCategoryNameZh}
                   onChange={(e) => setNewCategoryNameZh(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") newCategoryNameEnRef.current?.focus();
-                    if (e.key === "Escape") { setShowNewCategory(false); setNewCategoryNameZh(""); setNewCategoryNameEn(""); }
+                    if (e.key === "Enter") newCategoryNameAltRef.current?.focus();
+                    if (e.key === "Escape") { setShowNewCategory(false); setNewCategoryNameZh(""); setNewCategoryNameAlt(""); }
                   }}
                 />
                 <input
-                  ref={newCategoryNameEnRef}
+                  ref={newCategoryNameAltRef}
                   className="input"
                   style={{ width: "8rem", fontSize: "12px" }}
-                  placeholder="Category name (English)"
-                  value={newCategoryNameEn}
-                  onChange={(e) => setNewCategoryNameEn(e.target.value)}
+                  placeholder={t.categoryNameEn}
+                  value={newCategoryNameAlt}
+                  onChange={(e) => setNewCategoryNameAlt(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") addCategory(newCategoryNameZh, newCategoryNameEn);
-                    if (e.key === "Escape") { setShowNewCategory(false); setNewCategoryNameZh(""); setNewCategoryNameEn(""); }
+                    if (e.key === "Enter") addCategory(newCategoryNameZh, newCategoryNameAlt);
+                    if (e.key === "Escape") { setShowNewCategory(false); setNewCategoryNameZh(""); setNewCategoryNameAlt(""); }
                   }}
                   onBlur={() => {
-                    if (!newCategoryNameZh.trim() && !newCategoryNameEn.trim()) setShowNewCategory(false);
+                    if (!newCategoryNameZh.trim() && !newCategoryNameAlt.trim()) setShowNewCategory(false);
                   }}
                 />
+                <label className="inline-flex items-center gap-1 cursor-pointer" style={{ fontSize: "11px" }}>
+                  <div
+                    className={`relative h-4 w-7 rounded-full transition-colors ${newCategorySingleSelect ? 'bg-[var(--accent)]' : 'bg-gray-300'}`}
+                    onClick={() => setNewCategorySingleSelect((v) => !v)}
+                  >
+                    <div
+                      className={`absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${newCategorySingleSelect ? 'translate-x-3' : ''}`}
+                    />
+                  </div>
+                  <span className="text-[var(--muted)] select-none">{t.single}</span>
+                </label>
                 <button
                   className="text-button primary-button"
                   type="button"
                   style={{ fontSize: "13px" }}
-                  onClick={() => addCategory(newCategoryNameZh, newCategoryNameEn)}
+                  onClick={() => addCategory(newCategoryNameZh, newCategoryNameAlt)}
                 >
-                  <Plus size={14} /> Add
+                  <Plus size={14} /> {t.add}
                 </button>
                 <button
                   className="icon-button"
                   type="button"
-                  onClick={() => { setShowNewCategory(false); setNewCategoryNameZh(""); setNewCategoryNameEn(""); }}
+                  onClick={() => { setShowNewCategory(false); setNewCategoryNameZh(""); setNewCategoryNameAlt(""); setNewCategorySingleSelect(false); }}
                 >
                   <X size={14} />
                 </button>
@@ -667,8 +691,17 @@ export default function Directory() {
           <thead>
             <tr>
               <th style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
-              <th style={{ width: 200 }}><button onClick={() => sortBy("title")}>{t.title} {sort.key === "title" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
-              {categories.map((category) => <th key={category} style={{ width: 170 }}><button onClick={() => sortBy(category)}>{t[category]}</button></th>)}
+              <th style={{ width: 200 }}>
+                <div className="flex items-center justify-between">
+                  <button onClick={() => sortBy("title")}>
+                    {t.title} {sort.key === "title" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}
+                  </button>
+                  <button className="text-xs text-[var(--muted)] hover:text-[var(--foreground)] flex items-center gap-0.5" onClick={() => sortBy("createdAt")}>
+                    <Calendar size={12} /> {sort.key === "createdAt" ? (sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} />}
+                  </button>
+                </div>
+              </th>
+              {categories.filter((cat) => !hiddenCoreCategories.includes(cat)).map((category) => <th key={category} style={{ width: 170 }}>{t[category]}</th>)}
               {extraCategoryKeys.map((key) => <th key={key} style={{ width: 170 }}>{getCategoryLabel(userCategories, key, locale)}</th>)}
               <th style={{ width: 170 }}><button onClick={() => sortBy("notes")}>{t.notes}</button></th>
             </tr>
@@ -676,7 +709,7 @@ export default function Directory() {
           <tbody>
             {visible.map((piece) => {
               function buildTagIds(category: string, ids: number[]) {
-                return [...categories, ...extraCategoryKeys].flatMap((cat) =>
+                return [...categories.filter((cat) => !hiddenCoreCategories.includes(cat)), ...extraCategoryKeys].flatMap((cat) =>
                   cat === category ? ids : (piece.tags[cat]?.map((tag) => tag.id) ?? [])
                 );
               }
@@ -684,17 +717,22 @@ export default function Directory() {
               <tr key={piece.id}>
                 <td>
                   <select className="select tag-add-select" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
-                    {[1, 2, 3, 4, 5].map((score) => <option key={score}>{score}</option>)}
+                    {DIFFICULTY_LEVELS.map((score) => <option key={score}>{score}</option>)}
                   </select>
                 </td>
                 <td className="font-semibold" style={{ fontSize: 15 }}>
-                  <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}</Link>
+                  <span className="inline-flex items-center gap-1">
+                    {getFavorites().includes(piece.id) && <Heart size={13} fill="var(--accent)" style={{ color: "var(--accent)" }} />}
+                    <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}</Link>
+                  </span>
                 </td>
-                {categories.map((category) => (
+                {categories.filter((cat) => !hiddenCoreCategories.includes(cat)).map((category) => (
                   <td key={category}>
                     <TagPicker
                       compact
                       selectedOnly
+                      isPitchCategory={isPitchKey(category)}
+                      singleSelect={singleSelectCategories.has(category)}
                       category={category}
                       tags={tags.filter((tag) => tag.category === category)}
                       selected={piece.tags[category]?.map((tag) => tag.id) ?? []}
@@ -710,6 +748,8 @@ export default function Directory() {
                     <TagPicker
                       compact
                       selectedOnly
+                      isPitchCategory={isPitchKey(key)}
+                      singleSelect={singleSelectCategories.has(key)}
                       category={key}
                       label={getCategoryLabel(userCategories, key, locale)}
                       tags={tags.filter((tag) => tag.category === key)}

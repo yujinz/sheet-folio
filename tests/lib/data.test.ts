@@ -15,9 +15,9 @@ describe("nowIso", () => {
 describe("groupTags", () => {
   it("groups tags by category with all categories present", () => {
     const tags: Tag[] = [
-      { id: 1, name: "高音", nameAlt: "", color: "#2563eb", category: "pitch" },
-      { id: 2, name: "连音", nameAlt: "", color: "#ea580c", category: "technique" },
-      { id: 3, name: "附点", nameAlt: "", color: "#c026d3", category: "rhythm" },
+      { id: 1, name: "高音", nameEn: "", color: "#2563eb", category: "pitch" },
+      { id: 2, name: "连音", nameEn: "", color: "#ea580c", category: "technique" },
+      { id: 3, name: "附点", nameEn: "", color: "#c026d3", category: "rhythm" },
     ];
     const grouped = groupTags(tags);
     for (const cat of categories) {
@@ -31,7 +31,7 @@ describe("groupTags", () => {
 
   it("returns empty arrays for categories with no tags", () => {
     const tags: Tag[] = [
-      { id: 1, name: "高音", nameAlt: "", color: "#2563eb", category: "pitch" },
+      { id: 1, name: "高音", nameEn: "", color: "#2563eb", category: "pitch" },
     ];
     const grouped = groupTags(tags);
     expect(grouped.pitch).toHaveLength(1);
@@ -51,9 +51,9 @@ describe("groupTags", () => {
 
   it("groups custom categories dynamically", () => {
     const tags: Tag[] = [
-      { id: 1, name: "Baroque", nameAlt: "", color: "#9e6aba", category: "genre" },
-      { id: 2, name: "Classical", nameAlt: "", color: "#c46a9e", category: "genre" },
-      { id: 3, name: "高音", nameAlt: "", color: "#2563eb", category: "pitch" },
+      { id: 1, name: "Baroque", nameEn: "", color: "#9e6aba", category: "genre" },
+      { id: 2, name: "Classical", nameEn: "", color: "#c46a9e", category: "genre" },
+      { id: 3, name: "高音", nameEn: "", color: "#2563eb", category: "pitch" },
     ];
     const grouped = groupTags(tags);
     expect(grouped).toHaveProperty("genre");
