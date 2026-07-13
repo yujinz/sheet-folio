@@ -2,7 +2,14 @@
 
 A sheet music manager with a web UI accessible from both PC and mobile device. The interface is available in Chinese (zh-CN) and English (en-US), but the data model supports arbitrary languages via primary and alternate name fields - designed for easy extension beyond the two currently implemented UI languages.
 
-App features: browse, search, and sort a directory of pieces; upload, delete, and reorder sheet images; color-coded difficulty/technique/pitch/rhythm tags (pitch tags get rainbow colors by octave, sorted low→high); scroll and page-flip sheet views; per-device zoom persistence and favorite pieces; sheet source link and video link management; full CRUD.
+App features:
+- Create, edit, and delete pieces
+- Browse, search, filter, and sort a directory of pieces
+- Upload, delete, and reorder sheet images
+- Scroll and page-flip sheet views
+- Color-coded difficulty/technique/pitch/rhythm tags with support for adding custom tag categories (pitch tags get rainbow colors by octave, sorted low→high)
+- Per-device zoom persistence and favorite pieces
+- Sheet source link and video links
 
 ## Quick Start
 
@@ -83,7 +90,7 @@ pnpm export-data
 
 ## Backup
 
-Creates compressed, SHA-deduplicated backups of app volumes and export data, with optional Cloudflare R2 upload. **Keeps the last 5 backups** locally and on R2 — older archives are pruned automatically.
+Creates compressed, SHA-deduplicated backups of app volumes and export data, with optional Cloudflare R2 upload. **Keeps the last 5 backups** both locally and on R2 — older archives are pruned automatically.
 
 ```bash
 # Local backup (saves to ~/backups/sheet-folio/{volumes,exports}/)
@@ -104,54 +111,19 @@ tail -6 $HOME/logs/sheet-folio-backup.log
 **Setup for R2:**
 
 1. Get R2 credentials from [Cloudflare Dashboard](https://dash.cloudflare.com/) → R2 → Manage R2 API Tokens → Create API Token (Object Read & Write)
-2. Export credentials and endpoint:
+2. Add to `.env` in the project root:
    ```bash
-   export AWS_ACCESS_KEY_ID="your-access-key-id"
-   export AWS_SECRET_ACCESS_KEY="your-secret-key"
-   export AWS_ENDPOINT_URL_S3="https://<account-id>.r2.cloudflarestorage.com"
+   AWS_ACCESS_KEY_ID="your-access-key-id"
+   AWS_SECRET_ACCESS_KEY="your-secret-key"
+   AWS_ENDPOINT_URL_S3="https://<account-id>.r2.cloudflarestorage.com"
    ```
+   The `.env` file is auto-loaded by `backup.sh` — no need to export manually.
 
 **What it does:**
 - Archives `volumes/app/` and `export-data/` into `~/backups/sheet-folio/{volumes,exports}/`
 - Names archives as `<prefix>-<timestamp>-<sha12>.tar.gz` — identical data reuses the same file (SHA dedup)
 - Prunes local and R2 storage to the 5 most recent archives
 - With `--r2-bucket`, uploads the export archive to Cloudflare R2
-
-## Reference
-
-<details>
-<summary>Environment Variables, Database Migrations, Health Check</summary>
-
-### Environment Variables
-
-| Variable      | Default                        | Description                  |
-|---------------|--------------------------------|------------------------------|
-| `DB_PATH`     | `./data/sheet-folio.db`        | SQLite database file path    |
-| `UPLOAD_DIR`  | `./data/uploads`               | Sheet music image upload dir |
-| `PORT`        | `3000`                         | Internal server port         |
-| `HOSTNAME`    | `0.0.0.0`                     | Bind to all network interfaces |
-
-> **Note:** Docker Compose overrides `PORT` to `8888` — the app is accessible at `http://localhost:8888` when run via Docker.
-
-### Database Migrations
-
-Migrations run automatically on container startup. To generate new migrations during development:
-
-```bash
-pnpm db:generate
-```
-
-To manually apply migrations:
-
-```bash
-pnpm db:migrate
-```
-
-### Health Check
-
-The app exposes `/api/health` for container health checks. Docker Compose and orchestrators will monitor this endpoint.
-
-</details>
 
 ## LAN Manual Test - Develop on PC and test on mobile device under the same LAN
 
@@ -196,6 +168,42 @@ Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3
 > **Note:** WSL2's internal IP may change after restart, run `hostname -I`.
 
 > **Reminder:** `crypto.randomUUID()` requires a secure context (HTTPS). The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
+
+</details>
+
+## Reference
+
+<details>
+<summary>Environment Variables, Database Migrations, Health Check</summary>
+
+### Environment Variables
+
+| Variable      | Default                        | Description                  |
+|---------------|--------------------------------|------------------------------|
+| `DB_PATH`     | `./data/sheet-folio.db`        | SQLite database file path    |
+| `UPLOAD_DIR`  | `./data/uploads`               | Sheet music image upload dir |
+| `PORT`        | `3000`                         | Internal server port         |
+| `HOSTNAME`    | `0.0.0.0`                     | Bind to all network interfaces |
+
+> **Note:** Docker Compose overrides `PORT` to `8888` — the app is accessible at `http://localhost:8888` when run via Docker.
+
+### Database Migrations
+
+Migrations run automatically on container startup. To generate new migrations during development:
+
+```bash
+pnpm db:generate
+```
+
+To manually apply migrations:
+
+```bash
+pnpm db:migrate
+```
+
+### Health Check
+
+The app exposes `/api/health` for container health checks. Docker Compose and orchestrators will monitor this endpoint.
 
 </details>
 
