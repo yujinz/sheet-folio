@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { songTags, tags } from "@/db/schema";
+import { tags } from "@/db/schema";
 import { apiError, serverError } from "@/lib/api";
 import { and, eq, ne, or } from "drizzle-orm";
 
@@ -17,9 +16,9 @@ export const tagSchema = z.object({
 function findDuplicateTag(category: string, name: string, nameAlt: string, excludeId?: number) {
   const nameConditions = [eq(tags.name, name)];
   if (nameAlt) {
-    nameConditions.push(eq(tags.name, nameAlt));     // Chinese name matches Alt input
-    nameConditions.push(eq(tags.nameAlt, name));      // Alt name matches Chinese input
-    nameConditions.push(eq(tags.nameAlt, nameAlt));    // Alt name matches Alt input
+    nameConditions.push(eq(tags.name, nameAlt));     // Chinese name matches English input
+    nameConditions.push(eq(tags.nameAlt, name));      // English name matches Chinese input
+    nameConditions.push(eq(tags.nameAlt, nameAlt));    // English name matches English input
   }
   const conditions: any[] = [eq(tags.category, category), or(...nameConditions)];
   if (excludeId !== undefined) {
@@ -30,20 +29,7 @@ function findDuplicateTag(category: string, name: string, nameAlt: string, exclu
 
 export async function GET() {
   try {
-    const rows = db
-      .select({
-        id: tags.id,
-        name: tags.name,
-        nameAlt: tags.nameAlt,
-        color: tags.color,
-        category: tags.category,
-        songCount: sql<number>`count(${songTags.songId})`.mapWith(Number),
-      })
-      .from(tags)
-      .leftJoin(songTags, sql`${tags.id} = ${songTags.tagId}`)
-      .groupBy(tags.id)
-      .all();
-    return NextResponse.json(rows);
+    return NextResponse.json(db.select().from(tags).all());
   } catch (error) {
     return serverError(error);
   }

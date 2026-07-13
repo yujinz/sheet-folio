@@ -52,7 +52,7 @@ export const songImages = sqliteTable("song_images", {
   createdAt: text("created_at").notNull()
 });
 
-export const videoLinks = sqliteTable("video_links", {
+export const youtubeLinks = sqliteTable("youtube_links", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   songId: integer("song_id")
     .notNull()
@@ -60,10 +60,6 @@ export const videoLinks = sqliteTable("video_links", {
   label: text("label").notNull(),
   url: text("url").notNull(),
   sortOrder: integer("sort_order").notNull().default(0)
-});
-
-export const singleSelectCategories = sqliteTable("single_select_categories", {
-  category: text("category").primaryKey()
 });
 
 export const deviceZoom = sqliteTable(

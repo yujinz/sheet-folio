@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { deviceZoom, songImages, songs, songTags, tags, videoLinks } from "@/db/schema";
+import { deviceZoom, songImages, songs, songTags, tags, youtubeLinks } from "@/db/schema";
 import { CORE_CATEGORIES } from "@/lib/types";
 import type { ImageKind, Song, Tag } from "@/lib/types";
 
@@ -16,7 +16,7 @@ export function groupTags(rows: Tag[]): Record<string, Tag[]> {
 }
 
 export function getSongs(): Song[] {
-  const allSongs = db.select().from(songs).orderBy(asc(songs.difficulty), asc(sql`coalesce(${songs.title}, ${songs.titleAlt})`)).all();
+  const allSongs = db.select().from(songs).orderBy(asc(songs.difficulty), asc(songs.title)).all();
   const allTags = db.select().from(tags).all();
   const joins = db.select().from(songTags).all();
   const tagsById = new Map(allTags.map((tag) => [tag.id, tag]));
@@ -43,7 +43,8 @@ export function getSong(id: number): Song | null {
     .where(eq(songTags.songId, id))
     .all() as Tag[];
   const images = db.select().from(songImages).where(eq(songImages.songId, id)).orderBy(asc(songImages.sortOrder), asc(songImages.id)).all();
-  const links = db.select().from(videoLinks).where(eq(videoLinks.songId, id)).orderBy(asc(videoLinks.sortOrder), asc(videoLinks.id)).all();
+  const links = db.select().from(youtubeLinks).where(eq(youtubeLinks.songId, id)).orderBy(asc(youtubeLinks.sortOrder), asc(youtubeLinks.id)).all();
+
   return {
     ...song,
     tags: groupTags(selectedTags),
