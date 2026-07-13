@@ -22,21 +22,24 @@ set -euo pipefail
 
 LOG_FILE="$HOME/logs/sheet-folio-backup.log"
 
-# Verbose mode: when stderr goes to terminal (interactive run), print progress to console too.
-# When stderr is redirected (cron: 2>> file), stay quiet and only log to file.
-if [ -t 2 ]; then
-  VERBOSE=true
-else
-  VERBOSE=false
-fi
+log() { echo "[$(date)] $1" >> "$LOG_FILE"; }
 
-log() {
-  local msg="[$(date)] $1"
-  echo "$msg" >> "$LOG_FILE"
-  $VERBOSE && echo "$msg" >&2 || true
-}
+BACKUP_LOG=$(mktemp /tmp/_backup_log.XXXXXX)
+exec > >(tee "$BACKUP_LOG") 2>&1
 
-trap 's=$?; log "$( [ $s -eq 0 ] && echo COMPLETE || echo "FAILED (exit: $s)")"' EXIT
+trap '
+  s=$?
+  if [ $s -ne 0 ]; then
+    echo "[$(date)] backup.sh failed (exit: $s), last 20 lines:" >> "$LOG_FILE"
+    tail -20 "$BACKUP_LOG" >> "$LOG_FILE"
+    echo "[$(date)] FAILED (exit: $s)" >> "$LOG_FILE"
+  else
+    echo "[$(date)] COMPLETE" >> "$LOG_FILE"
+  fi
+  rm -f "$BACKUP_LOG"
+' EXIT
+
+log "--- Running backup.sh ---"
 
 cd "$(dirname "$0")"
 
@@ -83,8 +86,8 @@ EXPORT_DIR="$(realpath -m "$EXPORT_DIR")"
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
-info()  { local m="$*"; log "  $m"; echo "  $m" >&2; }
-err()   { local m="$*"; log "  ERROR: $m"; echo "  ERROR: $m" >&2; }
+info()  { echo "==> $*" >&2; }
+err()   { echo "ERROR: $*" >&2; }
 ts()    { date +%Y%m%d_%H%M%S; }
 
 # sha256() -> prints first 12 hex chars of stdin's sha256
@@ -118,6 +121,7 @@ make_archive() {
   for existing in "${out}/${prefix}-"*"-${content_sha}.tar.gz"; do
     if [[ -f "$existing" ]]; then
       info "Content SHA $content_sha already exists as $(basename "$existing"), touching & skipping ..."
+      log "  SHA $content_sha already exists (skipping)"
       touch "$existing"
       echo "$existing"
       return
@@ -136,6 +140,7 @@ make_archive() {
   local dst="${out}/${final_name}"
 
   mv "$tmpfile" "$dst"
+  log "  Created $(basename "$dst")"
   echo "$dst"
 }
 
@@ -160,7 +165,14 @@ prune_dir() {
     | sort -rnz \
     | tail -n +$((keep + 1)) \
     | cut -z -d' ' -f2- \
-    | xargs -0 -r rm -v
+    | while IFS= read -r -d '' file; do
+        name="$(basename "$file")"
+        # Filename format: prefix-YYYYMMDD_HHMMSS-sha.tar.gz
+        date_part="$(echo "$name" | sed -n 's/.*-\([0-9]\{8\}_[0-9]\{6\}\)-.*/\1/p')"
+        info "  Removing $name"
+        rm -f "$file"
+        log "  Pruned $name (created $date_part)"
+      done
 }
 
 # r2_list_objects <bucket> [endpoint-url]
@@ -207,6 +219,9 @@ r2_prune() {
     | while read -r key; do
         info "  Deleting s3://${bucket}/${key}"
         aws s3 rm "s3://${bucket}/${key}" $endpoint
+        name="$(basename "$key")"
+        date_part="$(echo "$name" | sed -n 's/.*-\([0-9]\{8\}_[0-9]\{6\}\)-.*/\1/p')"
+        log "  Pruned from R2: $name (created $date_part)"
       done
 }
 
@@ -262,6 +277,7 @@ if [[ -n "$R2_BUCKET" ]]; then
   r2_objects="$(r2_list_objects "$R2_BUCKET" "$R2_ENDPOINT")"
   if echo "$r2_objects" | grep -q "$sha"; then
     info "SHA $sha already exists on R2 — skipping upload"
+    log "  SHA $sha already exists on R2 (skipping upload)"
   else
     info "Uploading $local_exp_name ..."
     aws s3 cp "$exp_archive" "s3://${R2_BUCKET}/${local_exp_name}" $endpoint_flag

@@ -5,6 +5,8 @@
 # NAS filesystem quirks and WAL checkpoint issues), then runs the
 # export-data Docker image to produce pieces.json, tags.json, images/.
 #
+# Quick log check: tail -6 $HOME/logs/sheet-folio-export-data.log
+#
 # Usage:
 #   ./scripts/export-data.sh
 #
@@ -12,6 +14,27 @@
 #   CONTAINER_NAME  – Docker container name (default: sheet-folio-sheet-folio-1)
 
 set -euo pipefail
+
+LOG_FILE="$HOME/logs/sheet-folio-export-data.log"
+
+log() { echo "[$(date)] $1" >> "$LOG_FILE"; }
+
+EXPORT_LOG=$(mktemp /tmp/_export_log.XXXXXX)
+exec > >(tee "$EXPORT_LOG") 2>&1
+
+trap '
+  s=$?
+  if [ $s -ne 0 ]; then
+    echo "[$(date)] export-data.sh failed (exit: $s), last 20 lines:" >> "$LOG_FILE"
+    tail -20 "$EXPORT_LOG" >> "$LOG_FILE"
+    echo "[$(date)] FAILED (exit: $s)" >> "$LOG_FILE"
+  else
+    echo "[$(date)] COMPLETE" >> "$LOG_FILE"
+  fi
+  rm -f "$EXPORT_LOG"
+' EXIT
+
+log "--- Running export-data.sh ---"
 
 cd "$(dirname "$0")/.."
 CONTAINER_NAME="${CONTAINER_NAME:-sheet-folio-sheet-folio-1}"
@@ -46,4 +69,6 @@ docker run --rm \
 
 echo ""
 echo "=== Export complete ==="
+count=$(jq -r '.pieceCount // "?"' export-data/manifest.json 2>/dev/null || echo "?")
+log "Export complete - $count pieces"
 ls -lh export-data/
