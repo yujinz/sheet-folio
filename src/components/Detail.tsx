@@ -6,7 +6,7 @@ import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
 import { CORE_CATEGORIES } from "@/lib/types";
-import type { ImageKind, Song, SongImage, Tag, YoutubeLink } from "@/lib/types";
+import type { ImageKind, Song, SongImage, Tag, VideoLink } from "@/lib/types";
 
 const categories = [...CORE_CATEGORIES];
 
@@ -134,7 +134,7 @@ export default function Detail({ songId }: { songId: number }) {
     });
   }
 
-  async function saveLinks(links: YoutubeLink[]) {
+  async function saveLinks(links: VideoLink[]) {
     const clean = links
       .filter((link) => link.label.trim() && link.url.trim())
       .map((link) => ({
@@ -418,8 +418,8 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
   images: SongImage[];
   zoom: number;
   onOpen: (index: number) => void;
-  links: YoutubeLink[];
-  setLinks: (links: YoutubeLink[]) => void;
+  links: VideoLink[];
+  setLinks: (links: VideoLink[]) => void;
 }) {
   const { t } = useLocale();
   const [draft, setDraft] = useState(links);
@@ -452,7 +452,7 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
         {draft.map((link, index) => (
           <div key={index} className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
             <input className="input" value={link.label} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, label: event.target.value } : item))} placeholder={t.linkTitle} />
-            <input className="input" value={link.url} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, url: event.target.value } : item))} placeholder={t.youtubeLink} />
+            <input className="input" value={link.url} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, url: event.target.value } : item))} placeholder={t.videoLink} />
             <a className="text-button" href={link.url} target="_blank">{t.open}</a>
           </div>
         ))}
