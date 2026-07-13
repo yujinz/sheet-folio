@@ -83,7 +83,7 @@ describe("updateSongSchema", () => {
   });
 
   it("still validates other fields like difficulty", () => {
-    const result = updateSongSchema.safeParse({ difficulty: 6 });
+    const result = updateSongSchema.safeParse({ difficulty: 11 });
     expect(result.success).toBe(false);
   });
 });

@@ -9,7 +9,7 @@ import { apiError, serverError } from "@/lib/api";
 export const updateSongSchema = z.object({
   title: z.string().optional(),
   titleAlt: z.string().optional(),
-  difficulty: z.number().int().min(1).max(5).optional(),
+  difficulty: z.number().int().min(1).max(10).optional(),
   notes: z.string().optional(),
   tagIds: z.array(z.number().int()).optional()
 }).refine((data) => {

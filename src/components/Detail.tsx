@@ -293,7 +293,7 @@ export default function Detail({ songId }: { songId: number }) {
         />
         <div className="flex flex-nowrap items-center gap-3 overflow-x-auto">
           <select className="select tag-add-select text-center" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => patch({ difficulty: Number(event.target.value) })}>
-            {[1, 2, 3, 4, 5].map((score) => <option key={score}>{score}</option>)}
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => <option key={score}>{score}</option>)}
           </select>
           {(() => {
             const allCats = [...categories, ...tags.reduce<string[]>((acc, tag) => {

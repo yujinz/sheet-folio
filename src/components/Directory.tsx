@@ -28,7 +28,7 @@ type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "note
 const categories = [...CORE_CATEGORIES];
 
 const STORAGE_KEY = "sheet-folio-directory-state";
-const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5] as const;
+const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 function getFavorites(): number[] {
   if (typeof localStorage === "undefined") return [];
@@ -428,6 +428,11 @@ export default function Directory() {
     await refresh();
   }
 
+  const availableDifficulties = useMemo(() => {
+    const used = new Set(pieces.map((p) => p.difficulty));
+    return DIFFICULTY_LEVELS.filter((level) => used.has(level));
+  }, [pieces]);
+
   const visible = useMemo(() => {
     const filtered = pieces.filter((piece) => {
       if (query) {
@@ -524,7 +529,7 @@ export default function Directory() {
         </div>
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           <span className="text-xs font-semibold text-[var(--foreground)] shrink-0 w-[4.5rem]">{t.difficulty}</span>
-          {DIFFICULTY_LEVELS.map((level) => {
+          {availableDifficulties.map((level) => {
             const isActive = difficultyFilter.value === level;
             const color = DIFFICULTY_COLORS[level - 1];
             return (
@@ -712,7 +717,7 @@ export default function Directory() {
               <tr key={piece.id}>
                 <td>
                   <select className="select tag-add-select" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
-                    {[1, 2, 3, 4, 5].map((score) => <option key={score}>{score}</option>)}
+                    {DIFFICULTY_LEVELS.map((score) => <option key={score}>{score}</option>)}
                   </select>
                 </td>
                 <td className="font-semibold" style={{ fontSize: 15 }}>

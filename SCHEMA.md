@@ -105,7 +105,7 @@ Array of piece objects:
 | `id`       | number | Unique piece ID                                    |
 | `title`    | string | Primary title (e.g. Chinese) — may be empty if only alternate |
 | `titleAlt`  | string | Alternate title (e.g. English) — may be empty if only primary |
-| `difficulty`| number| Difficulty level from 1 to 5                       |
+| `difficulty`| number| Difficulty level from 1 to 10                      |
 | `notes`    | string | Practice notes (may be empty)                      |
 
 ### tags (within piece)
