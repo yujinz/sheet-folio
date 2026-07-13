@@ -1,15 +1,15 @@
 # Sheet Folio
 
-A sheet music manager with a web UI accessible from both PC and iPad. The interface is available in Chinese (zh-CN) and English (en-US), but the data model supports arbitrary languages via primary and alternate name fields - designed for easy extension beyond the two currently implemented UI languages.
+A sheet music manager with a web UI accessible from both PC and mobile device. The interface is available in Chinese (zh-CN) and English (en-US), but the data model supports arbitrary languages via primary and alternate name fields - designed for easy extension beyond the two currently implemented UI languages.
 
-App features: browse, search, and sort a directory of pieces; upload, delete, and reorder sheet images; color-coded difficulty/technique/pitch/rhythm tags (pitch tags get rainbow colors by octave, sorted low→high); scroll and page-flip sheet views; per-device zoom persistence and favorate pieces; sheet source link and video link management; full CRUD.
+App features: browse, search, and sort a directory of pieces; upload, delete, and reorder sheet images; color-coded difficulty/technique/pitch/rhythm tags (pitch tags get rainbow colors by octave, sorted low→high); scroll and page-flip sheet views; per-device zoom persistence and favorite pieces; sheet source link and video link management; full CRUD.
 
 ## Quick Start
 
 ### Option 1: Docker Compose
 
 ```bash
-git clone <repo>
+git clone https://github.com/yujinz/sheet-folio.git
 cd sheet-folio
 docker compose up -d
 
@@ -67,6 +67,13 @@ Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format):
 
 Streams the SQLite database directly from the running container (bypassing NAS filesystem quirks and WAL checkpoint issues), builds the export image, and outputs to `export-data/`. Requires the sheet-folio container to be running.
 
+Logs milestones to `$HOME/logs/sheet-folio-export-data.log`. On failure, the last 20 lines of output are appended to the log automatically.
+
+Quick check:
+```bash
+tail -6 $HOME/logs/sheet-folio-export-data.log
+```
+
 ### Option 2: Via pnpm (requires Node.js)
 
 ```bash
@@ -85,6 +92,13 @@ Creates compressed, SHA-deduplicated backups of app volumes and export data, wit
 
 # Also upload export to R2
 ./backup.sh --r2-bucket <bucket-name>
+```
+
+Logs milestones to `$HOME/logs/sheet-folio-backup.log` — created archives, SHA dedup events, and pruned file names (with creation dates) are all recorded. On failure, the last 20 lines of output are appended automatically.
+
+Quick check:
+```bash
+tail -6 $HOME/logs/sheet-folio-backup.log
 ```
 
 **Setup for R2:**
@@ -139,7 +153,7 @@ The app exposes `/api/health` for container health checks. Docker Compose and or
 
 </details>
 
-## LAN Manual Test (develop on PC, test on iPad)
+## LAN Manual Test - Develop on PC and test on mobile device under the same LAN
 
 <details>
 <summary>Click to expand</summary>
@@ -165,7 +179,7 @@ networkingMode=mirrored
 
 Then restart WSL2: `wsl --shutdown` and reopen your WSL2 terminal.
 
-### 2. If you encounter issue where buttons are not clickable on iPad
+### 2. If you encounter issue where buttons are not clickable on mobile device
 
 Run the following in **PowerShell as Administrator** could help, but you shouldn't need this if you've done the previous step right. The proxy also occupies port 3000 on Windows, interfering with docker run.
 
