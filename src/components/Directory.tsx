@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown, Heart, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
@@ -23,7 +23,7 @@ function getCategoryLabel(categories: UserCategory[], key: string, locale: strin
   return found ? categoryDisplayName(found, locale) : key;
 }
 
-type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "notes";
+type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "notes" | "createdAt";
 
 const categories = [...CORE_CATEGORIES];
 
@@ -74,6 +74,7 @@ export default function Directory() {
   const [editingTags, setEditingTags] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "difficulty", dir: "asc" });
   const [titleSortDir, setTitleSortDir] = useState<"asc" | "desc">("asc");
+  const [createdAtSortDir, setCreatedAtSortDir] = useState<"asc" | "desc">("desc");
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
 
   useEffect(() => {
@@ -91,6 +92,7 @@ export default function Directory() {
         if (typeof parsed.difficultyFilter === "number") difficultyFilter.setValue(parsed.difficultyFilter);
         if (parsed.sort) setSort(parsed.sort);
         if (parsed.titleSortDir) setTitleSortDir(parsed.titleSortDir);
+        if (parsed.createdAtSortDir) setCreatedAtSortDir(parsed.createdAtSortDir);
       }
     } catch {}
   }, []);
@@ -171,9 +173,9 @@ export default function Directory() {
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_KEY);
     const existing = saved ? JSON.parse(saved) : {};
-    const state = { ...existing, sort, query, filters, difficultyFilter: difficultyFilter.value, titleSortDir, userCategories, hiddenCoreCategories };
+    const state = { ...existing, sort, query, filters, difficultyFilter: difficultyFilter.value, titleSortDir, createdAtSortDir, userCategories, hiddenCoreCategories };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [sort, query, filters, difficultyFilter.value, titleSortDir, userCategories, hiddenCoreCategories]);
+  }, [sort, query, filters, difficultyFilter.value, titleSortDir, createdAtSortDir, userCategories, hiddenCoreCategories]);
 
   // Save scroll position on unmount (SPA navigation) and on pagehide (bfcache/unload)
   useEffect(() => {
@@ -450,6 +452,13 @@ export default function Directory() {
         const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
         return titleSortDir === "asc" ? titleResult : -titleResult;
       }
+      if (sort.key === "createdAt") {
+        const isFavA = getFavorites().includes(a.id) ? 0 : 1;
+        const isFavB = getFavorites().includes(b.id) ? 0 : 1;
+        if (isFavA !== isFavB) return isFavA - isFavB;
+        const result = a.createdAt.localeCompare(b.createdAt);
+        return createdAtSortDir === "asc" ? result : -result;
+      }
       const read = (piece: Song): string | number => {
         if (sort.key === "difficulty") return piece.difficulty;
         if (sort.key === "notes") return piece.notes;
@@ -470,12 +479,13 @@ export default function Directory() {
       const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
       return titleSortDir === "asc" ? titleResult : -titleResult;
     });
-  }, [filters, locale, pieces, query, sort, titleSortDir, difficultyFilter.value]);
+  }, [filters, locale, pieces, query, sort, titleSortDir, createdAtSortDir, difficultyFilter.value]);
 
   function sortBy(key: SortKey) {
     setSort((value) => {
       const dir = value.key === key && value.dir === "asc" ? "desc" : "asc";
       if (key === "title") setTitleSortDir(dir);
+      if (key === "createdAt") setCreatedAtSortDir(dir);
       return { key, dir };
     });
   }
@@ -676,8 +686,17 @@ export default function Directory() {
           <thead>
             <tr>
               <th style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
-              <th style={{ width: 200 }}><button onClick={() => sortBy("title")}>{t.title} {sort.key === "title" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
-              {categories.filter((cat) => !hiddenCoreCategories.includes(cat)).map((category) => <th key={category} style={{ width: 170 }}><button onClick={() => sortBy(category)}>{t[category]}</button></th>)}
+              <th style={{ width: 200 }}>
+                <div className="flex items-center justify-between">
+                  <button onClick={() => sortBy("title")}>
+                    {t.title} {sort.key === "title" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}
+                  </button>
+                  <button className="text-xs text-[var(--muted)] hover:text-[var(--foreground)] flex items-center gap-0.5" onClick={() => sortBy("createdAt")}>
+                    <Calendar size={12} /> {sort.key === "createdAt" ? (sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} />}
+                  </button>
+                </div>
+              </th>
+              {categories.filter((cat) => !hiddenCoreCategories.includes(cat)).map((category) => <th key={category} style={{ width: 170 }}>{t[category]}</th>)}
               {extraCategoryKeys.map((key) => <th key={key} style={{ width: 170 }}>{getCategoryLabel(userCategories, key, locale)}</th>)}
               <th style={{ width: 170 }}><button onClick={() => sortBy("notes")}>{t.notes}</button></th>
             </tr>
