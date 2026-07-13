@@ -76,3 +76,7 @@ export const deviceZoom = sqliteTable(
     uniqueDeviceSong: uniqueIndex("device_zoom_device_song_idx").on(table.deviceId, table.songId)
   })
 );
+
+export const singleSelectCategories = sqliteTable("single_select_categories", {
+  category: text("category").primaryKey().notNull()
+});
