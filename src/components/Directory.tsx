@@ -194,9 +194,13 @@ export default function Directory() {
     };
   }, []);
 
-  // Restore scroll position after data loads
+  // Restore scroll position after initial data load (one-time only).
+  // Pieces data can update later (e.g. when selecting a tag in the directory),
+  // but we must NOT re-run scroll restoration on those updates — it would jump
+  // back to the saved position (or 0) after every tag click.
   useEffect(() => {
-    if (pieces.length === 0) return;
+    if (pieces.length === 0 || scrollRestored.current) return;
+    scrollRestored.current = true;
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -278,6 +282,11 @@ export default function Directory() {
     }).then((res) => res.json());
     setPieces((rows) => rows.map((row) => (row.id === piece.id ? updated : row)));
   }
+
+  // Track whether we've already restored scroll position on initial pieces load.
+  // Prevents the scroll restoration effect from firing on every pieces update
+  // (e.g. when updatePiece/setPieces runs after selecting a tag in the directory).
+  const scrollRestored = useRef(false);
 
   /** All extra category keys (from user-created categories + auto-detected from DB tags). */
   const extraCategoryKeys = useMemo(() => {
@@ -458,11 +467,10 @@ export default function Directory() {
         return titleSortDir === "asc" ? titleResult : -titleResult;
       }
       if (sort.key === "createdAt") {
-        const isFavA = getFavorites().includes(a.id) ? 0 : 1;
-        const isFavB = getFavorites().includes(b.id) ? 0 : 1;
-        if (isFavA !== isFavB) return isFavA - isFavB;
         const result = a.createdAt.localeCompare(b.createdAt);
-        return createdAtSortDir === "asc" ? result : -result;
+        if (result !== 0) return createdAtSortDir === "asc" ? result : -result;
+        // Tiebreaker: piece id (same as creation order)
+        return createdAtSortDir === "asc" ? a.id - b.id : b.id - a.id;
       }
       const read = (piece: Song): string | number => {
         if (sort.key === "difficulty") return piece.difficulty;
