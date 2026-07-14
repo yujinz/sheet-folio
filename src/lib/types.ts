@@ -1,7 +1,7 @@
 export type TagCategory = string;
 
 /** The three built-in core tag categories with special i18n labels and UI. */
-export const CORE_CATEGORIES = ["pitch", "technique", "rhythm"] as const;
+export const CORE_CATEGORIES = ["pitch", "rhythm", "technique"] as const;
 export type ImageKind = "staff" | "numbered";
 
 export type Tag = {

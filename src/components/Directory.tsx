@@ -99,6 +99,7 @@ export default function Directory() {
 
   const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(new Set());
 
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const [userCategories, setUserCategories] = useState<UserCategory[]>([]);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryNameZh, setNewCategoryNameZh] = useState("");
@@ -282,6 +283,13 @@ export default function Directory() {
     }).then((res) => res.json());
     setPieces((rows) => rows.map((row) => (row.id === piece.id ? updated : row)));
   }
+
+  // Show/hide scroll-to-top button based on scroll position
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Track whether we've already restored scroll position on initial pieces load.
   // Prevents the scroll restoration effect from firing on every pieces update
@@ -776,6 +784,17 @@ export default function Directory() {
           </tbody>
         </table>
       </div>
+
+      {showScrollTop && (
+        <button
+          className="fixed bottom-6 right-6 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-lg transition-opacity hover:opacity-90"
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Scroll to top"
+        >
+          <ArrowUp size={20} />
+        </button>
+      )}
     </main>
   );
 }
