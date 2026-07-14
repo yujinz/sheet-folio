@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
+import { messages } from "@/lib/i18n";
 import { CORE_CATEGORIES } from "@/lib/types";
 import type { ImageKind, Song, SongImage, Tag, VideoLink } from "@/lib/types";
 
@@ -343,6 +344,12 @@ export default function Detail({ songId }: { songId: number }) {
               if (!CORE_CATEGORIES.includes(tag.category as typeof CORE_CATEGORIES[number]) && !acc.includes(tag.category)) acc.push(tag.category);
               return acc;
             }, [])];
+            function isPitchKey(key: string): boolean {
+              if (!key) return false;
+              const lower = key.toLowerCase();
+              return (messages["zh-CN"] as Record<string, string>).pitch === lower
+                  || (messages["en-US"] as Record<string, string>).pitch.toLowerCase() === lower;
+            }
             function buildTagIds(category: string, ids: number[]) {
               return allCats.flatMap((cat) =>
                 cat === category ? ids : (piece!.tags[cat]?.map((tag) => tag.id) ?? [])
@@ -352,6 +359,7 @@ export default function Detail({ songId }: { songId: number }) {
               <TagPicker
                 key={category}
                 compact
+                isPitchCategory={isPitchKey(category)}
                 singleSelect={singleSelectCategories.has(category)}
                 category={category}
                 tags={tags.filter((tag) => tag.category === category)}
@@ -511,7 +519,7 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
   return (
     <section className="px-3 py-4">
       {images.length === 0 && (
-        <p className="py-8 text-center text-sm text-[var(--muted)]">{t.noImages}</p>
+        <p className="py-40 text-center text-sm text-[var(--muted)]">{t.noImages}</p>
       )}
       <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4">
         {images.map((image, index) => (
