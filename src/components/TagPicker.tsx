@@ -393,9 +393,12 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
 
   if (compact) {
     if (singleSelect) {
+      const selectedTag = selected.length > 0
+        ? localTags.find((t) => t.id === selected[0])
+        : undefined;
       return (
         <>
-          <span className="inline-flex flex-wrap items-start gap-2">
+          <span className="inline-flex flex-wrap items-center gap-1">
             <select
               key={localTags.map(t => t.id).join(',')}
               aria-label={categoryLabel}
@@ -421,6 +424,17 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
               ))}
               <option value="__new__">+ {t.addTag}</option>
             </select>
+            {selectedTag && (
+              <span
+                className="inline-block rounded-full shrink-0"
+                style={{
+                  width: 24,
+                  height: 24,
+                  minWidth: 24,
+                  backgroundColor: selectedTag.color,
+                }}
+              />
+            )}
           </span>
           {editDialog}
           {createDialog}
