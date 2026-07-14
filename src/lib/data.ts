@@ -1,7 +1,6 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { deviceZoom, songImages, songs, songTags, tags, videoLinks } from "@/db/schema";
-import { CORE_CATEGORIES } from "@/lib/types";
 import type { ImageKind, Song, Tag } from "@/lib/types";
 
 export function nowIso() {
@@ -10,8 +9,6 @@ export function nowIso() {
 
 export function groupTags(rows: Tag[]): Record<string, Tag[]> {
   const cats = new Set(rows.map((tag) => tag.category));
-  // Always include core categories so frontend can safely access them
-  for (const core of CORE_CATEGORIES) cats.add(core);
   return Object.fromEntries([...cats].map((cat) => [cat, rows.filter((tag) => tag.category === cat)])) as Record<string, Tag[]>;
 }
 

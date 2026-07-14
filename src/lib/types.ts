@@ -1,8 +1,16 @@
 export type TagCategory = string;
 
-/** The three built-in core tag categories with special i18n labels and UI. */
-export const CORE_CATEGORIES = ["pitch", "rhythm", "technique"] as const;
+/** Categories are stored in the category_labels table. The "pitch" key has special sorting/color behavior. */
+export const PITCH_CATEGORY_KEY = "pitch";
 export type ImageKind = "staff" | "numbered";
+
+/** A category entry as returned by GET /api/categories. */
+export type CategoryEntry = {
+  key: string;
+  nameZh: string;
+  nameEn: string;
+  sortOrder: number;
+};
 
 export type Tag = {
   id: number;

@@ -30,9 +30,7 @@ describe("Data layer integration", () => {
     expect(all).toHaveLength(before + 2);
     for (const song of all) {
       expect(song.tags).toBeDefined();
-      expect(song.tags.pitch).toBeInstanceOf(Array);
-      expect(song.tags.technique).toBeInstanceOf(Array);
-      expect(song.tags.rhythm).toBeInstanceOf(Array);
+      expect(typeof song.tags).toBe("object");
     }
   });
 
@@ -46,7 +44,7 @@ describe("Data layer integration", () => {
     expect(result!.title).toBe("Detail Test");
     expect(result!.images).toEqual({ staff: [], numbered: [] });
     expect(result!.links).toEqual([]);
-    expect(result!.tags).toEqual({ pitch: [], technique: [], rhythm: [] });
+    expect(result!.tags).toEqual({});
   });
 
   it("getSong returns null for nonexistent id", async () => {
@@ -65,14 +63,15 @@ describe("Data layer integration", () => {
     const tag3 = db.insert(schema.tags).values({ name: `custom-c-${ts}`, nameAlt: "", color: "#0000ff", category: "rhythm" }).returning().get();
 
     setSongTags(song.id, [tag1.id, tag2.id, tag3.id]);
+    expect(getSong(song.id)!.tags.pitch).toBeDefined();
     expect(getSong(song.id)!.tags.pitch.some((t) => t.id === tag1.id)).toBe(true);
     expect(getSong(song.id)!.tags.technique.some((t) => t.id === tag2.id)).toBe(true);
     expect(getSong(song.id)!.tags.rhythm.some((t) => t.id === tag3.id)).toBe(true);
 
     setSongTags(song.id, [tag3.id]);
     const updated = getSong(song.id);
-    expect(updated!.tags.pitch).toHaveLength(0);
-    expect(updated!.tags.technique).toHaveLength(0);
+    expect(updated!.tags.pitch).toBeUndefined();
+    expect(updated!.tags.technique).toBeUndefined();
     expect(updated!.tags.rhythm.some((t) => t.id === tag3.id)).toBe(true);
   });
 

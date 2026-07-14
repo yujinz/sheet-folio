@@ -6,10 +6,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
-import { messages } from "@/lib/i18n";
-import { CORE_CATEGORIES } from "@/lib/types";
-import { categoryKey, canAddCategory, isCoreCategoryLabel } from "@/lib/category";
-import type { Song, Tag, TagCategory } from "@/lib/types";
+import { categoryKey, canAddCategory } from "@/lib/category";
+import type { CategoryEntry, Song, Tag, TagCategory } from "@/lib/types";
+import { PITCH_CATEGORY_KEY } from "@/lib/types";
 import { useSingleSelectFilter } from "@/lib/useSingleSelectFilter";
 
 type UserCategory = { key: string; labelZh: string; labelAlt: string };
@@ -24,8 +23,6 @@ function getCategoryLabel(categories: UserCategory[], key: string, locale: strin
 }
 
 type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "notes" | "createdAt";
-
-const categories = [...CORE_CATEGORIES];
 
 const STORAGE_KEY = "sheet-folio-directory-state";
 const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
@@ -67,9 +64,7 @@ export default function Directory() {
     } catch {}
     return "";
   });
-  const [filters, setFilters] = useState<Record<string, number[]>>(
-    () => Object.fromEntries(CORE_CATEGORIES.map((c) => [c, []]))
-  );
+  const [filters, setFilters] = useState<Record<string, number[]>>(() => ({}));
   const difficultyFilter = useSingleSelectFilter<number>();
   const [editingTags, setEditingTags] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "difficulty", dir: "asc" });
@@ -101,6 +96,15 @@ export default function Directory() {
 
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [userCategories, setUserCategories] = useState<UserCategory[]>([]);
+  /** Computed: ordered list of all category keys (from server labels + tags). */
+  const allCategoryKeys = useMemo(() => {
+    const keys = new Set(userCategories.map((c) => c.key));
+    // Also include tag categories that don't have labels yet
+    for (const tag of tags) {
+      keys.add(tag.category);
+    }
+    return [...keys];
+  }, [tags, userCategories]);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryNameZh, setNewCategoryNameZh] = useState("");
   const [newCategoryNameAlt, setNewCategoryNameAlt] = useState("");
@@ -112,7 +116,6 @@ export default function Directory() {
   const [renameAlt, setRenameAlt] = useState("");
   const renameZhRef = useRef<HTMLInputElement>(null);
   const renameAltRef = useRef<HTMLInputElement>(null);
-  const [hiddenCoreCategories, setHiddenCoreCategories] = useState<string[]>([]);
 
   useEffect(() => {
     if (renamingCategory) {
@@ -121,17 +124,14 @@ export default function Directory() {
         setRenameZh(uc.labelZh);
         setRenameAlt(uc.labelAlt);
       } else {
-        // Core category — use bilingual i18n labels as defaults
-        const zhLabels = messages["zh-CN"] as Record<string, string>;
-        const altLabels = messages["en-US"] as Record<string, string>;
-        setRenameZh(zhLabels[renamingCategory] || renamingCategory);
-        setRenameAlt(altLabels[renamingCategory] || renamingCategory);
+        setRenameZh(renamingCategory);
+        setRenameAlt(renamingCategory);
       }
       setTimeout(() => renameZhRef.current?.focus(), 50);
     }
   }, [renamingCategory]);
 
-  // Restore userCategories and filters from sessionStorage after mount (avoids hydration mismatch)
+  // Restore userCategories from sessionStorage after mount (avoids hydration mismatch)
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
@@ -140,15 +140,9 @@ export default function Directory() {
         if (Array.isArray(parsed.userCategories)) {
           setUserCategories(parsed.userCategories);
         }
-        if (Array.isArray(parsed.hiddenCoreCategories)) {
-          setHiddenCoreCategories(parsed.hiddenCoreCategories);
-        }
-        // Restore filters too, in case extra categories were previously saved
+        // Restore filters too
         if (parsed.filters) {
-          const hasExtras = Object.keys(parsed.filters).some((k) => !CORE_CATEGORIES.includes(k as typeof CORE_CATEGORIES[number]));
-          if (hasExtras) {
-            setFilters(parsed.filters);
-          }
+          setFilters(parsed.filters);
         }
       }
     } catch {}
@@ -174,9 +168,9 @@ export default function Directory() {
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_KEY);
     const existing = saved ? JSON.parse(saved) : {};
-    const state = { ...existing, sort, query, filters, difficultyFilter: difficultyFilter.value, titleSortDir, createdAtSortDir, userCategories, hiddenCoreCategories };
+    const state = { ...existing, sort, query, filters, difficultyFilter: difficultyFilter.value, titleSortDir, createdAtSortDir, userCategories };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [sort, query, filters, difficultyFilter.value, titleSortDir, createdAtSortDir, userCategories, hiddenCoreCategories]);
+  }, [sort, query, filters, difficultyFilter.value, titleSortDir, createdAtSortDir, userCategories]);
 
   // Save scroll position on unmount (SPA navigation) and on pagehide (bfcache/unload)
   useEffect(() => {
@@ -304,11 +298,12 @@ export default function Directory() {
   // (e.g. when updatePiece/setPieces runs after selecting a tag in the directory).
   const scrollRestored = useRef(false);
 
-  /** All extra category keys (from user-created categories + auto-detected from DB tags). */
+  /** Extra category keys from DB tags not yet in userCategories. */
   const extraCategoryKeys = useMemo(() => {
-    const keys = new Set(userCategories.map((c) => c.key));
+    const known = new Set(userCategories.map((c) => c.key));
+    const keys = new Set<string>();
     for (const tag of tags) {
-      if (!CORE_CATEGORIES.includes(tag.category as typeof CORE_CATEGORIES[number])) {
+      if (!known.has(tag.category)) {
         keys.add(tag.category);
       }
     }
@@ -320,12 +315,9 @@ export default function Directory() {
     return userCategories.find((c) => c.key === key);
   }
 
-  /** Check whether a category key represents the pitch category in either language. */
+  /** Check whether a category key is the pitch category (has special color sorting). */
   function isPitchKey(key: string): boolean {
-    if (!key) return false;
-    const lower = key.toLowerCase();
-    return (messages["zh-CN"] as Record<string, string>).pitch === lower
-        || (messages["en-US"] as Record<string, string>).pitch.toLowerCase() === lower;
+    return key === PITCH_CATEGORY_KEY;
   }
 
   // Ensure filters has entries for extra categories
@@ -348,13 +340,9 @@ export default function Directory() {
     const trimmedAlt = en.trim();
     const key = categoryKey(trimmedZh, trimmedAlt);
     if (!key) return;
-    const keyCheck = canAddCategory(key, extraCategoryKeys);
+    const keyCheck = canAddCategory(key, allCategoryKeys);
     if (!keyCheck.valid) {
       alert(keyCheck.reason!);
-      return;
-    }
-    if (isCoreCategoryLabel(trimmedZh) || isCoreCategoryLabel(trimmedAlt)) {
-      alert("This name matches a built-in category. Use a different name.");
       return;
     }
     setUserCategories((prev) => [...prev, { key, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh }]);
@@ -400,14 +388,12 @@ export default function Directory() {
   }
 
   async function renameCategory(oldKey: string, zh: string, en: string) {
-    const isCore = CORE_CATEGORIES.includes(oldKey as typeof CORE_CATEGORIES[number]);
     const trimmedZh = zh.trim();
     const trimmedAlt = en.trim();
     if (!trimmedZh && !trimmedAlt) return;
-    // For core categories, rename the key itself so it becomes a custom category
     const newKey = (trimmedAlt || trimmedZh).toLowerCase().replace(/\s+/g, "-");
     if (!newKey || newKey === oldKey) {
-      // Update labels for any category (core or custom)
+      // Labels-only update
       setUserCategories((prev) => {
         const existing = prev.findIndex((c) => c.key === oldKey);
         const updated = { key: oldKey, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh };
@@ -424,18 +410,11 @@ export default function Directory() {
       setRenamingCategory(null);
       return;
     }
-    if (CORE_CATEGORIES.includes(newKey as typeof CORE_CATEGORIES[number])) {
-      // Allow if the core category was previously renamed away (hidden)
-      if (!hiddenCoreCategories.includes(newKey)) {
-        alert("This name conflicts with a built-in category.");
-        return;
-      }
-    }
-    if (extraCategoryKeys.includes(newKey) && newKey !== oldKey) {
+    if (allCategoryKeys.includes(newKey)) {
       alert("A category with this name already exists.");
       return;
     }
-    // Update DB: move all tags from oldKey to newKey
+    // Key changed — move all tags in DB to new key
     await fetch("/api/tags", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -449,32 +428,21 @@ export default function Directory() {
       return next;
     });
     // Update userCategories
-    const restoringCore = (CORE_CATEGORIES as readonly string[]).includes(newKey);
-    if (restoringCore) {
-      // Renaming back to a built-in category — remove the old userCategory entry and unhide
-      setUserCategories((prev) => prev.filter((c) => c.key !== oldKey));
-      setHiddenCoreCategories((prev) => prev.filter((k) => k !== newKey));
-      fetch(`/api/categories?key=${encodeURIComponent(oldKey)}`, { method: "DELETE" });
-    } else if (!isCore) {
-      setUserCategories((prev) => prev.map((c) => c.key === oldKey ? { key: newKey, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh } : c));
-      // Key changed — delete old label, insert new one
-      fetch(`/api/categories?key=${encodeURIComponent(oldKey)}`, { method: "DELETE" });
-      fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: newKey, nameZh: trimmedZh, nameEn: trimmedAlt })
-      });
-    } else {
-      setUserCategories((prev) => [...prev, { key: newKey, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh }]);
-      setHiddenCoreCategories((prev) => [...prev, oldKey]);
-      // Core category being renamed to custom — save the new label, clean up old
-      fetch(`/api/categories?key=${encodeURIComponent(oldKey)}`, { method: "DELETE" });
-      fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: newKey, nameZh: trimmedZh, nameEn: trimmedAlt })
-      });
-    }
+    setUserCategories((prev) => {
+      const existing = prev.findIndex((c) => c.key === oldKey);
+      const updated = { key: newKey, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh };
+      if (existing >= 0) {
+        return prev.map((c) => c.key === oldKey ? updated : c);
+      }
+      return [...prev, updated];
+    });
+    // Update server: delete old label, insert new one
+    fetch(`/api/categories?key=${encodeURIComponent(oldKey)}`, { method: "DELETE" });
+    fetch("/api/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: newKey, nameZh: trimmedZh, nameEn: trimmedAlt })
+    });
     setRenamingCategory(null);
     await refresh();
   }
@@ -599,9 +567,8 @@ export default function Directory() {
           })}
         </div>
         <div className="grid gap-2 lg:grid-cols-3">
-          {[...categories.filter((cat) => !hiddenCoreCategories.includes(cat)), ...extraCategoryKeys].map((category) => {
-            const isCore = CORE_CATEGORIES.includes(category as typeof CORE_CATEGORIES[number]);
-            const userCat = isCore ? userCategories.find((c) => c.key === category) : undefined;
+          {allCategoryKeys.map((category) => {
+            const userCat = userCategories.find((c) => c.key === category);
             return (
             <div key={category}>
               {editingTags && renamingCategory === category ? (
@@ -637,7 +604,7 @@ export default function Directory() {
                 <TagPicker
                   category={category}
                   isPitchCategory={isPitchKey(category)}
-                  label={userCat ? categoryDisplayName(userCat, locale) : (isCore ? undefined : getCategoryLabel(userCategories, category, locale))}
+                  label={userCat ? categoryDisplayName(userCat, locale) : getCategoryLabel(userCategories, category, locale)}
                   tags={tags.filter((tag) => tag.category === category)}
                   selected={filters[category] ?? []}
                   onChange={(ids) => setFilters((value) => ({ ...value, [category]: ids }))}
@@ -649,7 +616,7 @@ export default function Directory() {
                   defaultColor={defaultColor}
                   onDefaultColorChange={setDefaultColor}
                   onRenameCategory={() => setRenamingCategory(category)}
-                  onDeleteCategory={isCore ? undefined : () => removeCategory(category)}
+                  onDeleteCategory={() => removeCategory(category)}
                 />
               )}
             </div>
@@ -751,15 +718,14 @@ export default function Directory() {
                   </button>
                 </div>
               </th>
-              {categories.filter((cat) => !hiddenCoreCategories.includes(cat)).map((category) => <th key={category} style={{ width: 170 }}>{t[category]}</th>)}
-              {extraCategoryKeys.map((key) => <th key={key} style={{ width: 170 }}>{getCategoryLabel(userCategories, key, locale)}</th>)}
+              {allCategoryKeys.map((key) => <th key={key} style={{ width: 170 }}>{getCategoryLabel(userCategories, key, locale)}</th>)}
               <th style={{ width: 170 }}><button onClick={() => sortBy("notes")}>{t.notes}</button></th>
             </tr>
           </thead>
           <tbody>
             {visible.map((piece) => {
               function buildTagIds(category: string, ids: number[]) {
-                return [...categories.filter((cat) => !hiddenCoreCategories.includes(cat)), ...extraCategoryKeys].flatMap((cat) =>
+                return allCategoryKeys.flatMap((cat) =>
                   cat === category ? ids : (piece.tags[cat]?.map((tag) => tag.id) ?? [])
                 );
               }
@@ -776,7 +742,7 @@ export default function Directory() {
                     <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}</Link>
                   </span>
                 </td>
-                {categories.filter((cat) => !hiddenCoreCategories.includes(cat)).map((category) => (
+                {allCategoryKeys.map((category) => (
                   <td key={category}>
                     <TagPicker
                       compact

@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { db } from "@/db";
 import { categoryLabels } from "@/db/schema";
 import { apiError, serverError } from "@/lib/api";
+import { seedDefaultCategories } from "@/lib/seed";
 
 export async function GET() {
   try {
-    const rows = db.select().from(categoryLabels).all();
+    seedDefaultCategories();
+    const rows = db.select().from(categoryLabels).orderBy(asc(categoryLabels.sortOrder), asc(categoryLabels.key)).all();
     return NextResponse.json(rows);
   } catch (error) {
     return serverError(error);
@@ -27,8 +29,10 @@ export async function POST(request: Request) {
     const { key, nameZh, nameEn } = body.data;
     const existing = db.select().from(categoryLabels).where(eq(categoryLabels.key, key)).get();
     if (existing) return apiError(`Category "${key}" already exists`, 409);
-    db.insert(categoryLabels).values({ key, nameZh, nameEn }).run();
-    return NextResponse.json({ key, nameZh, nameEn });
+    const maxSort = db.select({ m: categoryLabels.sortOrder }).from(categoryLabels).orderBy(asc(categoryLabels.sortOrder)).all();
+    const sortOrder = maxSort.length > 0 ? maxSort[maxSort.length - 1].m + 1 : 3;
+    db.insert(categoryLabels).values({ key, nameZh, nameEn, sortOrder }).run();
+    return NextResponse.json({ key, nameZh, nameEn, sortOrder });
   } catch (error) {
     return serverError(error);
   }

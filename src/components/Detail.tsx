@@ -5,11 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
-import { messages } from "@/lib/i18n";
-import { CORE_CATEGORIES } from "@/lib/types";
+import { PITCH_CATEGORY_KEY } from "@/lib/types";
 import type { ImageKind, Song, SongImage, Tag, VideoLink } from "@/lib/types";
-
-const categories = [...CORE_CATEGORIES];
 
 function generateId() {
   // crypto.randomUUID() requires secure context (HTTPS), use fallback for HTTP
@@ -352,20 +349,19 @@ export default function Detail({ songId }: { songId: number }) {
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => <option key={score}>{score}</option>)}
           </select>
           {(() => {
-            const allCats = [...categories, ...tags.reduce<string[]>((acc, tag) => {
-              if (!CORE_CATEGORIES.includes(tag.category as typeof CORE_CATEGORIES[number]) && !acc.includes(tag.category)) acc.push(tag.category);
-              return acc;
-            }, [])];
+            const allCats = [...new Set([...Object.keys(categoryLabelsMap), ...tags.map((tag) => tag.category)])];
             function isPitchKey(key: string): boolean {
-              if (!key) return false;
-              const lower = key.toLowerCase();
-              return (messages["zh-CN"] as Record<string, string>).pitch === lower
-                  || (messages["en-US"] as Record<string, string>).pitch.toLowerCase() === lower;
+              return key === PITCH_CATEGORY_KEY;
             }
             function buildTagIds(category: string, ids: number[]) {
               return allCats.flatMap((cat) =>
                 cat === category ? ids : (piece!.tags[cat]?.map((tag) => tag.id) ?? [])
               );
+            }
+            function getLabel(key: string): string | undefined {
+              const lbl = categoryLabelsMap[key];
+              if (!lbl) return undefined;
+              return locale === "en-US" ? (lbl.en || lbl.zh) : (lbl.zh || lbl.en);
             }
             return allCats.map((category) => (
               <TagPicker
@@ -373,7 +369,7 @@ export default function Detail({ songId }: { songId: number }) {
                 compact
                 isPitchCategory={isPitchKey(category)}
                 singleSelect={singleSelectCategories.has(category)}
-                label={CORE_CATEGORIES.includes(category as typeof CORE_CATEGORIES[number]) ? undefined : (categoryLabelsMap[category] ? (locale === "en-US" ? categoryLabelsMap[category].en || categoryLabelsMap[category].zh : categoryLabelsMap[category].zh || categoryLabelsMap[category].en) : undefined)}
+                label={getLabel(category)}
                 category={category}
                 tags={tags.filter((tag) => tag.category === category)}
                 selected={piece.tags[category]?.map((tag) => tag.id) ?? []}
