@@ -36,6 +36,7 @@ export default function Detail({ songId }: { songId: number }) {
   const [piece, setPiece] = useState<Song | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
   const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(new Set());
+  const [categoryLabelsMap, setCategoryLabelsMap] = useState<Record<string, { zh: string; en: string }>>({});
   const [tab, setTab] = useState<ImageKind>("staff");
   const [editingImages, setEditingImages] = useState(false);
   const [pageIndex, setPageIndex] = useState<number | null>(null);
@@ -64,6 +65,17 @@ export default function Detail({ songId }: { songId: number }) {
     fetch("/api/single-select-categories")
       .then((res) => res.json())
       .then((rows) => setSingleSelectCategories(new Set(rows as string[])));
+    fetch("/api/categories")
+      .then((res) => res.json())
+      .then((rows) => {
+        if (Array.isArray(rows)) {
+          const map: Record<string, { zh: string; en: string }> = {};
+          for (const r of rows) {
+            map[r.key] = { zh: r.nameZh, en: r.nameEn };
+          }
+          setCategoryLabelsMap(map);
+        }
+      });
     const deviceId = getDeviceId();
     fetch(`/api/device-zoom?deviceId=${deviceId}&songId=${songId}`)
       .then((res) => res.json())
@@ -361,6 +373,7 @@ export default function Detail({ songId }: { songId: number }) {
                 compact
                 isPitchCategory={isPitchKey(category)}
                 singleSelect={singleSelectCategories.has(category)}
+                label={CORE_CATEGORIES.includes(category as typeof CORE_CATEGORIES[number]) ? undefined : (categoryLabelsMap[category] ? (locale === "en-US" ? categoryLabelsMap[category].en || categoryLabelsMap[category].zh : categoryLabelsMap[category].zh || categoryLabelsMap[category].en) : undefined)}
                 category={category}
                 tags={tags.filter((tag) => tag.category === category)}
                 selected={piece.tags[category]?.map((tag) => tag.id) ?? []}

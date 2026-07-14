@@ -216,14 +216,22 @@ export default function Directory() {
   }, [pieces]);
 
   async function refresh() {
-    const [pieceRows, tagRows, ssRows] = await Promise.all([
+    const [pieceRows, tagRows, ssRows, catLabelRows] = await Promise.all([
       fetch("/api/pieces").then((res) => res.json()),
       fetch("/api/tags").then((res) => res.json()),
-      fetch("/api/single-select-categories").then((res) => res.json())
+      fetch("/api/single-select-categories").then((res) => res.json()),
+      fetch("/api/categories").then((res) => res.json())
     ]);
     setPieces(pieceRows);
     setTags(tagRows);
     setSingleSelectCategories(new Set(ssRows as string[]));
+    if (Array.isArray(catLabelRows)) {
+      setUserCategories(catLabelRows.map((r: { key: string; nameZh: string; nameEn: string }) => ({
+        key: r.key,
+        labelZh: r.nameZh || r.nameEn,
+        labelAlt: r.nameEn || r.nameZh
+      })));
+    }
   }
 
   async function createPiece() {
@@ -351,6 +359,11 @@ export default function Directory() {
     }
     setUserCategories((prev) => [...prev, { key, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh }]);
     setFilters((prev) => ({ ...prev, [key]: [] }));
+    fetch("/api/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, nameZh: trimmedZh, nameEn: trimmedAlt })
+    });
     if (newCategorySingleSelect) {
       fetch("/api/single-select-categories", {
         method: "POST",
@@ -382,6 +395,7 @@ export default function Directory() {
       delete next[key];
       return next;
     });
+    fetch(`/api/categories?key=${encodeURIComponent(key)}`, { method: "DELETE" });
     await refresh();
   }
 
@@ -401,6 +415,11 @@ export default function Directory() {
           return prev.map((c) => c.key === oldKey ? updated : c);
         }
         return [...prev, updated];
+      });
+      fetch("/api/categories", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: oldKey, nameZh: trimmedZh, nameEn: trimmedAlt })
       });
       setRenamingCategory(null);
       return;
@@ -435,11 +454,26 @@ export default function Directory() {
       // Renaming back to a built-in category — remove the old userCategory entry and unhide
       setUserCategories((prev) => prev.filter((c) => c.key !== oldKey));
       setHiddenCoreCategories((prev) => prev.filter((k) => k !== newKey));
+      fetch(`/api/categories?key=${encodeURIComponent(oldKey)}`, { method: "DELETE" });
     } else if (!isCore) {
       setUserCategories((prev) => prev.map((c) => c.key === oldKey ? { key: newKey, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh } : c));
+      // Key changed — delete old label, insert new one
+      fetch(`/api/categories?key=${encodeURIComponent(oldKey)}`, { method: "DELETE" });
+      fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: newKey, nameZh: trimmedZh, nameEn: trimmedAlt })
+      });
     } else {
       setUserCategories((prev) => [...prev, { key: newKey, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh }]);
       setHiddenCoreCategories((prev) => [...prev, oldKey]);
+      // Core category being renamed to custom — save the new label, clean up old
+      fetch(`/api/categories?key=${encodeURIComponent(oldKey)}`, { method: "DELETE" });
+      fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: newKey, nameZh: trimmedZh, nameEn: trimmedAlt })
+      });
     }
     setRenamingCategory(null);
     await refresh();
