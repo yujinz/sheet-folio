@@ -1,14 +1,14 @@
 export type TagCategory = string;
 
-/** Categories are stored in the category_labels table. The "pitch" key has special sorting/color behavior. */
+/** Categories are stored in the tag_categories table. The "pitch" key has special sorting/color behavior. */
 export const PITCH_CATEGORY_KEY = "pitch";
 export type ImageKind = "staff" | "numbered";
 
-/** A category entry as returned by GET /api/categories. */
+/** A category entry as returned by GET /api/tag-categories. */
 export type CategoryEntry = {
   key: string;
-  nameZh: string;
-  nameEn: string;
+  name: string;
+  nameAlt: string;
   sortOrder: number;
 };
 

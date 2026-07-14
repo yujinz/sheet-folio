@@ -220,10 +220,10 @@ export default function Directory() {
     setTags(tagRows);
     setSingleSelectCategories(new Set(ssRows as string[]));
     if (Array.isArray(catLabelRows)) {
-      setUserCategories(catLabelRows.map((r: { key: string; nameZh: string; nameEn: string }) => ({
+      setUserCategories(catLabelRows.map((r: { key: string; name: string; nameAlt: string }) => ({
         key: r.key,
-        labelZh: r.nameZh || r.nameEn,
-        labelAlt: r.nameEn || r.nameZh
+        labelZh: r.name || r.nameAlt,
+        labelAlt: r.nameAlt || r.name
       })));
     }
   }
@@ -350,7 +350,7 @@ export default function Directory() {
     const catRes = await fetch("/api/categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, nameZh: trimmedZh, nameEn: trimmedAlt })
+      body: JSON.stringify({ key, name: trimmedZh, nameAlt: trimmedAlt })
     });
     if (!catRes.ok) {
       const err = await catRes.json().catch(() => ({}));
@@ -414,7 +414,7 @@ export default function Directory() {
       const patchRes = await fetch("/api/categories", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: oldKey, nameZh: trimmedZh, nameEn: trimmedAlt })
+        body: JSON.stringify({ key: oldKey, name: trimmedZh, nameAlt: trimmedAlt })
       });
       if (!patchRes.ok) {
         const err = await patchRes.json().catch(() => ({}));
@@ -453,7 +453,7 @@ export default function Directory() {
     const renameRes = await fetch("/api/categories", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: newKey, oldKey, nameZh: trimmedZh, nameEn: trimmedAlt })
+      body: JSON.stringify({ key: newKey, oldKey, name: trimmedZh, nameAlt: trimmedAlt })
     });
     if (!renameRes.ok) {
       const err = await renameRes.json().catch(() => ({}));

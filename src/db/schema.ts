@@ -81,9 +81,9 @@ export const singleSelectCategories = sqliteTable("single_select_categories", {
   category: text("category").primaryKey().notNull()
 });
 
-export const categoryLabels = sqliteTable("category_labels", {
+export const tagCategories = sqliteTable("tag_categories", {
   key: text("key").primaryKey().notNull(),
-  nameZh: text("name_zh").notNull().default(""),
-  nameEn: text("name_en").notNull().default(""),
+  name: text("name").notNull().default(""),
+  nameAlt: text("name_alt").notNull().default(""),
   sortOrder: integer("sort_order").notNull().default(0)
 });

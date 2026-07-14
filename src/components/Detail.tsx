@@ -68,7 +68,7 @@ export default function Detail({ songId }: { songId: number }) {
         if (Array.isArray(rows)) {
           const map: Record<string, { zh: string; en: string }> = {};
           for (const r of rows) {
-            map[r.key] = { zh: r.nameZh, en: r.nameEn };
+            map[r.key] = { zh: r.name, en: r.nameAlt };
           }
           setCategoryLabelsMap(map);
         }

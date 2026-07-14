@@ -34,6 +34,13 @@ export type ExportedPiece = {
   links: ExportedLink[];
 };
 
+export type ExportedTagCategory = {
+  key: string;
+  name: string;
+  nameAlt: string;
+  sortOrder: number;
+};
+
 export type ExportManifest = {
   exportedAt: string;
   pieceCount: number;

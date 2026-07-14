@@ -12,6 +12,7 @@ export-data/
   pieces.json                      # Array of pieces with tags, images, links
   tags.json                        # Array of all tags
   single-select-categories.json    # Array of single-select category names (v2+)
+  tag-categories.json              # Array of tag category definitions with display names (v3+)
   images/                          # Re-encoded images with EXIF stripped
     {pieceId}/
       staff/                       # Staff notation images
@@ -26,7 +27,7 @@ export-data/
   "pieceCount": 42,
   "tagCount": 7,
   "imageCount": 156,
-  "schemaVersion": 2
+  "schemaVersion": 3
 }
 ```
 
@@ -36,7 +37,7 @@ export-data/
 | `pieceCount`   | number | Number of pieces in the export         |
 | `tagCount`     | number | Number of tags                         |
 | `imageCount`   | number | Number of image files copied           |
-| `schemaVersion`| number | Schema version (currently 2)           |
+| `schemaVersion`| number | Schema version (currently 3)           |
 
 ## File: `tags.json`
 
@@ -177,9 +178,31 @@ Array of category names that are configured as single-select (optional — absen
 
 Each entry is a category key from the `tags` table. When a category appears here, a piece may have at most one tag from that category. The frontend renders radio buttons instead of checkboxes for these categories.
 
+## File: `tag-categories.json`
+
+Array of tag category definition objects (v3+):
+
+```json
+[
+  { "key": "pitch", "name": "音高", "nameAlt": "Pitch", "sortOrder": 0 },
+  { "key": "rhythm", "name": "节拍", "nameAlt": "Rhythm", "sortOrder": 1 },
+  { "key": "technique", "name": "技巧", "nameAlt": "Technique", "sortOrder": 2 }
+]
+```
+
+| Field      | Type   | Description                                  |
+|------------|--------|----------------------------------------------|
+| `key`      | string | Unique category key (e.g. `"pitch"`, `"genre"`) |
+| `name`     | string | Primary display name (e.g. Chinese) — may be empty |
+| `nameAlt`  | string | Alternate display name (e.g. English) — may be empty |
+| `sortOrder`| number | Display order (lower = first)               |
+
+> The three core categories (`pitch`, `technique`, `rhythm`) are seeded automatically. User-defined categories like `genre` or `mood` appear with their own keys.
+
 ## Schema Version History
 
 | Version | Notes                                       |
 |---------|---------------------------------------------|
+| 3       | Added `tag-categories.json`.                |
 | 2       | Added `single-select-categories.json`.      |
 | 1       | Initial schema                              |

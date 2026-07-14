@@ -1,20 +1,20 @@
 import { db } from "@/db";
-import { categoryLabels } from "@/db/schema";
+import { tagCategories } from "@/db/schema";
 
 const DEFAULTS = [
-  { key: "pitch", nameZh: "音高", nameEn: "Pitch", sortOrder: 0 },
-  { key: "rhythm", nameZh: "节拍", nameEn: "Rhythm", sortOrder: 1 },
-  { key: "technique", nameZh: "技巧", nameEn: "Technique", sortOrder: 2 }
+  { key: "pitch", name: "音高", nameAlt: "Pitch", sortOrder: 0 },
+  { key: "rhythm", name: "节拍", nameAlt: "Rhythm", sortOrder: 1 },
+  { key: "technique", name: "技巧", nameAlt: "Technique", sortOrder: 2 }
 ];
 
 /**
- * If the category_labels table is empty, insert the 3 default categories.
+ * If the tag_categories table is empty, insert the 3 default categories.
  * Idempotent — safe to call on every request.
  */
 export function seedDefaultCategories() {
-  const existing = db.select().from(categoryLabels).get();
+  const existing = db.select().from(tagCategories).get();
   if (existing) return;
   for (const cat of DEFAULTS) {
-    db.insert(categoryLabels).values(cat).run();
+    db.insert(tagCategories).values(cat).run();
   }
 }

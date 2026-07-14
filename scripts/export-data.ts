@@ -37,6 +37,7 @@ import type {
   ExportedLink,
   ExportedPiece,
   ExportedTag,
+  ExportedTagCategory,
   ExportManifest,
   ImageKind
 } from "../src/lib/export-types";
@@ -57,6 +58,13 @@ interface SongRow {
   notes: string;
   created_at: string;
   updated_at: string;
+}
+
+interface TagCategoryRow {
+  key: string;
+  name: string;
+  name_alt: string;
+  sort_order: number;
 }
 
 interface SongImageRow {
@@ -98,6 +106,7 @@ function readData() {
   const images = sqlite.prepare("SELECT * FROM song_images ORDER BY sort_order, id").all() as SongImageRow[];
   const links = sqlite.prepare("SELECT * FROM video_links ORDER BY sort_order, id").all() as VideoLinkRow[];
   const singleSelectRows = sqlite.prepare("SELECT * FROM single_select_categories ORDER BY category").all() as { category: string }[];
+  const tagCategoryRows = sqlite.prepare("SELECT * FROM tag_categories ORDER BY sort_order, key").all() as TagCategoryRow[];
 
   // Build tag map
   const tagMap = new Map(tags.map((t) => [t.id, t]));
@@ -150,7 +159,7 @@ function readData() {
 
   sqlite.close();
 
-  return { songs, tags, songTagMap, songImageMap, songLinkMap, singleSelectRows };
+  return { songs, tags, songTagMap, songImageMap, songLinkMap, singleSelectRows, tagCategoryRows };
 }
 
 // ---------------------------------------------------------------
@@ -192,8 +201,8 @@ async function copyImages(songImageMap: Map<number, Record<ImageKind, SongImageR
 // ---------------------------------------------------------------
 async function main() {
   console.log("📖 Reading data from", DB_PATH);
-  const { songs, tags, songTagMap, songImageMap, songLinkMap, singleSelectRows } = readData();
-  console.log(`   Found ${songs.length} pieces, ${tags.length} tags, ${singleSelectRows.length} single-select categories`);
+  const { songs, tags, songTagMap, songImageMap, songLinkMap, singleSelectRows, tagCategoryRows } = readData();
+  console.log(`   Found ${songs.length} pieces, ${tags.length} tags, ${singleSelectRows.length} single-select categories, ${tagCategoryRows.length} tag categories`);
 
   // Prepare output directories
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -263,13 +272,27 @@ async function main() {
     "utf-8"
   );
 
+  // Write tag-categories.json
+  const exportedTagCategories: ExportedTagCategory[] = tagCategoryRows.map((r) => ({
+    key: r.key,
+    name: r.name,
+    nameAlt: r.name_alt,
+    sortOrder: r.sort_order
+  }));
+  console.log("📝 Writing tag-categories.json...");
+  fs.writeFileSync(
+    path.join(OUTPUT_DIR, "tag-categories.json"),
+    JSON.stringify(exportedTagCategories, null, 2),
+    "utf-8"
+  );
+
   // Write manifest.json
   const manifest: ExportManifest = {
     exportedAt: new Date().toISOString(),
     pieceCount: exportedPieces.length,
     tagCount: exportedTags.length,
     imageCount,
-    schemaVersion: 2
+    schemaVersion: 3
   };
   console.log("📝 Writing manifest.json...");
   fs.writeFileSync(
