@@ -42,6 +42,7 @@ export async function POST(request: Request) {
 
 const patchSchema = z.object({
   key: z.string().trim().min(1),
+  oldKey: z.string().trim().optional(),
   nameZh: z.string().default(""),
   nameEn: z.string().default("")
 });
@@ -50,11 +51,17 @@ export async function PATCH(request: Request) {
   try {
     const body = patchSchema.safeParse(await request.json());
     if (!body.success) return apiError(body.error.flatten().fieldErrors);
-    const { key, nameZh, nameEn } = body.data;
-    const existing = db.select().from(categoryLabels).where(eq(categoryLabels.key, key)).get();
+    const { key, oldKey, nameZh, nameEn } = body.data;
+    const targetKey = oldKey ?? key;
+    const existing = db.select().from(categoryLabels).where(eq(categoryLabels.key, targetKey)).get();
     if (!existing) {
-      // Create if not exists
       db.insert(categoryLabels).values({ key, nameZh, nameEn }).run();
+    } else if (key !== targetKey) {
+      // Key rename — preserve sortOrder
+      db.update(categoryLabels)
+        .set({ key, nameZh, nameEn })
+        .where(eq(categoryLabels.key, targetKey))
+        .run();
     } else {
       db.update(categoryLabels).set({ nameZh, nameEn }).where(eq(categoryLabels.key, key)).run();
     }

@@ -449,20 +449,15 @@ export default function Directory() {
       }
       return [...prev, updated];
     });
-    // Update server: delete old label, insert new one
-    const delRes = await fetch(`/api/categories?key=${encodeURIComponent(oldKey)}`, { method: "DELETE" });
-    if (!delRes.ok) {
-      const err = await delRes.json().catch(() => ({}));
-      alert(err.error || "Failed to remove old category label");
-    }
-    const postRes = await fetch("/api/categories", {
-      method: "POST",
+    // Update server: rename key preserving sortOrder
+    const renameRes = await fetch("/api/categories", {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: newKey, nameZh: trimmedZh, nameEn: trimmedAlt })
+      body: JSON.stringify({ key: newKey, oldKey, nameZh: trimmedZh, nameEn: trimmedAlt })
     });
-    if (!postRes.ok) {
-      const err = await postRes.json().catch(() => ({}));
-      alert(err.error || "Failed to save new category labels");
+    if (!renameRes.ok) {
+      const err = await renameRes.json().catch(() => ({}));
+      alert(err.error || "Failed to rename category");
     }
     setRenamingCategory(null);
     await refresh();
@@ -775,24 +770,6 @@ export default function Directory() {
                       selected={piece.tags[category]?.map((tag) => tag.id) ?? []}
                       onCreate={createTag}
                       onChange={(ids) => updatePiece(piece, { tagIds: buildTagIds(category, ids) })}
-                      defaultColor={defaultColor}
-                      onDefaultColorChange={setDefaultColor}
-                    />
-                  </td>
-                ))}
-                {extraCategoryKeys.map((key) => (
-                  <td key={key}>
-                    <TagPicker
-                      compact
-                      selectedOnly
-                      isPitchCategory={isPitchKey(key)}
-                      singleSelect={singleSelectCategories.has(key)}
-                      category={key}
-                      label={getCategoryLabel(userCategories, key, locale)}
-                      tags={tags.filter((tag) => tag.category === key)}
-                      selected={piece.tags[key]?.map((tag) => tag.id) ?? []}
-                      onCreate={createTag}
-                      onChange={(ids) => updatePiece(piece, { tagIds: buildTagIds(key, ids) })}
                       defaultColor={defaultColor}
                       onDefaultColorChange={setDefaultColor}
                     />
