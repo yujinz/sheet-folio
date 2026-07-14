@@ -209,14 +209,39 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
   const [editName, setEditName] = useState("");
   const [editNameAlt, setEditNameAlt] = useState("");
   const [editColor, setEditColor] = useState("");
+  const [activeEditInput, setActiveEditInput] = useState<"name" | "nameAlt">("name");
   const editNameInputRef = useRef<HTMLInputElement>(null);
+  const editNameAltInputRef = useRef<HTMLInputElement>(null);
   const editDialogRef = useRef<HTMLDivElement>(null);
+  const editAutoFillSourceRef = useRef<"name" | "nameAlt" | null>(null);
 
   useEffect(() => {
     if (editTag) {
       editNameInputRef.current?.focus();
     }
   }, [editTag]);
+
+  // Auto-fill the other edit pitch field when a valid pitch is detected
+  useEffect(() => {
+    if (!isPitchCategory) return;
+
+    const source = editAutoFillSourceRef.current;
+    editAutoFillSourceRef.current = null;
+
+    if (!source) return;
+
+    if (source === "name") {
+      const trimmed = editName.trim();
+      if (PITCH_RE.test(trimmed) && editNameAlt !== trimmed) {
+        setEditNameAlt(trimmed);
+      }
+    } else {
+      const trimmed = editNameAlt.trim();
+      if (PITCH_RE.test(trimmed) && editName !== trimmed) {
+        setEditName(trimmed);
+      }
+    }
+  }, [editName, editNameAlt, isPitchCategory]);
 
   function openEditDialog(tag: Tag) {
     setEditTag(tag);
@@ -307,13 +332,13 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
       <div className="mx-4 w-full max-w-xs rounded-lg bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 text-sm font-semibold">{t.editTags}</div>
         <div className="grid gap-2">
-          <input ref={editNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
-          <input className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={editNameAlt} onChange={(e) => setEditNameAlt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
+          <input ref={editNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={editName} onChange={(e) => { setEditName(e.target.value); editAutoFillSourceRef.current = "name"; }} onFocus={() => setActiveEditInput("name")} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
+          <input ref={editNameAltInputRef} className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={editNameAlt} onChange={(e) => { setEditNameAlt(e.target.value); editAutoFillSourceRef.current = "nameAlt"; }} onFocus={() => setActiveEditInput("nameAlt")} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
           <div className="flex items-center gap-2">
             {isPitchCategory && (
               <>
                 {["♭", "♯", "♮"].map((mark) => (
-                  <button key={mark} className="pill-add-button" type="button" onClick={() => { if (editNameAlt && !editName) { setEditNameAlt(mark + editNameAlt); } else { setEditName(mark + editName); } editNameInputRef.current?.focus(); }}>{mark}</button>
+                  <button key={mark} className="pill-add-button" type="button" onClick={() => { const setter = activeEditInput === "nameAlt" ? setEditNameAlt : setEditName; setter((value) => mark + value); const ref = activeEditInput === "nameAlt" ? editNameAltInputRef : editNameInputRef; ref.current?.focus(); }}>{mark}</button>
                 ))}
                 <button aria-label="Assign pitch color" className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap" style={{ background: "none" }} type="button" title="Assign color based on pitch octave" onClick={() => { const pitchName = locale === "en-US" ? (editNameAlt || editName) : (editName || editNameAlt); const c = pitchColorFromName(pitchName); if (c) setEditColor(c); }}><Music size={12} /> Assign color by pitch</button>
               </>
@@ -342,7 +367,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
           {isPitchCategory && (
             <div className="flex items-center gap-1.5">
               {["♭", "♯", "♮"].map((mark) => (
-                <button key={mark} className="pill-add-button" type="button" onClick={() => { const ref = activeCreateInput === "nameAlt" ? createNameAltInputRef : createNameInputRef; const input = ref.current; const cursor = input?.selectionStart ?? (activeCreateInput === "nameAlt" ? createNameAlt.length : createName.length); const setter = activeCreateInput === "nameAlt" ? setCreateNameAlt : setCreateName; setter((value) => value.slice(0, cursor) + mark + value.slice(cursor)); autoFillSourceRef.current = activeCreateInput === "nameAlt" ? "nameAlt" : "name"; input?.focus(); }}>{mark}</button>
+                <button key={mark} className="pill-add-button" type="button" onClick={() => { const ref = activeCreateInput === "nameAlt" ? createNameAltInputRef : createNameInputRef; const input = ref.current; const setter = activeCreateInput === "nameAlt" ? setCreateNameAlt : setCreateName; setter((value) => mark + value); input?.focus(); }}>{mark}</button>
               ))}
             </div>
           )}
