@@ -55,7 +55,8 @@ function hslToHex(h: number, s: number, l: number): string {
 /** Compute a hex color from a pitch name (e.g. "C4", "F♯5").
  *  The full range octave 1→8 spans hue 0→300 (red→violet).
  *  Within each octave, C→B also spreads across the octave's hue range,
- *  so A4 and F4 get different colors. Accidentals shift hue ±15°. */
+ *  so A4 and F4 get different colors. Accidentals shift hue by half a
+ *  note-step, placing e.g. #G4 between G4 and A4 instead of past A4. */
 function pitchColorFromName(name: string): string | null {
   const info = pitchOctaveInfo(name);
   if (!info) return null;
@@ -63,7 +64,7 @@ function pitchColorFromName(name: string): string | null {
   // Each octave occupies 1/7 of the 300° range. Within that, 7 notes spread evenly.
   const octaveSpan = 300 / 7;
   const noteStep = octaveSpan / 7;
-  const hue = (octave - 1) * octaveSpan + note * noteStep + accidental * 30;
+  const hue = (octave - 1) * octaveSpan + (note + accidental) * noteStep;
   return hslToHex(hue, 40, 65);
 }
 
