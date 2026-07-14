@@ -46,6 +46,7 @@ export default function Detail({ songId }: { songId: number }) {
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDirtyRef = useRef(false);
+  const isComposingRef = useRef(false);
   const imagesSectionRef = useRef<HTMLDivElement>(null);
   const hasScrolledToImages = useRef(false);
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
@@ -185,6 +186,8 @@ export default function Detail({ songId }: { songId: number }) {
 
   // Debounced save — reads values from refs (uncontrolled inputs)
   function scheduleSave() {
+    // Skip if user is in the middle of IME composition (e.g. typing pinyin)
+    if (isComposingRef.current) return;
     isDirtyRef.current = true;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
@@ -221,7 +224,44 @@ export default function Detail({ songId }: { songId: number }) {
     }, 500);
   }
 
+  function flushSave() {
+    // Flush any pending debounced save immediately
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    if (isDirtyRef.current) {
+      isDirtyRef.current = false;
+      const notes = notesRef.current?.value ?? "";
+      const body: Record<string, string> = { notes };
+      if (locale === "en-US") {
+        const titleAlt = titleAltRef.current?.value ?? "";
+        body.title = piece?.title ?? "";
+        body.titleAlt = titleAlt;
+        if (!body.title.trim() && titleAlt.trim()) {
+          body.title = titleAlt;
+        }
+      } else {
+        const title = titleRef.current?.value ?? "";
+        body.title = title;
+        body.titleAlt = piece?.titleAlt ?? "";
+        if (!body.titleAlt.trim() && title.trim()) {
+          body.titleAlt = title;
+        }
+      }
+      if (body.title.trim() === "" && body.titleAlt.trim() === "") return;
+      void fetch(`/api/pieces/${songId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      }).then((res) => res.ok ? res.json() : null).then((updated) => {
+        if (updated) setPiece(updated);
+      });
+    }
+  }
+
   function handleTitleBlur() {
+    flushSave();
     const currentValue = (titleRef.current ?? titleAltRef.current)?.value ?? "";
     const newTitle = locale === "en-US" ? (piece?.title ?? "") : currentValue;
     const newTitleAlt = locale === "en-US" ? currentValue : (piece?.titleAlt ?? "");
@@ -274,6 +314,9 @@ export default function Detail({ songId }: { songId: number }) {
               defaultValue={locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}
               onChange={scheduleSave}
               onBlur={handleTitleBlur}
+              onCompositionStart={() => { isComposingRef.current = true; }}
+              onCompositionEnd={() => { isComposingRef.current = false; scheduleSave(); }}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             />
           </div>
           <button className="icon-button" type="button" onClick={toggleFavorite} aria-label={favoriteIds.includes(songId) ? t.removeFromFavorites : t.addToFavorites}>
