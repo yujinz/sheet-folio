@@ -335,7 +335,7 @@ export default function Directory() {
     });
   }, [extraCategoryKeys]);
 
-  function addCategory(zh: string, en: string) {
+  async function addCategory(zh: string, en: string) {
     const trimmedZh = zh.trim();
     const trimmedAlt = en.trim();
     const key = categoryKey(trimmedZh, trimmedAlt);
@@ -347,11 +347,16 @@ export default function Directory() {
     }
     setUserCategories((prev) => [...prev, { key, labelZh: trimmedZh || trimmedAlt, labelAlt: trimmedAlt || trimmedZh }]);
     setFilters((prev) => ({ ...prev, [key]: [] }));
-    fetch("/api/categories", {
+    const catRes = await fetch("/api/categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, nameZh: trimmedZh, nameEn: trimmedAlt })
     });
+    if (!catRes.ok) {
+      const err = await catRes.json().catch(() => ({}));
+      alert(err.error || "Failed to save category");
+      return;
+    }
     if (newCategorySingleSelect) {
       fetch("/api/single-select-categories", {
         method: "POST",
@@ -383,7 +388,11 @@ export default function Directory() {
       delete next[key];
       return next;
     });
-    fetch(`/api/categories?key=${encodeURIComponent(key)}`, { method: "DELETE" });
+    const delRes = await fetch(`/api/categories?key=${encodeURIComponent(key)}`, { method: "DELETE" });
+    if (!delRes.ok) {
+      const err = await delRes.json().catch(() => ({}));
+      alert(err.error || "Failed to delete category labels");
+    }
     await refresh();
   }
 
@@ -402,11 +411,15 @@ export default function Directory() {
         }
         return [...prev, updated];
       });
-      fetch("/api/categories", {
+      const patchRes = await fetch("/api/categories", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: oldKey, nameZh: trimmedZh, nameEn: trimmedAlt })
       });
+      if (!patchRes.ok) {
+        const err = await patchRes.json().catch(() => ({}));
+        alert(err.error || "Failed to save category labels");
+      }
       setRenamingCategory(null);
       return;
     }
@@ -437,12 +450,20 @@ export default function Directory() {
       return [...prev, updated];
     });
     // Update server: delete old label, insert new one
-    fetch(`/api/categories?key=${encodeURIComponent(oldKey)}`, { method: "DELETE" });
-    fetch("/api/categories", {
+    const delRes = await fetch(`/api/categories?key=${encodeURIComponent(oldKey)}`, { method: "DELETE" });
+    if (!delRes.ok) {
+      const err = await delRes.json().catch(() => ({}));
+      alert(err.error || "Failed to remove old category label");
+    }
+    const postRes = await fetch("/api/categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: newKey, nameZh: trimmedZh, nameEn: trimmedAlt })
     });
+    if (!postRes.ok) {
+      const err = await postRes.json().catch(() => ({}));
+      alert(err.error || "Failed to save new category labels");
+    }
     setRenamingCategory(null);
     await refresh();
   }
