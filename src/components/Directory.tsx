@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
@@ -172,38 +172,38 @@ export default function Directory() {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [sort, query, filters, difficultyFilter.value, titleSortDir, createdAtSortDir, userCategories]);
 
-  // Save scroll position on unmount (SPA navigation) and on pagehide (bfcache/unload)
+  // Save scroll position on pagehide (bfcache / browser close).
+  // For SPA navigation, scrollY is flushed to sessionStorage by the onMouseDown
+  // handler on piece links, which fires before Next.js scrolls to top.
+  // We use an in-memory ref for tracking (not sessionStorage on every scroll)
+  // to avoid Next.js's synthetic scroll-to-top during navigation overwriting
+  // the correct value.
+  const scrollYRef = useRef(0);
+
   useEffect(() => {
-    const saveScroll = () => {
+    const flush = () => {
       try {
         const saved = sessionStorage.getItem(STORAGE_KEY);
         const state = saved ? JSON.parse(saved) : {};
-        state.scrollY = window.scrollY;
+        state.scrollY = scrollYRef.current;
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       } catch {}
     };
-    window.addEventListener("pagehide", saveScroll);
-    return () => {
-      window.removeEventListener("pagehide", saveScroll);
-      saveScroll(); // Save on unmount (link click navigation)
-    };
+    window.addEventListener("pagehide", flush);
+    return () => window.removeEventListener("pagehide", flush);
   }, []);
 
-  // Restore scroll position after initial data load (one-time only).
-  // Pieces data can update later (e.g. when selecting a tag in the directory),
-  // but we must NOT re-run scroll restoration on those updates — it would jump
-  // back to the saved position (or 0) after every tag click.
-  useEffect(() => {
-    if (pieces.length === 0 || scrollRestored.current) return;
-    scrollRestored.current = true;
+  // Restore scroll position after pieces load.
+  // useLayoutEffect fires synchronously after DOM mutations but before the
+  // browser paints, so the page appears at the saved position immediately.
+  useLayoutEffect(() => {
+    if (pieces.length === 0) return;
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (typeof parsed.scrollY === "number") {
-          requestAnimationFrame(() => {
-            window.scrollTo(0, parsed.scrollY);
-          });
+        if (typeof parsed.scrollY === "number" && parsed.scrollY > 0) {
+          window.scrollTo(0, parsed.scrollY);
         }
       }
     } catch {}
@@ -286,17 +286,17 @@ export default function Directory() {
     setPieces((rows) => rows.map((row) => (row.id === piece.id ? updated : row)));
   }
 
-  // Show/hide scroll-to-top button based on scroll position
+  // Track scroll position in-memory (ref) for show/hide of scroll-to-top button.
+  // We deliberately do NOT write to sessionStorage here — Next.js's synthetic
+  // scroll-to-top during navigation would overwrite the correct value.
   useEffect(() => {
-    const onScroll = () => setShowScrollTop(window.scrollY > 400);
+    const onScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+      scrollYRef.current = window.scrollY;
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  // Track whether we've already restored scroll position on initial pieces load.
-  // Prevents the scroll restoration effect from firing on every pieces update
-  // (e.g. when updatePiece/setPieces runs after selecting a tag in the directory).
-  const scrollRestored = useRef(false);
 
   /** Extra category keys from DB tags not yet in userCategories. */
   const extraCategoryKeys = useMemo(() => {
@@ -755,7 +755,19 @@ export default function Directory() {
                 <td className="font-semibold" style={{ fontSize: 15 }}>
                   <span className="inline-flex items-center gap-1">
                     {getFavorites().includes(piece.id) && <Heart size={13} fill="var(--accent)" style={{ color: "var(--accent)" }} />}
-                    <Link href={`/piece/${piece.id}`}>{locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}</Link>
+                    <Link
+                      href={`/piece/${piece.id}`}
+                      onMouseDown={() => {
+                        // Flush in-memory scrollY to sessionStorage before Next.js
+                        // processes the click and scrolls to top for the new page.
+                        try {
+                          const saved = sessionStorage.getItem(STORAGE_KEY);
+                          const state = saved ? JSON.parse(saved) : {};
+                          state.scrollY = scrollYRef.current;
+                          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                        } catch {}
+                      }}
+                    >{locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}</Link>
                   </span>
                 </td>
                 {allCategoryKeys.map((category) => (
