@@ -291,7 +291,7 @@ export default function Directory() {
   // scroll-to-top during navigation would overwrite the correct value.
   useEffect(() => {
     const onScroll = () => {
-      setShowScrollTop(window.scrollY > 400);
+      setShowScrollTop(window.scrollY > window.innerHeight);
       scrollYRef.current = window.scrollY;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -797,12 +797,12 @@ export default function Directory() {
 
       {showScrollTop && (
         <button
-          className="fixed bottom-6 right-6 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-lg transition-opacity hover:opacity-90"
+          className="fixed bottom-4 right-4 z-30 icon-button bg-white/80 backdrop-blur-sm shadow-md hover:bg-white"
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           aria-label="Scroll to top"
         >
-          <ArrowUp size={20} />
+          <ArrowUp size={16} />
         </button>
       )}
     </main>
