@@ -19,3 +19,20 @@ export function serverError(error: unknown) {
   const message = error instanceof Error ? error.message : "Internal server error";
   return NextResponse.json({ error: message }, { status: 500 });
 }
+
+type RouteParams = Record<string, string>;
+type RouteHandler = (...args: any[]) => Response | Promise<Response>;
+
+/**
+ * Wraps an API route handler in try/catch, returning `serverError(error)` on failure.
+ * Eliminates the try/catch + serverError boilerplate from every route handler.
+ */
+export function withErrorHandler(handler: RouteHandler): RouteHandler {
+  return async (...args: any[]): Promise<Response> => {
+    try {
+      return await handler(...args);
+    } catch (error) {
+      return serverError(error);
+    }
+  };
+}

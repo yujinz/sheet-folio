@@ -5,18 +5,14 @@ import { z } from "zod";
 import { eq, asc } from "drizzle-orm";
 import { db } from "@/db";
 import { tagCategories } from "@/db/schema";
-import { apiError, serverError } from "@/lib/api";
+import { apiError, withErrorHandler } from "@/lib/api";
 import { seedDefaultCategories } from "@/lib/seed";
 
-export async function GET() {
-  try {
-    seedDefaultCategories();
-    const rows = db.select().from(tagCategories).orderBy(asc(tagCategories.sortOrder), asc(tagCategories.key)).all();
-    return NextResponse.json(rows);
-  } catch (error) {
-    return serverError(error);
-  }
-}
+export const GET = withErrorHandler(async () => {
+  seedDefaultCategories();
+  const rows = db.select().from(tagCategories).orderBy(asc(tagCategories.sortOrder), asc(tagCategories.key)).all();
+  return NextResponse.json(rows);
+});
 
 const createSchema = z.object({
   key: z.string().trim().min(1),
@@ -24,21 +20,17 @@ const createSchema = z.object({
   nameAlt: z.string().default("")
 });
 
-export async function POST(request: Request) {
-  try {
-    const body = createSchema.safeParse(await request.json());
-    if (!body.success) return apiError(body.error.flatten().fieldErrors);
-    const { key, name, nameAlt } = body.data;
-    const existing = db.select().from(tagCategories).where(eq(tagCategories.key, key)).get();
-    if (existing) return apiError(`Category "${key}" already exists`, 409);
-    const maxSort = db.select({ m: tagCategories.sortOrder }).from(tagCategories).orderBy(asc(tagCategories.sortOrder)).all();
-    const sortOrder = maxSort.length > 0 ? maxSort[maxSort.length - 1].m + 1 : 3;
-    db.insert(tagCategories).values({ key, name, nameAlt, sortOrder }).run();
-    return NextResponse.json({ key, name, nameAlt, sortOrder });
-  } catch (error) {
-    return serverError(error);
-  }
-}
+export const POST = withErrorHandler(async (request: Request) => {
+  const body = createSchema.safeParse(await request.json());
+  if (!body.success) return apiError(body.error.flatten().fieldErrors);
+  const { key, name, nameAlt } = body.data;
+  const existing = db.select().from(tagCategories).where(eq(tagCategories.key, key)).get();
+  if (existing) return apiError(`Category "${key}" already exists`, 409);
+  const maxSort = db.select({ m: tagCategories.sortOrder }).from(tagCategories).orderBy(asc(tagCategories.sortOrder)).all();
+  const sortOrder = maxSort.length > 0 ? maxSort[maxSort.length - 1].m + 1 : 3;
+  db.insert(tagCategories).values({ key, name, nameAlt, sortOrder }).run();
+  return NextResponse.json({ key, name, nameAlt, sortOrder });
+});
 
 const patchSchema = z.object({
   key: z.string().trim().min(1),
@@ -47,40 +39,32 @@ const patchSchema = z.object({
   nameAlt: z.string().default("")
 });
 
-export async function PATCH(request: Request) {
-  try {
-    const body = patchSchema.safeParse(await request.json());
-    if (!body.success) return apiError(body.error.flatten().fieldErrors);
-    const { key, oldKey, name, nameAlt } = body.data;
-    const targetKey = oldKey ?? key;
-    const existing = db.select().from(tagCategories).where(eq(tagCategories.key, targetKey)).get();
-    if (!existing) {
-      const maxSort = db.select({ m: tagCategories.sortOrder }).from(tagCategories).orderBy(asc(tagCategories.sortOrder)).all();
-      const sortOrder = maxSort.length > 0 ? maxSort[maxSort.length - 1].m + 1 : 3;
-      db.insert(tagCategories).values({ key, name, nameAlt, sortOrder }).run();
-    } else if (key !== targetKey) {
-      // Key rename — preserve sortOrder
-      db.update(tagCategories)
-        .set({ key, name, nameAlt })
-        .where(eq(tagCategories.key, targetKey))
-        .run();
-    } else {
-      db.update(tagCategories).set({ name, nameAlt }).where(eq(tagCategories.key, key)).run();
-    }
-    return NextResponse.json({ key, name, nameAlt });
-  } catch (error) {
-    return serverError(error);
+export const PATCH = withErrorHandler(async (request: Request) => {
+  const body = patchSchema.safeParse(await request.json());
+  if (!body.success) return apiError(body.error.flatten().fieldErrors);
+  const { key, oldKey, name, nameAlt } = body.data;
+  const targetKey = oldKey ?? key;
+  const existing = db.select().from(tagCategories).where(eq(tagCategories.key, targetKey)).get();
+  if (!existing) {
+    const maxSort = db.select({ m: tagCategories.sortOrder }).from(tagCategories).orderBy(asc(tagCategories.sortOrder)).all();
+    const sortOrder = maxSort.length > 0 ? maxSort[maxSort.length - 1].m + 1 : 3;
+    db.insert(tagCategories).values({ key, name, nameAlt, sortOrder }).run();
+  } else if (key !== targetKey) {
+    // Key rename — preserve sortOrder
+    db.update(tagCategories)
+      .set({ key, name, nameAlt })
+      .where(eq(tagCategories.key, targetKey))
+      .run();
+  } else {
+    db.update(tagCategories).set({ name, nameAlt }).where(eq(tagCategories.key, key)).run();
   }
-}
+  return NextResponse.json({ key, name, nameAlt });
+});
 
-export async function DELETE(request: Request) {
-  try {
-    const url = new URL(request.url);
-    const key = url.searchParams.get("key");
-    if (!key) return apiError("key query parameter is required", 400);
-    db.delete(tagCategories).where(eq(tagCategories.key, key)).run();
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    return serverError(error);
-  }
-}
+export const DELETE = withErrorHandler(async (request: Request) => {
+  const url = new URL(request.url);
+  const key = url.searchParams.get("key");
+  if (!key) return apiError("key query parameter is required", 400);
+  db.delete(tagCategories).where(eq(tagCategories.key, key)).run();
+  return NextResponse.json({ ok: true });
+});

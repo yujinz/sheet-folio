@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { songs } from "@/db/schema";
 import { getSong, nowIso, setSongTags } from "@/lib/data";
-import { apiError, serverError } from "@/lib/api";
+import { apiError, withErrorHandler } from "@/lib/api";
 
 export const updateSongSchema = z.object({
   title: z.string().optional(),
@@ -20,49 +20,37 @@ export const updateSongSchema = z.object({
   return true;
 }, { message: "At least one title (Chinese or English) must be non-empty" });
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    const song = getSong(Number(id));
-    if (!song) return apiError("Not found", 404);
-    return NextResponse.json(song);
-  } catch (error) {
-    return serverError(error);
+export const GET = withErrorHandler(async (_request: Request, { params }: { params: Promise<{ id: string }> }) => {
+  const { id } = await params;
+  const song = getSong(Number(id));
+  if (!song) return apiError("Not found", 404);
+  return NextResponse.json(song);
+});
+
+export const PATCH = withErrorHandler(async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
+  const { id } = await params;
+  const songId = Number(id);
+  const body = updateSongSchema.safeParse(await request.json());
+  if (!body.success) return apiError(body.error.flatten().fieldErrors);
+
+  const update: Partial<typeof songs.$inferInsert> = { updatedAt: nowIso() };
+  if (body.data.title !== undefined) update.title = body.data.title;
+  if (body.data.titleAlt !== undefined) update.titleAlt = body.data.titleAlt;
+  if (body.data.difficulty !== undefined) update.difficulty = body.data.difficulty;
+  if (body.data.notes !== undefined) update.notes = body.data.notes;
+
+  if (Object.keys(update).length > 1) {
+    db.update(songs).set(update).where(eq(songs.id, songId)).run();
   }
-}
+  if (body.data.tagIds) setSongTags(songId, body.data.tagIds);
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    const songId = Number(id);
-    const body = updateSongSchema.safeParse(await request.json());
-    if (!body.success) return apiError(body.error.flatten().fieldErrors);
+  const song = getSong(songId);
+  if (!song) return apiError("Not found", 404);
+  return NextResponse.json(song);
+});
 
-    const update: Partial<typeof songs.$inferInsert> = { updatedAt: nowIso() };
-    if (body.data.title !== undefined) update.title = body.data.title;
-    if (body.data.titleAlt !== undefined) update.titleAlt = body.data.titleAlt;
-    if (body.data.difficulty !== undefined) update.difficulty = body.data.difficulty;
-    if (body.data.notes !== undefined) update.notes = body.data.notes;
-
-    if (Object.keys(update).length > 1) {
-      db.update(songs).set(update).where(eq(songs.id, songId)).run();
-    }
-    if (body.data.tagIds) setSongTags(songId, body.data.tagIds);
-
-    const song = getSong(songId);
-    if (!song) return apiError("Not found", 404);
-    return NextResponse.json(song);
-  } catch (error) {
-    return serverError(error);
-  }
-}
-
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    db.delete(songs).where(eq(songs.id, Number(id))).run();
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    return serverError(error);
-  }
-}
+export const DELETE = withErrorHandler(async (_request: Request, { params }: { params: Promise<{ id: string }> }) => {
+  const { id } = await params;
+  db.delete(songs).where(eq(songs.id, Number(id))).run();
+  return NextResponse.json({ ok: true });
+});
