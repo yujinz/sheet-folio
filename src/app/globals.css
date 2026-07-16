@@ -15,7 +15,8 @@
 
 html,
 body {
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -40,7 +41,9 @@ body {
 }
 
 .sheet-page {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
 }
 
 .input,
@@ -192,6 +195,7 @@ body {
 }
 
 .table-shell {
+  flex: 1;
   overflow: auto;
   border-top: 1px solid var(--line);
   background: var(--panel);
@@ -224,6 +228,31 @@ body {
 
 .song-table th button {
   white-space: nowrap;
+}
+
+/* Sticky columns: difficulty (col 1) + title (col 2) */
+.song-table .sticky-col-first {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--panel);
+}
+
+.song-table thead .sticky-col-first {
+  z-index: 3;
+  background: #eef2ef;
+}
+
+.song-table .sticky-col-second {
+  position: sticky;
+  left: 60px;
+  z-index: 2;
+  background: var(--panel);
+}
+
+.song-table thead .sticky-col-second {
+  z-index: 3;
+  background: #eef2ef;
 }
 
 .fullscreen-view {

@@ -553,7 +553,8 @@ export default function Directory() {
         </div>
       </header>
 
-      <section className="relative px-4 py-4">
+      <div className="table-shell">
+        <section className="relative px-4 py-4">
         <div className="mb-3 flex flex-col sm:flex-row sm:flex-wrap items-start justify-between gap-3 sm:gap-1.5">
           <div className="flex flex-wrap items-center gap-1.5 order-2 sm:order-first">
           <span className="text-xs font-semibold text-[var(--foreground)] shrink-0 w-[4.5rem]">{t.difficulty}</span>
@@ -723,14 +724,12 @@ export default function Directory() {
             )}
           </div>
           )}
-      </section>
-
-      <div className="table-shell">
+        </section>
         <table className="song-table">
           <thead>
             <tr>
-              <th style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
-              <th style={{ width: 200 }}>
+              <th className="sticky-col-first" style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
+              <th className="sticky-col-second" style={{ width: 200 }}>
                 <div className="flex items-center justify-between">
                   <button onClick={() => sortBy("title")}>
                     {t.title} {sort.key === "title" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}
@@ -753,12 +752,12 @@ export default function Directory() {
               }
               return (
               <tr key={piece.id}>
-                <td>
+                <td className="sticky-col-first">
                   <select className="select tag-add-select" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
                     {DIFFICULTY_LEVELS.map((score) => <option key={score}>{score}</option>)}
                   </select>
                 </td>
-                <td className="font-semibold" style={{ fontSize: 15 }}>
+                <td className="sticky-col-second font-semibold" style={{ fontSize: 15 }}>
                   <span className="inline-flex items-center gap-1">
                     {getFavorites().includes(piece.id) && <Heart size={13} fill="var(--accent)" style={{ color: "var(--accent)" }} />}
                     <Link
