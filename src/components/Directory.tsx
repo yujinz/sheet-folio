@@ -179,11 +179,17 @@ export default function Directory() {
     return () => window.removeEventListener("pagehide", flush);
   }, []);
 
-  // Restore scroll position after pieces load.
-  // useLayoutEffect fires synchronously after DOM mutations but before the
-  // browser paints, so the page appears at the saved position immediately.
+  // Restore scroll position after initial pieces load (one-time only).
+  // Gate on prevPiecesLength going 0→N so we don't re-scroll on every
+  // pieces change (e.g. tag selection triggers updatePiece → setPieces).
+  // The gate works now because sessionStorage is only written by onMouseDown
+  // and pagehide — it's not polluted by Next.js's synthetic scroll-to-top.
+  const prevPiecesLength = useRef(0);
+
   useLayoutEffect(() => {
-    if (pieces.length === 0) return;
+    const isInitialLoad = prevPiecesLength.current === 0 && pieces.length > 0;
+    prevPiecesLength.current = pieces.length;
+    if (!isInitialLoad) return;
     try {
       const saved = sessionStorage.getItem(STORAGE_KEYS.directoryState);
       if (saved) {
