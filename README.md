@@ -92,7 +92,7 @@ pnpm export-data
 
 ## Backup
 
-Creates compressed, SHA-deduplicated backups of app volumes and export data, with optional Cloudflare R2 upload. **Keeps the last 5 backups** both locally and on R2 — older archives are pruned automatically to save space.
+Creates compressed, SHA-deduplicated backups of app volumes and export data, with optional Cloudflare R2 upload. **Keeps the last 5 unique-SHA backups** both locally and on R2 — older archives are pruned automatically to save space.
 
 ```bash
 # Local backup (saves to ~/backups/sheet-folio/{volumes,exports}/)
@@ -101,9 +101,13 @@ Creates compressed, SHA-deduplicated backups of app volumes and export data, wit
 
 # Also upload export to R2
 ./backup.sh --r2-bucket <bucket-name>
+
+# Custom retention
+./backup.sh --keep 10            # keep last 10 local archives (default: 5)
+./backup.sh --r2-keep 20         # keep last 20 on R2 (default: same as --keep)
 ```
 
-Logs milestones to `$HOME/logs/sheet-folio-backup.log` — created archives, SHA dedup events, and pruned file names (with creation dates) are all recorded. On failure, the last 20 lines of output are appended automatically.
+Logs milestones to `$HOME/logs/sheet-folio-backup.log` — created archives, SHA dedup events, and pruned file names (with creation dates and SHAs) are all recorded. On failure, the last 20 lines of output are appended automatically.
 
 Quick check:
 ```bash
@@ -124,7 +128,7 @@ tail -6 $HOME/logs/sheet-folio-backup.log
 **What it does:**
 - Archives `volumes/app/` and `export-data/` into `~/backups/sheet-folio/{volumes,exports}/`
 - Names archives as `<prefix>-<timestamp>-<sha12>.tar.gz` — identical data reuses the same file (SHA dedup)
-- Prunes local and R2 storage to the 5 most recent archives
+- Prunes local and R2 storage to the configured number of unique-SHA archives (default 5) — duplicate content (same SHA) is consolidated before counting toward the limit
 - With `--r2-bucket`, uploads the export archive to Cloudflare R2
 
 ## LAN Manual Test - Develop on PC and test on mobile device under the same LAN

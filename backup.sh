@@ -3,10 +3,11 @@
 # backup.sh — Volume + export backup with SHA-based retention (keep last 5)
 # ============================================================================
 # Usage:
-#   ./backup.sh                                         # local backup only
-#   ./backup.sh --r2-bucket my-bucket                   # + upload export to R2
-#   ./backup.sh --r2-bucket my-bucket --r2-endpoint URL # custom endpoint
-#   ./backup.sh --export-dir /path/to/export-data       # custom export dir
+#   ./backup.sh                                                     # local backup only
+#   ./backup.sh --r2-bucket my-bucket                               # + upload export to R2
+#   ./backup.sh --r2-bucket my-bucket --r2-endpoint URL             # custom endpoint
+#   ./backup.sh --export-dir /path/to/export-data                   # custom export dir
+#   ./backup.sh --keep 10 --r2-keep 20                              # custom retention
 #
 # Environment variables for R2 (read by aws CLI):
 #   AWS_ACCESS_KEY_ID       — R2 access key
@@ -59,6 +60,7 @@ BACKUP_ROOT="${HOME}/backups/sheet-folio"
 VOLUMES_DIR="${BACKUP_ROOT}/volumes"
 EXPORTS_DIR="${BACKUP_ROOT}/exports"
 KEEP=5
+R2_KEEP=
 
 VOLUME_SRC="volumes/app"
 EXPORT_DEFAULT="export-data"
@@ -75,10 +77,15 @@ while [[ $# -gt 0 ]]; do
     --export-dir)    EXPORT_DIR="$2";  shift 2 ;;
     --r2-bucket)     R2_BUCKET="$2";   shift 2 ;;
     --r2-endpoint)   R2_ENDPOINT="$2"; shift 2 ;;
+    --keep)          KEEP="$2";        shift 2 ;;
+    --r2-keep)       R2_KEEP="$2";     shift 2 ;;
     --help|-h)       sed -n '/^# /,/^$/p' "$0" | sed 's/^# //'; exit 0 ;;
     *)               echo "Unknown option: $1"; exit 1 ;;
   esac
 done
+
+# Default R2_KEEP to same as KEEP if not explicitly set
+: "${R2_KEEP:=$KEEP}"
 
 # Resolve relative export dir to absolute
 EXPORT_DIR="$(realpath -m "$EXPORT_DIR")"
@@ -145,7 +152,9 @@ make_archive() {
 }
 
 # prune_dir <dir> <keep>
-#   Keeps the <keep> most recently modified files, deletes the rest.
+#   Keeps the <keep> most recently modified unique-SHA files, deletes the rest.
+#   If multiple files share the same content SHA, only the newest is kept
+#   before applying the <keep> limit (truly SHA-based retention).
 prune_dir() {
   local dir="$1"
   local keep="$2"
@@ -154,24 +163,46 @@ prune_dir() {
     return
   fi
 
-  local count
-  count="$(find "$dir" -maxdepth 1 -type f -name '*.tar.gz' | wc -l)"
-  if (( count <= keep )); then
+  local total
+  total="$(find "$dir" -maxdepth 1 -type f -name '*.tar.gz' | wc -l)"
+  if (( total <= keep )); then
     return
   fi
 
-  info "Pruning $dir: keeping last $keep of $count archives ..."
+  info "Pruning $dir: keeping last $keep unique-SHA of $total archives ..."
+
+  # Group files by SHA (last 12 hex chars before .tar.gz).
+  # For each SHA, keep only the most recently modified file.
+  # Then keep the <keep> most recent of those survivors.
   find "$dir" -maxdepth 1 -type f -name '*.tar.gz' -printf '%T@ %p\0' \
     | sort -rnz \
-    | tail -n +$((keep + 1)) \
-    | cut -z -d' ' -f2- \
-    | while IFS= read -r -d '' file; do
+    | awk -v keep="$keep" 'BEGIN { RS="\0"; FS=" " }
+      {
+        # Rejoin fields in case path has spaces (first field is timestamp)
+        ts = $1; sub(/^[^ ]* /, "", $0); path = $0
+        # Extract SHA from filename: prefix-YYYYMMDD_HHMMSS-<sha12>.tar.gz
+        name = path; gsub(/^.*\//, "", name)
+        if (match(name, /-([0-9a-f]{12})\.tar\.gz$/, a)) {
+          sha = a[1]
+          if (!(sha in seen)) {
+            seen[sha] = 1
+            sorted[++n] = path
+          }
+        } else {
+          # Fallback: files without SHA in name are kept as-is
+          sorted[++n] = path
+        }
+      }
+      END {
+        for (i = keep + 1; i <= n; i++) print sorted[i]
+      }' \
+    | while IFS= read -r file; do
         name="$(basename "$file")"
-        # Filename format: prefix-YYYYMMDD_HHMMSS-sha.tar.gz
+        sha="$(echo "$name" | sed -n 's/.*-\([0-9a-f]\{12\}\)\.tar\.gz$/\1/p')"
         date_part="$(echo "$name" | sed -n 's/.*-\([0-9]\{8\}_[0-9]\{6\}\)-.*/\1/p')"
-        info "  Removing $name"
+        info "  Removing $name${sha:+ (SHA $sha)}"
         rm -f "$file"
-        log "  Pruned $name (created $date_part)"
+        log "  Pruned $name (created ${date_part:-?}${sha:+, SHA $sha})"
       done
 }
 
@@ -283,7 +314,7 @@ if [[ -n "$R2_BUCKET" ]]; then
     aws s3 cp "$exp_archive" "s3://${R2_BUCKET}/${local_exp_name}" $endpoint_flag
 
     # Only prune R2 when we actually added a new object
-    r2_prune "$R2_BUCKET" "export-" "$KEEP" "$R2_ENDPOINT"
+    r2_prune "$R2_BUCKET" "export-" "$R2_KEEP" "$R2_ENDPOINT"
   fi
 
   info "R2 backup complete"
