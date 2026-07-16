@@ -203,7 +203,7 @@ export default function Directory() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.scrollY === "number" && parsed.scrollY > 0) {
-          window.scrollTo(0, parsed.scrollY);
+          shellRef.current?.scrollTo(0, parsed.scrollY);
         }
       }
     } catch {}
@@ -289,13 +289,16 @@ export default function Directory() {
   // Track scroll position in-memory (ref) for show/hide of scroll-to-top button.
   // We deliberately do NOT write to sessionStorage here — Next.js's synthetic
   // scroll-to-top during navigation would overwrite the correct value.
+  const shellRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
     const onScroll = () => {
-      setShowScrollTop(window.scrollY > window.innerHeight);
-      scrollYRef.current = window.scrollY;
+      setShowScrollTop(shell.scrollTop > shell.clientHeight);
+      scrollYRef.current = shell.scrollTop;
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    shell.addEventListener("scroll", onScroll, { passive: true });
+    return () => shell.removeEventListener("scroll", onScroll);
   }, []);
 
   /** Extra category keys from DB tags not yet in userCategories. */
@@ -553,7 +556,7 @@ export default function Directory() {
         </div>
       </header>
 
-      <div className="table-shell">
+      <div ref={shellRef} className="table-shell">
         <section className="relative px-4 py-4">
         <div className="mb-3 flex flex-col sm:flex-row sm:flex-wrap items-start justify-between gap-3 sm:gap-1.5">
           <div className="flex flex-wrap items-center gap-1.5 order-2 sm:order-first">
@@ -728,7 +731,7 @@ export default function Directory() {
         <table className="song-table">
           <thead>
             <tr>
-              <th className="sticky-col-first" style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
+              <th className="sticky-col-first" style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty}{difficultyFilter.value !== null && <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: DIFFICULTY_COLORS[difficultyFilter.value - 1], marginLeft: 4, verticalAlign: "middle" }} />} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
               <th className="sticky-col-second" style={{ width: 200 }}>
                 <div className="flex items-center justify-between">
                   <button onClick={() => sortBy("title")}>
@@ -739,7 +742,7 @@ export default function Directory() {
                   </button>
                 </div>
               </th>
-              {allCategoryKeys.map((key) => <th key={key} style={{ width: 170 }}>{getCategoryLabel(userCategories, key, locale)}</th>)}
+              {allCategoryKeys.map((key) => {const selectedIds = filters[key] ?? [];const selectedTags = selectedIds.length > 0 ? tags.filter(t => t.category === key && selectedIds.includes(t.id)) : [];return <th key={key} style={{ width: 170 }}>{getCategoryLabel(userCategories, key, locale)}{selectedTags.length > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 2, marginLeft: 4, verticalAlign: "middle" }}>{selectedTags.map(t => <span key={t.id} style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: t.color }} />)}</span>}</th>;})}
               <th style={{ width: 170 }}><button onClick={() => sortBy("notes")}>{t.notes}</button></th>
             </tr>
           </thead>
@@ -804,7 +807,7 @@ export default function Directory() {
         <button
           className="fixed bottom-4 right-4 z-30 icon-button bg-white/80 backdrop-blur-sm shadow-md hover:bg-white"
           type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onClick={() => shellRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
           aria-label="Scroll to top"
         >
           <ArrowUp size={16} />
