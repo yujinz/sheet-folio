@@ -28,20 +28,33 @@ docker compose up -d --build
 
 Open `http://localhost:8888` in your browser. Stop with `docker compose down`. Data persists in Docker volumes. 
 
-> **Note:** If running inside WSL2, add the below to `%USERPROFILE%\.wslconfig`:
-> ```ini
-> [wsl2]
-> networkingMode=mirrored
-> firewall=false
-> ```
-> Then restart WSL2 with `wsl --shutdown`, reopen your WSL2 terminal, and start docker.
+<details>
+<summary><b>Note:</b> WSL2 setup</summary>
 
-> **Note on `network_mode: host`:** The `docker-compose.yml` uses `network_mode: host` instead of the more common `ports:` mapping, so that browsers on Windows can access the docker running inside WSL. This makes the container share the host's network stack directly without Docker's NAT/bridge layer. This is okay because:
-> - Sheet-folio is a LAN-only app with no reverse proxy or HTTPS requirement
-> - No inter-container communication is needed (no database or other companion containers)
-> - No other Docker container on the same machine is using the same 8888 port
->
-> If you later add containers that need to talk to each other (e.g., a database), switch to bridge networking with explicit `ports:` mapping.
+If running inside WSL2, add the below to `%USERPROFILE%\.wslconfig`:
+
+```ini
+[wsl2]
+networkingMode=mirrored
+firewall=false
+```
+
+Then restart WSL2 with `wsl --shutdown`, reopen your WSL2 terminal, and start docker.
+
+</details>
+
+<details>
+<summary><b>Note: <code>network_mode: host</code></b></summary>
+
+The `docker-compose.yml` uses `network_mode: host` instead of the more common `ports:` mapping, so that browsers on Windows can access the docker running inside WSL. This makes the container share the host's network stack directly without Docker's NAT/bridge layer. This is okay because:
+
+- Sheet-folio is a LAN-only app with no reverse proxy or HTTPS requirement
+- No inter-container communication is needed (no database or other companion containers)
+- No other Docker container on the same machine is using the same 8888 port
+
+If you later add containers that need to talk to each other (e.g., a database), switch to bridge networking with explicit `ports:` mapping.
+
+</details>
 
 ### Option 2: pnpm (requires Node.js/pnpm)
 
@@ -56,9 +69,19 @@ pnpm build && pnpm start
 
 Open `http://localhost:3000` in your browser. This runs a production server on `0.0.0.0` (all network interfaces). Data persists in `./data/sheet-folio.db`.
 
-> **Note:** `pnpm start` is used instead of `pnpm dev` so the app is accessible from other devices on the same LAN (see LAN Manual Test section at the end).
+<details>
+<summary><b>Note:</b> <code>pnpm start</code> vs <code>pnpm dev</code></summary>
 
-> **Note:** Docker needs `output: "standalone"` while `pnpm start` needs to run without it. The `next.config.ts` only enables standalone when `NEXT_OUTPUT_STANDALONE=true` (set in the Dockerfile's builder stage), so no manual toggling is needed between LAN testing and Docker builds.
+`pnpm start` is used instead of `pnpm dev` so the app is accessible from other devices on the same LAN (see LAN Manual Test section at the end).
+
+</details>
+
+<details>
+<summary><b>Note:</b> Docker standalone output</summary>
+
+Docker needs `output: "standalone"` while `pnpm start` needs to run without it. The `next.config.ts` only enables standalone when `NEXT_OUTPUT_STANDALONE=true` (set in the Dockerfile's builder stage), so no manual toggling is needed between LAN testing and Docker builds.
+
+</details>
 
 ## Data Export
 
@@ -74,13 +97,13 @@ Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format):
 ./scripts/export-data.sh
 ```
 
-Streams the SQLite database directly from the running container (bypassing NAS filesystem quirks and WAL checkpoint issues), builds the export image, and outputs to `export-data/`. Requires the sheet-folio container to be running.
+Exports the database from the running container, builds the export image, and outputs to `export-data/`. Requires the sheet-folio container to be running.
 
 Logs milestones to `$HOME/logs/sheet-folio-export-data.log`. On failure, the last 20 lines of output are appended to the log automatically.
 
 Quick check:
 ```bash
-tail -6 $HOME/logs/sheet-folio-export-data.log
+tail -n 6 $HOME/logs/sheet-folio-export-data.log
 ```
 
 ### Option 2: pnpm (requires Node.js)
@@ -92,14 +115,14 @@ pnpm export-data
 
 ## Backup
 
-Creates compressed, SHA-deduplicated backups of app volumes and export data, with optional Cloudflare R2 upload. **Keeps the last 5 unique-SHA backups** both locally and on R2 — older archives are pruned automatically to save space.
+Creates compressed, SHA-deduplicated backups of app volumes and export data, with optional object storage upload. Archives are named `<prefix>-<timestamp>-<sha12>.tar.gz` - identical data reuses the same file. Keeps the last 5 unique-SHA backups both locally and on R2.
 
 ```bash
 # Local backup (saves to ~/backups/sheet-folio/{volumes,exports}/)
 ./backup.sh
 ./backup.sh --export-dir <path>  # custom export source (default: export-data/)
 
-# Also upload export to R2
+# Also upload export to Cloudflare R2
 ./backup.sh --r2-bucket <bucket-name>
 
 # Custom retention
@@ -111,10 +134,10 @@ Logs milestones to `$HOME/logs/sheet-folio-backup.log` — created archives, SHA
 
 Quick check:
 ```bash
-tail -6 $HOME/logs/sheet-folio-backup.log
+tail -n 10 $HOME/logs/sheet-folio-backup.log
 ```
 
-**Setup for R2:**
+**Setup for Cloudflare R2:**
 
 1. Get R2 credentials from [Cloudflare Dashboard](https://dash.cloudflare.com/) → R2 → Manage R2 API Tokens → Create API Token (Object Read & Write)
 2. Add to `.env` in the project root:
@@ -123,15 +146,9 @@ tail -6 $HOME/logs/sheet-folio-backup.log
    AWS_SECRET_ACCESS_KEY="your-secret-key"
    AWS_ENDPOINT_URL_S3="https://<account-id>.r2.cloudflarestorage.com"
    ```
-   The `.env` file is auto-loaded by `backup.sh` — no need to export manually.
+   The `.env` file is auto-loaded by `backup.sh`.
 
-**What it does:**
-- Archives `volumes/app/` and `export-data/` into `~/backups/sheet-folio/{volumes,exports}/`
-- Names archives as `<prefix>-<timestamp>-<sha12>.tar.gz` — identical data reuses the same file (SHA dedup)
-- Prunes local and R2 storage to the configured number of unique-SHA archives (default 5) — duplicate content (same SHA) is consolidated before counting toward the limit
-- With `--r2-bucket`, uploads the export archive to Cloudflare R2
-
-## LAN Manual Test - Develop on PC and test on mobile device under the same LAN
+## LAN Manual Test - Develop on PC and test on mobile devices under the same LAN
 
 <details>
 <summary>Click to expand</summary>
@@ -171,9 +188,19 @@ New-NetFirewallRule -DisplayName "WSL Next.js 3000" -Direction Inbound -Protocol
 
 Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3000`.
 
-> **Note:** WSL2's internal IP may change after restart, run `hostname -I`.
+<details>
+<summary><b>Note:</b> WSL2 IP changes</summary>
 
-> **Reminder:** `crypto.randomUUID()` requires a secure context (HTTPS). The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
+WSL2's internal IP may change after restart, run `hostname -I`.
+
+</details>
+
+<details>
+<summary><b>Reminder:</b> <code>crypto.randomUUID()</code> HTTPS requirement</summary>
+
+`crypto.randomUUID()` requires a secure context (HTTPS). The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
+
+</details>
 
 </details>
 
@@ -191,7 +218,12 @@ Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3
 | `PORT`        | `3000`                         | Internal server port         |
 | `HOSTNAME`    | `0.0.0.0`                     | Bind to all network interfaces |
 
-> **Note:** Docker Compose overrides `PORT` to `8888` — the app is accessible at `http://localhost:8888` when run via Docker.
+<details>
+<summary><b>Note:</b> Docker Compose PORT</summary>
+
+Docker Compose overrides `PORT` to `8888` — the app is accessible at `http://localhost:8888` when run via Docker.
+
+</details>
 
 ### Database Migrations
 
