@@ -557,7 +557,7 @@ export default function Directory() {
       </header>
 
       <div ref={shellRef} className="table-shell">
-        <section className="relative px-4 py-4">
+        <section className="relative px-4 py-4" style={{ background: "var(--background)" }}>
         <div className="mb-3 flex flex-col sm:flex-row sm:flex-wrap items-start justify-between gap-3 sm:gap-1.5">
           <div className="flex flex-wrap items-center gap-1.5 order-2 sm:order-first">
           <span className="text-xs font-semibold text-[var(--foreground)] shrink-0 w-[4.5rem]">{t.difficulty}</span>
