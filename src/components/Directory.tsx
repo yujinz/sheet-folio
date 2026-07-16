@@ -67,7 +67,7 @@ export default function Directory() {
   const [filters, setFilters] = useState<Record<string, number[]>>(() => ({}));
   const difficultyFilter = useSingleSelectFilter<number>();
   const [editingTags, setEditingTags] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "difficulty", dir: "asc" });
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "createdAt", dir: "desc" });
   const [titleSortDir, setTitleSortDir] = useState<"asc" | "desc">("asc");
   const [createdAtSortDir, setCreatedAtSortDir] = useState<"asc" | "desc">("desc");
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
@@ -531,37 +531,31 @@ export default function Directory() {
 
   return (
     <main className="sheet-page">
-      <header className="flex flex-wrap items-center gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
-        <button className="text-button primary-button shrink-0" type="button" style={{ fontSize: "14px" }} onClick={createPiece}>
-          <Plus size={16} /> {t.addPiece}
-        </button>
-        <div className="relative min-w-48 flex-1">
-          <Search className="absolute left-3 top-2.5 text-[var(--muted)]" size={16} />
-          <input
-            className="input"
-            style={{ paddingLeft: 36, fontSize: "14px" }}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t.searchTitle}
-          />
+      <header className="flex flex-col sm:flex-row items-center gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
+        <div className="flex items-center justify-end gap-3 order-1 sm:order-last sm:ml-auto w-full sm:w-auto">
+          <span className="text-[var(--muted)]" style={{ fontSize: "14px" }}>{t.appTitle}</span>
+          <span style={{ fontSize: "14px" }}><LocaleSwitch /></span>
         </div>
-        <span className="text-[var(--muted)]" style={{ fontSize: "14px" }}>{t.appTitle}</span>
-        <span style={{ fontSize: "14px" }}><LocaleSwitch /></span>
+        <div className="flex items-center gap-3 flex-1 order-2 sm:order-first w-full sm:w-auto">
+          <button className="text-button primary-button shrink-0" type="button" style={{ fontSize: "14px" }} onClick={createPiece}>
+            <Plus size={16} /> {t.addPiece}
+          </button>
+          <div className="relative min-w-20 sm:min-w-48 flex-1">
+            <Search className="absolute left-3 top-2.5 text-[var(--muted)]" size={16} />
+            <input
+              className="input"
+              style={{ paddingLeft: 36, fontSize: "14px" }}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t.searchTitle}
+            />
+          </div>
+        </div>
       </header>
 
       <section className="relative px-4 py-4">
-        <div className="absolute top-3 right-4 -mt-2 flex items-center gap-1">
-          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(Object.values(filters).some((ids) => ids.length > 0) || difficultyFilter.value !== null) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
-            setFilters(Object.fromEntries(Object.keys(filters).map((k) => [k, []])));
-            difficultyFilter.reset();
-          }}>
-            <RotateCcw size={12} /> {t.resetFilters}
-          </button>
-          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${editingTags ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => setEditingTags((value) => !value)}>
-            <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
-          </button>
-        </div>
-        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <div className="mb-3 flex flex-col sm:flex-row sm:flex-wrap items-start justify-between gap-3 sm:gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 order-2 sm:order-first">
           <span className="text-xs font-semibold text-[var(--foreground)] shrink-0 w-[4.5rem]">{t.difficulty}</span>
           {availableDifficulties.map((level) => {
             const isActive = difficultyFilter.value === level;
@@ -582,7 +576,19 @@ export default function Directory() {
             );
           })}
         </div>
-        <div className="grid gap-2 lg:grid-cols-3">
+        <div className="flex items-center gap-1 order-1 sm:order-last sm:ml-auto self-end sm:self-auto">
+          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(Object.values(filters).some((ids) => ids.length > 0) || difficultyFilter.value !== null) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
+            setFilters(Object.fromEntries(Object.keys(filters).map((k) => [k, []])));
+            difficultyFilter.reset();
+          }}>
+            <RotateCcw size={12} /> {t.resetFilters}
+          </button>
+          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${editingTags ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => setEditingTags((value) => !value)}>
+            <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
+          </button>
+        </div>
+      </div>
+      <div className="grid gap-2 lg:grid-cols-3">
           {allCategoryKeys.map((category) => {
             const userCat = userCategories.find((c) => c.key === category);
             return (

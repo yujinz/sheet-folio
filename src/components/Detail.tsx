@@ -314,26 +314,28 @@ export default function Detail({ songId }: { songId: number }) {
   return (
     <main className="sheet-page">
       <header ref={headerRef} className="grid gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 flex-1">
-            <Link className="icon-button shrink-0" href="/" aria-label={t.backToDirectory}><House size={16} /></Link>
-            <input
-              ref={locale === "en-US" ? titleAltRef : titleRef}
-              key={`title-${songId}-${locale}`}
-              className="input max-w-lg min-w-[100px] flex-1 text-base font-semibold"
-              defaultValue={locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}
-              onChange={scheduleSave}
-              onBlur={handleTitleBlur}
-              onCompositionStart={() => { isComposingRef.current = true; }}
-              onCompositionEnd={() => { isComposingRef.current = false; scheduleSave(); }}
-              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-            />
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-2">
+          <LocaleSwitch className="order-1 sm:order-last self-end sm:self-auto" />
+          <div className="flex flex-wrap items-center gap-2 flex-1 order-2 sm:order-first w-full sm:w-auto">
+            <div className="flex items-center gap-2 flex-1">
+              <Link className="icon-button shrink-0" href="/" aria-label={t.backToDirectory}><House size={16} /></Link>
+              <input
+                ref={locale === "en-US" ? titleAltRef : titleRef}
+                key={`title-${songId}-${locale}`}
+                className="input max-w-lg min-w-[100px] flex-1 text-base font-semibold"
+                defaultValue={locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}
+                onChange={scheduleSave}
+                onBlur={handleTitleBlur}
+                onCompositionStart={() => { isComposingRef.current = true; }}
+                onCompositionEnd={() => { isComposingRef.current = false; scheduleSave(); }}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+              />
+            </div>
+            <button className="icon-button" type="button" onClick={toggleFavorite} aria-label={favoriteIds.includes(songId) ? t.removeFromFavorites : t.addToFavorites}>
+              <Heart size={15} fill={favoriteIds.includes(songId) ? "currentColor" : "none"} style={favoriteIds.includes(songId) ? { color: "var(--accent)" } : undefined} />
+            </button>
+            <button className="icon-button danger-button" type="button" onClick={deletePiece} aria-label={t.deletePiece}><Trash2 size={15} /></button>
           </div>
-          <button className="icon-button" type="button" onClick={toggleFavorite} aria-label={favoriteIds.includes(songId) ? t.removeFromFavorites : t.addToFavorites}>
-            <Heart size={15} fill={favoriteIds.includes(songId) ? "currentColor" : "none"} style={favoriteIds.includes(songId) ? { color: "var(--accent)" } : undefined} />
-          </button>
-          <button className="icon-button danger-button" type="button" onClick={deletePiece} aria-label={t.deletePiece}><Trash2 size={15} /></button>
-          <LocaleSwitch className="ml-auto" />
         </div>
         <textarea
           ref={notesRef}
@@ -381,7 +383,7 @@ export default function Detail({ songId }: { songId: number }) {
         </div>
       </header>
 
-      <div className="sticky top-0 z-20 pointer-events-none flex items-start justify-between px-2 py-2">
+      <div className="sticky top-0 z-20 pointer-events-none flex flex-wrap items-start gap-x-2 gap-y-1 px-2 py-2">
         <div className="pointer-events-auto flex gap-1">
           {(["staff", "numbered"] as ImageKind[]).map((kind) => (
             <button key={kind} className={`rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur-sm ${tab === kind ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--foreground)]"}`} type="button" onClick={() => setTab(kind)}>
@@ -389,17 +391,15 @@ export default function Detail({ songId }: { songId: number }) {
             </button>
           ))}
         </div>
-        <div className="pointer-events-auto flex items-center gap-1">
-          <button className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur-sm ${!editingImages ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--foreground)]"}`} type="button" onClick={() => setEditingImages((value) => !value)}>
-            <Images size={14} /> {editingImages ? t.viewImages : t.editImages}
-          </button>
-          {!editingImages && (
-            <label className="flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm">
-              {t.zoom}
-              <input type="range" min="25" max="130" value={zoom} onChange={(event) => setZoom(clampZoom(Number(event.target.value)))} className="w-20 accent-[var(--accent)]" />
-            </label>
-          )}
-        </div>
+        <button className={`pointer-events-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur-sm ${!editingImages ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--foreground)]"}`} type="button" onClick={() => setEditingImages((value) => !value)}>
+          <Images size={14} /> <span className="break-keep">{editingImages ? t.viewImages : t.editImages}</span>
+        </button>
+        {!editingImages && (
+          <label className="pointer-events-auto flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm ml-auto">
+            {t.zoom}
+            <input type="range" min="25" max="130" value={zoom} onChange={(event) => setZoom(clampZoom(Number(event.target.value)))} className="w-20 accent-[var(--accent)]" />
+          </label>
+        )}
       </div>
 
       <div ref={imagesSectionRef}>

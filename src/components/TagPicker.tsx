@@ -498,9 +498,11 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
     );
   }
 
+  const labelColumnWidth = editingTags && onRenameCategory ? "auto" : "4.5rem";
+
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs font-semibold shrink-0 text-[var(--foreground)] inline-flex items-center gap-0.5" style={{ width: editingTags && onRenameCategory ? "auto" : "4.5rem" }}>
+    <div className="grid gap-x-1.5 gap-y-1 items-start" style={{ gridTemplateColumns: `${labelColumnWidth} 1fr` }}>
+      <span className="text-xs font-semibold text-[var(--foreground)] inline-flex items-center gap-0.5">
         <span className="truncate">{categoryLabel}</span>
         {singleSelect && <span className="text-[10px] text-[var(--muted)] font-normal">({t.single})</span>}
         {editingTags && onRenameCategory && (
@@ -524,6 +526,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
           </button>
         )}
       </span>
+      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
         {visibleTags.map((tag) => (
           <span key={tag.id} className="tag-pill-group inline-flex rounded-full">
             <button
@@ -575,6 +578,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
         >
           <Plus size={14} />
         </button>
+      </div>
       {editDialog}
 
       {createDialog}

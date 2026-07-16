@@ -34,8 +34,8 @@ export const messages = {
     backToDirectory: "返回目录",
     done: "完成",
     images: "图片",
-    editImages: "编辑图片",
-    viewImages: "查看图片",
+    editImages: "编辑\u200B图片",
+    viewImages: "查看\u200B图片",
     zoom: "缩放",
     addToFavorites: "收藏",
     removeFromFavorites: "取消收藏",
@@ -66,7 +66,7 @@ export const messages = {
     resetFilters: "重置筛选"
   },
   "en-US": {
-    appTitle: "Sheet Music Manager",
+    appTitle: "Sheet Folio",
     searchTitle: "Search titles",
     addPiece: "Add piece",
     newPieceTitle: "New piece",
