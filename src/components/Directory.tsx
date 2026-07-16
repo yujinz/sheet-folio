@@ -4,13 +4,16 @@ import Link from "next/link";
 import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
-import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
+import TagPicker from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
 import { categoryKey, canAddCategory } from "@/lib/category";
 import type { CategoryEntry, Song, Tag, TagCategory } from "@/lib/types";
 import { PITCH_CATEGORY_KEY, isPitchKey } from "@/lib/types";
 import { getLocalizedField } from "@/lib/i18n-utils";
 import { useSingleSelectFilter } from "@/lib/useSingleSelectFilter";
+import { useCreateTag } from "@/lib/useTagMutations";
+import { useFavorites } from "@/lib/useFavorites";
+import { pickDefaultColor } from "@/lib/color-utils";
 import { STORAGE_KEYS, DIFFICULTY_LEVELS, DIFFICULTY_COLORS } from "@/lib/constants";
 
 type UserCategory = { key: string; labelZh: string; labelAlt: string };
@@ -26,15 +29,6 @@ function getCategoryLabel(categories: UserCategory[], key: string, locale: strin
 
 type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "notes" | "createdAt";
 
-function getFavorites(): number[] {
-  if (typeof localStorage === "undefined") return [];
-  try {
-    const raw = localStorage.getItem("sheet-folio-favorites");
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
 
 
 
@@ -58,7 +52,11 @@ export default function Directory() {
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "createdAt", dir: "desc" });
   const [titleSortDir, setTitleSortDir] = useState<"asc" | "desc">("asc");
   const [createdAtSortDir, setCreatedAtSortDir] = useState<"asc" | "desc">("desc");
+  const { favoriteIds } = useFavorites();
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
+  const createTag = useCreateTag(setTags, (created) =>
+    setDefaultColor((prev) => pickDefaultColor([...tags, created], prev)),
+  );
 
   useEffect(() => {
     void refresh();
@@ -235,20 +233,6 @@ export default function Directory() {
       return;
     }
     location.href = `/piece/${row.id}`;
-  }
-
-  async function createTag(tag: Omit<Tag, "id">) {
-    const res = await fetch("/api/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(tag)
-    });
-    const created = await res.json();
-    if (!res.ok) throw new Error(created.error ?? "Failed to create tag");
-    setTags((value) => [...value.filter((item) => item.id !== created.id), created]);
-    // Rotate default color based on all tags including the new one
-    setDefaultColor((prev) => pickDefaultColor([...tags, created], prev));
-    return created;
   }
 
   async function deleteTag(tag: Tag) {
@@ -473,8 +457,8 @@ export default function Directory() {
     return [...filtered].sort((a, b) => {
       // When sorting by title, favorites come first (primary sort)
       if (sort.key === "title") {
-        const isFavA = getFavorites().includes(a.id) ? 0 : 1;
-        const isFavB = getFavorites().includes(b.id) ? 0 : 1;
+        const isFavA = favoriteIds.includes(a.id) ? 0 : 1;
+        const isFavB = favoriteIds.includes(b.id) ? 0 : 1;
         if (isFavA !== isFavB) return isFavA - isFavB;
         const getTitle = (piece: Song) => getLocalizedField(locale, piece.title, piece.titleAlt);
         const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
@@ -498,15 +482,15 @@ export default function Directory() {
         : String(aVal).localeCompare(String(bVal), locale, { numeric: true });
       if (primary !== 0) return sort.dir === "asc" ? primary : -primary;
       // Secondary: favorites within the same sort-key value
-      const isFavA = getFavorites().includes(a.id) ? 0 : 1;
-      const isFavB = getFavorites().includes(b.id) ? 0 : 1;
+      const isFavA = favoriteIds.includes(a.id) ? 0 : 1;
+      const isFavB = favoriteIds.includes(b.id) ? 0 : 1;
       if (isFavA !== isFavB) return isFavA - isFavB;
       // Tertiary sort by title using user's last title sort direction
       const getTitle = (piece: Song) => getLocalizedField(locale, piece.title, piece.titleAlt);
       const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
       return titleSortDir === "asc" ? titleResult : -titleResult;
     });
-  }, [filters, locale, pieces, query, sort, titleSortDir, createdAtSortDir, difficultyFilter.value]);
+  }, [filters, locale, pieces, query, sort, titleSortDir, createdAtSortDir, difficultyFilter.value, favoriteIds]);
 
   function sortBy(key: SortKey) {
     setSort((value) => {
@@ -747,7 +731,7 @@ export default function Directory() {
                 </td>
                 <td className="sticky-col-second font-semibold" style={{ fontSize: 15 }}>
                   <span className="inline-flex items-center gap-1">
-                    {getFavorites().includes(piece.id) && <Heart size={13} fill="var(--accent)" style={{ color: "var(--accent)" }} />}
+                    {favoriteIds.includes(piece.id) && <Heart size={13} fill="var(--accent)" style={{ color: "var(--accent)" }} />}
                     <Link
                       href={`/piece/${piece.id}`}
                       onMouseDown={() => {

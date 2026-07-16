@@ -8,6 +8,8 @@ import { useLocale } from "@/lib/useLocale";
 import { isPitchKey } from "@/lib/types";
 import { getLocalizedField } from "@/lib/i18n-utils";
 import { STORAGE_KEYS, DIFFICULTY_LEVELS, ZOOM_MIN, ZOOM_MAX, DEBOUNCE_MS } from "@/lib/constants";
+import { useCreateTag } from "@/lib/useTagMutations";
+import { useFavorites } from "@/lib/useFavorites";
 import type { ImageKind, Song, SongImage, Tag, VideoLink } from "@/lib/types";
 
 function generateId() {
@@ -49,14 +51,7 @@ export default function Detail({ songId }: { songId: number }) {
   const isComposingRef = useRef(false);
   const imagesSectionRef = useRef<HTMLDivElement>(null);
   const hasScrolledToImages = useRef(false);
-  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEYS.favorites);
-      if (raw) setFavoriteIds(JSON.parse(raw));
-    } catch {}
-  }, []);
+  const { favoriteIds, toggleFavorite } = useFavorites();
 
   useEffect(() => {
     void refresh();
@@ -111,17 +106,7 @@ export default function Detail({ songId }: { songId: number }) {
     setPiece(updated);
   }
 
-  async function createTag(tag: Omit<Tag, "id">) {
-    const res = await fetch("/api/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(tag)
-    });
-    const created = await res.json();
-    if (!res.ok) throw new Error(created.error ?? "Failed to create tag");
-    setTags((value) => [...value.filter((item) => item.id !== created.id), created]);
-    return created;
-  }
+  const createTag = useCreateTag(setTags);
 
   async function upload(files: FileList | null) {
     if (!files?.length) return;
@@ -187,13 +172,7 @@ export default function Detail({ songId }: { songId: number }) {
     location.href = "/";
   }
 
-  function toggleFavorite() {
-    const next = favoriteIds.includes(songId)
-      ? favoriteIds.filter((id) => id !== songId)
-      : [...favoriteIds, songId];
-    setFavoriteIds(next);
-    localStorage.setItem("sheet-folio-favorites", JSON.stringify(next));
-  }
+  const handleToggleFavorite = () => toggleFavorite(songId);
 
   // Debounced save — reads values from refs (uncontrolled inputs)
   function scheduleSave() {
@@ -332,7 +311,7 @@ export default function Detail({ songId }: { songId: number }) {
                 onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
               />
             </div>
-            <button className="icon-button" type="button" onClick={toggleFavorite} aria-label={favoriteIds.includes(songId) ? t.removeFromFavorites : t.addToFavorites}>
+              <button className="icon-button" type="button" onClick={handleToggleFavorite} aria-label={favoriteIds.includes(songId) ? t.removeFromFavorites : t.addToFavorites}>
               <Heart size={15} fill={favoriteIds.includes(songId) ? "currentColor" : "none"} style={favoriteIds.includes(songId) ? { color: "var(--accent)" } : undefined} />
             </button>
             <button className="icon-button danger-button" type="button" onClick={deletePiece} aria-label={t.deletePiece}><Trash2 size={15} /></button>

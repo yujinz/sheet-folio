@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { tagDisplayName, pickDefaultColor } from "@/components/TagPicker";
+import { tagDisplayName } from "@/components/TagPicker";
+import { pickDefaultColor } from "@/lib/color-utils";
 import type { Tag } from "@/lib/types";
 
 function makeTag(overrides: Partial<Tag> = {}): Tag {

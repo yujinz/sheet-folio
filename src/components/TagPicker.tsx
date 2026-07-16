@@ -5,115 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/lib/useLocale";
 import { type Locale, messages } from "@/lib/i18n";
 import { getLocalizedField } from "@/lib/i18n-utils";
+import { PITCH_RE, pitchSortKey, pitchColorFromName } from "@/lib/pitch-utils";
+import { TAG_COLORS, nextTagColor, pickDefaultColor } from "@/lib/color-utils";
 import type { Tag, TagCategory } from "@/lib/types";
 
 export function tagDisplayName(tag: Tag, locale: Locale): string {
   return getLocalizedField(locale, tag.name, tag.nameAlt);
-}
-
-// --- Pitch color helpers ---
-// Match pitch notation: optional accidental + letter + optional octave (1-8)
-// e.g. C4, ♯C4, F#5, ♭B3, bB3, A♯6, G♮2, D1, C, ♯F
-const PITCH_RE = /^([♯♭♮#bn]?)([A-Ga-g])([1-8])?$/;
-
-const NOTE_INDEX: Record<string, number> = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
-
-function pitchOctaveInfo(name: string): { octave: number; note: number; accidental: number } | null {
-  const match = name.trim().match(PITCH_RE);
-  if (!match) return null;
-  const note = NOTE_INDEX[match[2].toUpperCase()] ?? 0;
-  const acc = match[1];
-  const accMap: Record<string, number> = { '♯': 0.5, '#': 0.5, '♭': -0.5, 'b': -0.5, '♮': 0, 'n': 0, '': 0 };
-  return { octave: match[3] ? parseInt(match[3]) : 4, note, accidental: accMap[acc] ?? 0 };
-}
-
-/** Numeric sort key for pitch tags — lower = lower pitch (rainbow order). */
-function pitchSortKey(tag: Tag): number {
-  const info = pitchOctaveInfo(tag.name) ?? pitchOctaveInfo(tag.nameAlt);
-  if (!info) return -1;
-  const { octave, note, accidental } = info;
-  // octave spans 100, note spans 10, accidental adjusts within note
-  return octave * 100 + note * 10 + Math.round(accidental * 10);
-}
-
-function hslToHex(h: number, s: number, l: number): string {
-  // Normalize: h ∈ [0, 360), s,l ∈ [0, 100]
-  h = ((h % 360) + 360) % 360;
-  s /= 100;
-  l /= 100;
-  const a = s * Math.min(l, 1 - l);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, "0");
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
-
-/** Compute a hex color from a pitch name (e.g. "C4", "F♯5").
- *  The full range octave 1→8 spans hue 0→300 (red→violet).
- *  Within each octave, C→B also spreads across the octave's hue range,
- *  so A4 and F4 get different colors. Accidentals shift hue by half a
- *  note-step, placing e.g. #G4 between G4 and A4 instead of past A4. */
-function pitchColorFromName(name: string): string | null {
-  const info = pitchOctaveInfo(name);
-  if (!info) return null;
-  const { octave, note, accidental } = info;
-  // Each octave occupies 1/7 of the 300° range. Within that, 7 notes spread evenly.
-  const octaveSpan = 300 / 7;
-  const noteStep = octaveSpan / 7;
-  const hue = (octave - 1) * octaveSpan + (note + accidental) * noteStep;
-  return hslToHex(hue, 40, 65);
-}
-
-// Default tag colors: ordered by hue (purple → pink → red → orange → gold → olive → green)
-// Avoiding greens/blues since pitch tags will use those hues.
-const TAG_COLORS = [
-  "#9e6aba", // lavender-purple
-  "#c46a9e", // magenta-purple
-  "#c45a8a", // pink-magenta
-  "#b85a7a", // wine
-  "#d46a7a", // rose
-  "#d47a6a", // salmon
-  "#d46a4a", // vermilion
-  "#c47a5a", // clay
-  "#b87a6a", // tawny
-  "#d48a4a", // amber
-  "#d49a5a", // goldenrod
-  "#d4aa4a", // gold
-  "#d4c04a", // yellow
-  "#a8b44a", // olive-chartreuse
-  "#9c8c6b", // sandalwood
-  "#8a9a6a", // olive-green
-];
-
-/** Return the next color in the TAG_COLORS palette, wrapping around. */
-function nextTagColor(currentColor: string): string {
-  const index = TAG_COLORS.indexOf(currentColor);
-  if (index === -1 || index === TAG_COLORS.length - 1) {
-    return TAG_COLORS[0];
-  }
-  return TAG_COLORS[index + 1];
-}
-
-export function pickDefaultColor(tags: Tag[], currentColor: string): string {
-  const counts = new Map<string, number>();
-  for (const c of TAG_COLORS) counts.set(c, 0);
-  for (const tag of tags) {
-    const existing = counts.get(tag.color);
-    if (existing !== undefined) counts.set(tag.color, existing + 1);
-  }
-  // prefer a color different from the previous default
-  let best = TAG_COLORS[0];
-  let bestCount = Infinity;
-  for (const c of TAG_COLORS) {
-    const cnt = counts.get(c)!;
-    if (cnt < bestCount || (cnt === bestCount && c !== currentColor && best === currentColor)) {
-      best = c;
-      bestCount = cnt;
-    }
-  }
-  return best;
 }
 
 type Props = {
