@@ -5,7 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
-import { PITCH_CATEGORY_KEY } from "@/lib/types";
+import { isPitchKey } from "@/lib/types";
+import { getLocalizedField } from "@/lib/i18n-utils";
+import { STORAGE_KEYS, DIFFICULTY_LEVELS, ZOOM_MIN, ZOOM_MAX, DEBOUNCE_MS } from "@/lib/constants";
 import type { ImageKind, Song, SongImage, Tag, VideoLink } from "@/lib/types";
 
 function generateId() {
@@ -20,11 +22,10 @@ function generateId() {
 }
 
 function getDeviceId() {
-  const key = "sheet-folio-device-id";
-  const existing = localStorage.getItem(key);
+  const existing = localStorage.getItem(STORAGE_KEYS.deviceId);
   if (existing) return existing;
   const next = generateId();
-  localStorage.setItem(key, next);
+  localStorage.setItem(STORAGE_KEYS.deviceId, next);
   return next;
 }
 
@@ -38,7 +39,7 @@ export default function Detail({ songId }: { songId: number }) {
   const [editingImages, setEditingImages] = useState(false);
   const [pageIndex, setPageIndex] = useState<number | null>(null);
   const [zoom, setZoom] = useState(100);
-  const clampZoom = (z: number) => Math.min(130, Math.max(25, z));
+  const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
   const headerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const titleAltRef = useRef<HTMLInputElement>(null);
@@ -52,7 +53,7 @@ export default function Detail({ songId }: { songId: number }) {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("sheet-folio-favorites");
+      const raw = localStorage.getItem(STORAGE_KEYS.favorites);
       if (raw) setFavoriteIds(JSON.parse(raw));
     } catch {}
   }, []);
@@ -87,7 +88,7 @@ export default function Detail({ songId }: { songId: number }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deviceId, songId, zoom })
       });
-    }, 250);
+    }, DEBOUNCE_MS.zoom);
     return () => window.clearTimeout(timer);
   }, [songId, zoom]);
 
@@ -231,7 +232,7 @@ export default function Detail({ songId }: { songId: number }) {
         if (updated) setPiece(updated);
         isDirtyRef.current = false;
       });
-    }, 500);
+    }, DEBOUNCE_MS.save);
   }
 
   function flushSave() {
@@ -323,7 +324,7 @@ export default function Detail({ songId }: { songId: number }) {
                 ref={locale === "en-US" ? titleAltRef : titleRef}
                 key={`title-${songId}-${locale}`}
                 className="input max-w-lg min-w-[100px] flex-1 text-base font-semibold"
-                defaultValue={locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}
+                defaultValue={getLocalizedField(locale, piece.title, piece.titleAlt)}
                 onChange={scheduleSave}
                 onBlur={handleTitleBlur}
                 onCompositionStart={() => { isComposingRef.current = true; }}
@@ -348,13 +349,11 @@ export default function Detail({ songId }: { songId: number }) {
         />
         <div className="flex flex-nowrap items-center gap-3 overflow-x-auto">
           <select className="select tag-add-select text-center" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => patch({ difficulty: Number(event.target.value) })}>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => <option key={score}>{score}</option>)}
+              {DIFFICULTY_LEVELS.map((score) => <option key={score}>{score}</option>)}
           </select>
           {(() => {
             const allCats = [...new Set([...Object.keys(categoryLabelsMap), ...tags.map((tag) => tag.category)])];
-            function isPitchKey(key: string): boolean {
-              return key === PITCH_CATEGORY_KEY;
-            }
+
             function buildTagIds(category: string, ids: number[]) {
               return allCats.flatMap((cat) =>
                 cat === category ? ids : (piece!.tags[cat]?.map((tag) => tag.id) ?? [])
@@ -363,7 +362,7 @@ export default function Detail({ songId }: { songId: number }) {
             function getLabel(key: string): string | undefined {
               const lbl = categoryLabelsMap[key];
               if (!lbl) return undefined;
-              return locale === "en-US" ? (lbl.en || lbl.zh) : (lbl.zh || lbl.en);
+              return getLocalizedField(locale, lbl.zh, lbl.en);
             }
             return allCats.map((category) => (
               <TagPicker
@@ -397,7 +396,7 @@ export default function Detail({ songId }: { songId: number }) {
         {!editingImages && (
           <label className="pointer-events-auto flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm ml-auto">
             {t.zoom}
-            <input type="range" min="25" max="130" value={zoom} onChange={(event) => setZoom(clampZoom(Number(event.target.value)))} className="w-20 accent-[var(--accent)]" />
+            <input type="range" min={ZOOM_MIN} max={ZOOM_MAX} value={zoom} onChange={(event) => setZoom(clampZoom(Number(event.target.value)))} className="w-20 accent-[var(--accent)]" />
           </label>
         )}
       </div>

@@ -8,13 +8,15 @@ import TagPicker, { pickDefaultColor } from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
 import { categoryKey, canAddCategory } from "@/lib/category";
 import type { CategoryEntry, Song, Tag, TagCategory } from "@/lib/types";
-import { PITCH_CATEGORY_KEY } from "@/lib/types";
+import { PITCH_CATEGORY_KEY, isPitchKey } from "@/lib/types";
+import { getLocalizedField } from "@/lib/i18n-utils";
 import { useSingleSelectFilter } from "@/lib/useSingleSelectFilter";
+import { STORAGE_KEYS, DIFFICULTY_LEVELS, DIFFICULTY_COLORS } from "@/lib/constants";
 
 type UserCategory = { key: string; labelZh: string; labelAlt: string };
 
 function categoryDisplayName(cat: UserCategory, locale: string): string {
-  return locale === "en-US" ? cat.labelAlt : cat.labelZh;
+  return getLocalizedField(locale, cat.labelZh, cat.labelAlt);
 }
 
 function getCategoryLabel(categories: UserCategory[], key: string, locale: string): string {
@@ -23,9 +25,6 @@ function getCategoryLabel(categories: UserCategory[], key: string, locale: strin
 }
 
 type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "notes" | "createdAt";
-
-const STORAGE_KEY = "sheet-folio-directory-state";
-const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 function getFavorites(): number[] {
   if (typeof localStorage === "undefined") return [];
@@ -37,18 +36,7 @@ function getFavorites(): number[] {
   }
 }
 
-const DIFFICULTY_COLORS = [
-	"#ecc484", // 1  maple
-  "#e5b86a", // 2  birch
-  "#dba55e", // 3  pine
-  "#c98e46", // 4  spruce
-  "#c47a30", // 5  oak
-  "#a8774b", // 6  teak
-  "#8c5a3c", // 7  walnut
-  "#6e422a", // 8  mahogany
-  "#4a2a18", // 9  rosewood
-  "#1a0e06", // 10 ebony
-];
+
 
 export default function Directory() {
   const { locale, t } = useLocale();
@@ -56,7 +44,7 @@ export default function Directory() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [query, setQuery] = useState(() => {
     try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
+      const saved = sessionStorage.getItem(STORAGE_KEYS.directoryState);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.query === "string") return parsed.query;
@@ -79,7 +67,7 @@ export default function Directory() {
   // Restore saved state from sessionStorage after hydration
   useEffect(() => {
     try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
+      const saved = sessionStorage.getItem(STORAGE_KEYS.directoryState);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.query === "string") setQuery(parsed.query);
@@ -134,7 +122,7 @@ export default function Directory() {
   // Restore userCategories from sessionStorage after mount (avoids hydration mismatch)
   useEffect(() => {
     try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
+      const saved = sessionStorage.getItem(STORAGE_KEYS.directoryState);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed.userCategories)) {
@@ -166,10 +154,10 @@ export default function Directory() {
 
   // Save sort/query/filters to sessionStorage whenever they change (merging with existing data to preserve scrollY etc.)
   useEffect(() => {
-    const saved = sessionStorage.getItem(STORAGE_KEY);
+    const saved = sessionStorage.getItem(STORAGE_KEYS.directoryState);
     const existing = saved ? JSON.parse(saved) : {};
     const state = { ...existing, sort, query, filters, difficultyFilter: difficultyFilter.value, titleSortDir, createdAtSortDir, userCategories };
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    sessionStorage.setItem(STORAGE_KEYS.directoryState, JSON.stringify(state));
   }, [sort, query, filters, difficultyFilter.value, titleSortDir, createdAtSortDir, userCategories]);
 
   // Save scroll position on pagehide (bfcache / browser close).
@@ -183,10 +171,10 @@ export default function Directory() {
   useEffect(() => {
     const flush = () => {
       try {
-        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const saved = sessionStorage.getItem(STORAGE_KEYS.directoryState);
         const state = saved ? JSON.parse(saved) : {};
         state.scrollY = scrollYRef.current;
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        sessionStorage.setItem(STORAGE_KEYS.directoryState, JSON.stringify(state));
       } catch {}
     };
     window.addEventListener("pagehide", flush);
@@ -199,7 +187,7 @@ export default function Directory() {
   useLayoutEffect(() => {
     if (pieces.length === 0) return;
     try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
+      const saved = sessionStorage.getItem(STORAGE_KEYS.directoryState);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.scrollY === "number" && parsed.scrollY > 0) {
@@ -318,10 +306,7 @@ export default function Directory() {
     return userCategories.find((c) => c.key === key);
   }
 
-  /** Check whether a category key is the pitch category (has special color sorting). */
-  function isPitchKey(key: string): boolean {
-    return key === PITCH_CATEGORY_KEY;
-  }
+
 
   // Ensure filters has entries for extra categories
   useEffect(() => {
@@ -474,7 +459,7 @@ export default function Directory() {
   const visible = useMemo(() => {
     const filtered = pieces.filter((piece) => {
       if (query) {
-        const titleForSearch = locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt);
+        const titleForSearch = getLocalizedField(locale, piece.title, piece.titleAlt);
         if (!titleForSearch.toLowerCase().includes(query.toLowerCase())) return false;
       }
       if (difficultyFilter.value !== null && difficultyFilter.value !== piece.difficulty) {
@@ -491,7 +476,7 @@ export default function Directory() {
         const isFavA = getFavorites().includes(a.id) ? 0 : 1;
         const isFavB = getFavorites().includes(b.id) ? 0 : 1;
         if (isFavA !== isFavB) return isFavA - isFavB;
-        const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt);
+        const getTitle = (piece: Song) => getLocalizedField(locale, piece.title, piece.titleAlt);
         const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
         return titleSortDir === "asc" ? titleResult : -titleResult;
       }
@@ -504,7 +489,7 @@ export default function Directory() {
       const read = (piece: Song): string | number => {
         if (sort.key === "difficulty") return piece.difficulty;
         if (sort.key === "notes") return piece.notes;
-        return piece.tags[sort.key as TagCategory].map((tag) => locale === "en-US" ? (tag.nameAlt || tag.name) : (tag.name || tag.nameAlt)).join(",");
+        return piece.tags[sort.key as TagCategory].map((tag) => getLocalizedField(locale, tag.name, tag.nameAlt)).join(",");
       };
       const aVal = read(a);
       const bVal = read(b);
@@ -517,7 +502,7 @@ export default function Directory() {
       const isFavB = getFavorites().includes(b.id) ? 0 : 1;
       if (isFavA !== isFavB) return isFavA - isFavB;
       // Tertiary sort by title using user's last title sort direction
-      const getTitle = (piece: Song) => locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt);
+      const getTitle = (piece: Song) => getLocalizedField(locale, piece.title, piece.titleAlt);
       const titleResult = getTitle(a).localeCompare(getTitle(b), locale, { numeric: true });
       return titleSortDir === "asc" ? titleResult : -titleResult;
     });
@@ -563,7 +548,7 @@ export default function Directory() {
           <span className="text-xs font-semibold text-[var(--foreground)] shrink-0 w-[4.5rem]">{t.difficulty}</span>
           {availableDifficulties.map((level) => {
             const isActive = difficultyFilter.value === level;
-            const color = DIFFICULTY_COLORS[level - 1];
+            const color = DIFFICULTY_COLORS[level];
             return (
               <button
                 key={level}
@@ -731,7 +716,7 @@ export default function Directory() {
         <table className="song-table">
           <thead>
             <tr>
-              <th className="sticky-col-first" style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty}{difficultyFilter.value !== null && <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: DIFFICULTY_COLORS[difficultyFilter.value - 1], marginLeft: 4, verticalAlign: "middle" }} />} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
+              <th className="sticky-col-first" style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty}{difficultyFilter.value !== null && <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: DIFFICULTY_COLORS[difficultyFilter.value], marginLeft: 4, verticalAlign: "middle" }} />} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
               <th className="sticky-col-second" style={{ width: 200 }}>
                 <div className="flex items-center justify-between">
                   <button onClick={() => sortBy("title")}>
@@ -769,13 +754,13 @@ export default function Directory() {
                         // Flush in-memory scrollY to sessionStorage before Next.js
                         // processes the click and scrolls to top for the new page.
                         try {
-                          const saved = sessionStorage.getItem(STORAGE_KEY);
+                          const saved = sessionStorage.getItem(STORAGE_KEYS.directoryState);
                           const state = saved ? JSON.parse(saved) : {};
                           state.scrollY = scrollYRef.current;
-                          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                          sessionStorage.setItem(STORAGE_KEYS.directoryState, JSON.stringify(state));
                         } catch {}
                       }}
-                    >{locale === "en-US" ? (piece.titleAlt || piece.title) : (piece.title || piece.titleAlt)}</Link>
+                    >{getLocalizedField(locale, piece.title, piece.titleAlt)}</Link>
                   </span>
                 </td>
                 {allCategoryKeys.map((category) => (

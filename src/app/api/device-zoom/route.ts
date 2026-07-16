@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDeviceZoom, upsertDeviceZoom } from "@/lib/data";
 import { apiError, serverError } from "@/lib/api";
+import { ZOOM_MIN, ZOOM_MAX } from "@/lib/constants";
 
 const zoomSchema = z.object({
   deviceId: z.string().min(1),
   songId: z.number().int(),
-  zoom: z.number().int().min(25).max(220)
+  zoom: z.number().int().min(ZOOM_MIN).max(ZOOM_MAX)
 });
 
 export async function GET(request: Request) {

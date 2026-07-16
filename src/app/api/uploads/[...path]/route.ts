@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { apiError } from "@/lib/api";
 import { uploadRoot } from "@/lib/upload";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ path: string[] }> }) {
@@ -9,11 +10,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ pat
   const target = path.normalize(path.join(root, ...parts));
 
   if (target !== root && !target.startsWith(`${root}${path.sep}`)) {
-    return NextResponse.json({ message: "Invalid path" }, { status: 400 });
+    return apiError("Invalid path", 400);
   }
 
   const file = await fs.readFile(target).catch(() => null);
-  if (!file) return NextResponse.json({ message: "Not found" }, { status: 404 });
+  if (!file) return apiError("Not found", 404);
 
   const ext = path.extname(target).toLowerCase();
   const type =

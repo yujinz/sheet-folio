@@ -24,7 +24,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     const song = getSong(Number(id));
-    if (!song) return NextResponse.json({ message: "Not found" }, { status: 404 });
+    if (!song) return apiError("Not found", 404);
     return NextResponse.json(song);
   } catch (error) {
     return serverError(error);
@@ -50,7 +50,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (body.data.tagIds) setSongTags(songId, body.data.tagIds);
 
     const song = getSong(songId);
-    if (!song) return NextResponse.json({ message: "Not found" }, { status: 404 });
+    if (!song) return apiError("Not found", 404);
     return NextResponse.json(song);
   } catch (error) {
     return serverError(error);

@@ -4,13 +4,11 @@ import { Music, Palette, Pencil, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/lib/useLocale";
 import { type Locale, messages } from "@/lib/i18n";
+import { getLocalizedField } from "@/lib/i18n-utils";
 import type { Tag, TagCategory } from "@/lib/types";
 
 export function tagDisplayName(tag: Tag, locale: Locale): string {
-  if (locale === "en-US") return tag.nameAlt || tag.name;
-  // locale === "en-US": prefer nameAlt, fall back to name
-  // locale === "zh-CN": prefer name, fall back to nameAlt
-  return tag.name || tag.nameAlt;
+  return getLocalizedField(locale, tag.name, tag.nameAlt);
 }
 
 // --- Pitch color helpers ---
@@ -340,7 +338,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
                 {["♭", "♯", "♮"].map((mark) => (
                   <button key={mark} className="pill-add-button" type="button" onClick={() => { const setter = activeEditInput === "nameAlt" ? setEditNameAlt : setEditName; setter((value) => mark + value); const ref = activeEditInput === "nameAlt" ? editNameAltInputRef : editNameInputRef; ref.current?.focus(); }}>{mark}</button>
                 ))}
-                <button aria-label="Assign pitch color" className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap" style={{ background: "none" }} type="button" title="Assign color based on pitch octave" onClick={() => { const pitchName = locale === "en-US" ? (editNameAlt || editName) : (editName || editNameAlt); const c = pitchColorFromName(pitchName); if (c) setEditColor(c); }}><Music size={12} /> Assign color by pitch</button>
+                <button aria-label="Assign pitch color" className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap" style={{ background: "none" }} type="button" title="Assign color based on pitch octave" onClick={() => { const pitchName = getLocalizedField(locale, editName, editNameAlt); const c = pitchColorFromName(pitchName); if (c) setEditColor(c); }}><Music size={12} /> Assign color by pitch</button>
               </>
             )}
             {!isPitchCategory && (
@@ -373,7 +371,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
           )}
           <div className="flex items-center gap-2">
             {isPitchCategory ? (
-              <button aria-label="Assign pitch color" className={`inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs whitespace-nowrap cursor-pointer transition-colors ${detectedPitch ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--line)] bg-white"}`} type="button" title={detectedPitch ? `Assign color for ${detectedPitch}` : "Assign color based on pitch octave"} onClick={() => { const pitchName = locale === "en-US" ? (createNameAlt || createName) : (createName || createNameAlt); const c = pitchColorFromName(pitchName); if (c) setCreateColor(c); }}><Music size={12} /> Assign color by pitch</button>
+              <button aria-label="Assign pitch color" className={`inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs whitespace-nowrap cursor-pointer transition-colors ${detectedPitch ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--line)] bg-white"}`} type="button" title={detectedPitch ? `Assign color for ${detectedPitch}` : "Assign color based on pitch octave"} onClick={() => { const pitchName = getLocalizedField(locale, createName, createNameAlt); const c = pitchColorFromName(pitchName); if (c) setCreateColor(c); }}><Music size={12} /> Assign color by pitch</button>
             ) : (
               <button aria-label="Cycle tag color" className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--line)] bg-white px-3 text-xs whitespace-nowrap cursor-pointer" type="button" title="Next palette color" onClick={() => setCreateColor(nextTagColor(createColor))}><Palette size={12} /> Cycle color</button>
             )}
