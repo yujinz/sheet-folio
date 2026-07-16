@@ -10,6 +10,7 @@ import { getLocalizedField } from "@/lib/i18n-utils";
 import { STORAGE_KEYS, DIFFICULTY_LEVELS, ZOOM_MIN, ZOOM_MAX, DEBOUNCE_MS } from "@/lib/constants";
 import { useCreateTag } from "@/lib/useTagMutations";
 import { useFavorites } from "@/lib/useFavorites";
+import { useAutoSave } from "@/lib/useAutoSave";
 import type { ImageKind, Song, SongImage, Tag, VideoLink } from "@/lib/types";
 
 function generateId() {
@@ -43,12 +44,7 @@ export default function Detail({ songId }: { songId: number }) {
   const [zoom, setZoom] = useState(100);
   const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
   const headerRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLInputElement>(null);
-  const titleAltRef = useRef<HTMLInputElement>(null);
-  const notesRef = useRef<HTMLTextAreaElement>(null);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isDirtyRef = useRef(false);
-  const isComposingRef = useRef(false);
+  const { titleRef, titleAltRef, notesRef, scheduleSave, handleTitleBlur, isComposingRef, isDirtyRef } = useAutoSave(songId, piece, setPiece);
   const imagesSectionRef = useRef<HTMLDivElement>(null);
   const hasScrolledToImages = useRef(false);
   const { favoriteIds, toggleFavorite } = useFavorites();
@@ -173,96 +169,6 @@ export default function Detail({ songId }: { songId: number }) {
   }
 
   const handleToggleFavorite = () => toggleFavorite(songId);
-
-  // Debounced save — reads values from refs (uncontrolled inputs)
-  function scheduleSave() {
-    // Skip if user is in the middle of IME composition (e.g. typing pinyin)
-    if (isComposingRef.current) return;
-    isDirtyRef.current = true;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      const notes = notesRef.current?.value ?? "";
-      const body: Record<string, string> = { notes };
-      // Only one title input is rendered (based on locale); preserve the other from current piece state
-      if (locale === "en-US") {
-        const titleAlt = titleAltRef.current?.value ?? "";
-        body.title = piece?.title ?? "";
-        body.titleAlt = titleAlt;
-        // Auto-mirror: if primary title is empty, copy the alt title
-        if (!body.title.trim() && titleAlt.trim()) {
-          body.title = titleAlt;
-        }
-      } else {
-        const title = titleRef.current?.value ?? "";
-        body.title = title;
-        body.titleAlt = piece?.titleAlt ?? "";
-        // Auto-mirror: if alt title is empty, copy the primary title
-        if (!body.titleAlt.trim() && title.trim()) {
-          body.titleAlt = title;
-        }
-      }
-      // Safety net: don't save if both titles would be empty
-      if (body.title.trim() === "" && body.titleAlt.trim() === "") return;
-      void fetch(`/api/pieces/${songId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      }).then((res) => res.ok ? res.json() : null).then((updated) => {
-        if (updated) setPiece(updated);
-        isDirtyRef.current = false;
-      });
-    }, DEBOUNCE_MS.save);
-  }
-
-  function flushSave() {
-    // Flush any pending debounced save immediately
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
-    if (isDirtyRef.current) {
-      isDirtyRef.current = false;
-      const notes = notesRef.current?.value ?? "";
-      const body: Record<string, string> = { notes };
-      if (locale === "en-US") {
-        const titleAlt = titleAltRef.current?.value ?? "";
-        body.title = piece?.title ?? "";
-        body.titleAlt = titleAlt;
-        if (!body.title.trim() && titleAlt.trim()) {
-          body.title = titleAlt;
-        }
-      } else {
-        const title = titleRef.current?.value ?? "";
-        body.title = title;
-        body.titleAlt = piece?.titleAlt ?? "";
-        if (!body.titleAlt.trim() && title.trim()) {
-          body.titleAlt = title;
-        }
-      }
-      if (body.title.trim() === "" && body.titleAlt.trim() === "") return;
-      void fetch(`/api/pieces/${songId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      }).then((res) => res.ok ? res.json() : null).then((updated) => {
-        if (updated) setPiece(updated);
-      });
-    }
-  }
-
-  function handleTitleBlur() {
-    flushSave();
-    const currentValue = (titleRef.current ?? titleAltRef.current)?.value ?? "";
-    const newTitle = locale === "en-US" ? (piece?.title ?? "") : currentValue;
-    const newTitleAlt = locale === "en-US" ? currentValue : (piece?.titleAlt ?? "");
-    if (newTitle.trim() === "" && newTitleAlt.trim() === "") {
-      // Revert the input to its previous valid value
-      const fallback = piece?.title || piece?.titleAlt || "";
-      if (titleRef.current) titleRef.current.value = fallback;
-      if (titleAltRef.current) titleAltRef.current.value = fallback;
-      alert(t.titleRequired);
-    }
-  }
 
   const images = useMemo(() => piece?.images?.[tab] ?? [], [piece, tab]);
 
