@@ -195,7 +195,11 @@ export default function Directory() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.scrollY === "number" && parsed.scrollY > 0) {
-          shellRef.current?.scrollTo(0, parsed.scrollY);
+          // Defer to rAF so the browser finishes computing sticky header
+          // layout before we scroll — eliminates the "couple px off" offset.
+          requestAnimationFrame(() => {
+            shellRef.current?.scrollTo(0, parsed.scrollY);
+          });
         }
       }
     } catch {}
