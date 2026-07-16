@@ -312,7 +312,7 @@ export default function Detail({ songId }: { songId: number }) {
   if (!piece) return <main className="p-6">{t.loading}</main>;
 
   return (
-    <main className="sheet-page">
+    <main className="sheet-page" style={{ overflowY: "auto" }}>
       <header ref={headerRef} className="grid gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-2">
           <LocaleSwitch className="order-1 sm:order-last self-end sm:self-auto" />

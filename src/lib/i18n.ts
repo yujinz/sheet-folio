@@ -101,7 +101,7 @@ export const messages = {
     deletePiece: "Delete piece",
     deletePieceConfirm: "Delete this piece?",
     staff: "Staff",
-    numbered: "Numbered notation",
+    numbered: "Numbered",
     upload: "Upload",
     dragging: "Dragging",
     linkTitle: "Title",

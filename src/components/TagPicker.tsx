@@ -418,7 +418,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
                 }
               }}
             >
-              <option value="">{t.choose}</option>
+              <option value="">{label || t.choose}</option>
               {localTags.map((tag) => (
                 <option key={tag.id} value={tag.id}>{tagDisplayName(tag, locale)}</option>
               ))}
