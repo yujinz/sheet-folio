@@ -182,8 +182,8 @@ prune_dir() {
         ts = $1; sub(/^[^ ]* /, "", $0); path = $0
         # Extract SHA from filename: prefix-YYYYMMDD_HHMMSS-<sha12>.tar.gz
         name = path; gsub(/^.*\//, "", name)
-        if (match(name, /-([0-9a-f]{12})\.tar\.gz$/, a)) {
-          sha = a[1]
+        if (match(name, /-[0-9a-f]{12}\.tar\.gz$/)) {
+          sha = substr(name, RSTART + 1, 12)
           if (!(sha in seen)) {
             seen[sha] = 1
             sorted[++n] = path
