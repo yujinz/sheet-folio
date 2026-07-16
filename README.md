@@ -10,6 +10,8 @@ App features:
 - Color-coded difficulty/technique/pitch/rhythm tags with support for adding custom tag categories (pitch tags get rainbow colors by octave, sorted low→high)
 - Per-device zoom persistence and favorite pieces
 - Sheet source link and video links
+- Responsive UI polished across PC, iPad, and phone (frozen table headers, adaptive layouts, and touch-friendly interactions)
+- Automated backup with SHA dedup, pruning, and Cloudflare R2 sync (fully logged)
 
 ## Quick Start
 
@@ -41,7 +43,7 @@ Open `http://localhost:8888` in your browser. Stop with `docker compose down`. D
 >
 > If you later add containers that need to talk to each other (e.g., a database), switch to bridge networking with explicit `ports:` mapping.
 
-### Option 2: Build & Run (requires Node.js/pnpm)
+### Option 2: pnpm (requires Node.js/pnpm)
 
 ```bash
 pnpm install
@@ -66,7 +68,7 @@ Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format):
 - `images/{id}/{kind}/` — re-encoded images with EXIF metadata stripped
 - `manifest.json` — export metadata
 
-### Option 1: Via Docker
+### Option 1: Docker
 
 ```bash
 ./scripts/export-data.sh
@@ -81,7 +83,7 @@ Quick check:
 tail -6 $HOME/logs/sheet-folio-export-data.log
 ```
 
-### Option 2: Via pnpm (requires Node.js)
+### Option 2: pnpm (requires Node.js)
 
 ```bash
 pnpm export-data
@@ -90,7 +92,7 @@ pnpm export-data
 
 ## Backup
 
-Creates compressed, SHA-deduplicated backups of app volumes and export data, with optional Cloudflare R2 upload. **Keeps the last 5 backups** both locally and on R2 — older archives are pruned automatically.
+Creates compressed, SHA-deduplicated backups of app volumes and export data, with optional Cloudflare R2 upload. **Keeps the last 5 backups** both locally and on R2 — older archives are pruned automatically to save space.
 
 ```bash
 # Local backup (saves to ~/backups/sheet-folio/{volumes,exports}/)
