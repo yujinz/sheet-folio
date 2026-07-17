@@ -9,6 +9,12 @@ import { getSong, nextImageOrder, nowIso, reorderImages } from "@/lib/data";
 import { uploadRoot, safeName } from "@/lib/upload";
 import { apiError, withErrorHandler } from "@/lib/api";
 
+export const dynamic = "force-static";
+
+export function generateStaticParams() {
+  return [{ id: "1" }];
+}
+
 const reorderSchema = z.object({
   kind: z.enum(["staff", "numbered"]),
   ids: z.array(z.number().int())

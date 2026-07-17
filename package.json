@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
+    "build:demo": "NEXT_PUBLIC_DEMO_MODE=true next build",
     "start": "next start --hostname 0.0.0.0",
     "lint": "next lint",
     "test": "vitest run",

@@ -6,6 +6,12 @@ import { songs } from "@/db/schema";
 import { getSong, nowIso, setSongTags } from "@/lib/data";
 import { apiError, withErrorHandler } from "@/lib/api";
 
+export const dynamic = "force-static";
+
+export function generateStaticParams() {
+  return [{ id: "1" }];
+}
+
 export const updateSongSchema = z.object({
   title: z.string().optional(),
   titleAlt: z.string().optional(),

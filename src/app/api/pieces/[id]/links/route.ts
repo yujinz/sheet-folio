@@ -6,6 +6,12 @@ import { videoLinks } from "@/db/schema";
 import { getSong } from "@/lib/data";
 import { apiError, withErrorHandler } from "@/lib/api";
 
+export const dynamic = "force-static";
+
+export function generateStaticParams() {
+  return [{ id: "1" }];
+}
+
 const linksSchema = z.object({
   links: z.array(
     z.object({

@@ -6,6 +6,12 @@ import { tags } from "@/db/schema";
 import { apiError, withErrorHandler } from "@/lib/api";
 import { findDuplicateTag } from "@/lib/tag-utils";
 
+export const dynamic = "force-static";
+
+export function generateStaticParams() {
+  return [{ id: "1" }];
+}
+
 const updateSchema = z.object({
   name: z.string().trim().min(1).optional(),
   nameAlt: z.string().optional(),

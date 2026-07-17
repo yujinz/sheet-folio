@@ -83,6 +83,52 @@ Docker needs `output: "standalone"` while `pnpm start` needs to run without it. 
 
 </details>
 
+## Demo
+
+A browser-only demo of sheet-folio with the full UI. All data is stored in `sessionStorage` and lost when you close the tab — not meant for real use.
+
+<details>
+<summary><b>Build & run locally</b></summary>
+
+```bash
+pnpm build:demo
+npx serve out -p 3456
+```
+
+Open `http://localhost:3456` in your browser.
+</details>
+
+<details>
+<summary><b>Auto-deploy to GitHub Pages</b></summary>
+
+1. In your repo **Settings → Pages → Build and deployment**, set **Source** to **"GitHub Actions"**.
+2. Push to `main`. The `.github/workflows/deploy-demo.yml` workflow builds with `NEXT_PUBLIC_DEMO_MODE=true` and deploys.
+3. If your repo name differs from `sheet-folio`, update the `NEXT_PUBLIC_BASE_PATH` env in `.github/workflows/deploy-demo.yml` to match.
+
+The demo will be live at `https://<user>.github.io/<repo>/`.
+</details>
+
+<details>
+<summary><b>How it works</b></summary>
+
+- **`NEXT_PUBLIC_DEMO_MODE=true`** switches the build to `output: "export"` (static HTML/JS, no server).
+- **`src/lib/demo-fetch.ts`** intercepts all `fetch("/api/*")` calls and routes them to a `sessionStorage`-based data store.
+- **`src/lib/demo-store.ts`** mirrors every DB operation (pieces, tags, images, zoom, etc.) using JSON in `sessionStorage`.
+- **`src/lib/demo-seed.ts`** contains the built-in tags, categories, and seed pieces — no SQLite needed.
+- **Zero changes** to any UI component. The fetch interceptor is transparent to the app.
+
+To add seed pieces or images, edit `src/lib/demo-seed.ts` and rebuild.
+
+> **Keeping the demo in sync:** When `main` gets new features or API changes, merge into `demo`:
+> ```bash
+> git checkout demo
+> git merge main
+> # Resolve any conflicts in demo-only files, then push
+> git push
+> ```
+> If the real API adds a new route, add a handler in `src/lib/demo-fetch.ts` and the corresponding operation in `src/lib/demo-store.ts` — the build will fail with a clear error if something is missing.
+</details>
+
 ## Data Export
 
 Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format):
