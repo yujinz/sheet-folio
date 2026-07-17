@@ -13,6 +13,18 @@ App features:
 - Responsive UI polished across PC, iPad, and phone (frozen table headers, adaptive layouts, and touch-friendly interactions)
 - Automated backup with SHA dedup, pruning, and Cloudflare R2 sync (fully logged)
 
+<details>
+<summary><b>Note:</b> Self-hosted version is HTTP-only, LAN-only</summary>
+
+The self-hosted version (Docker/pnpm) is designed for local LAN use over plain HTTP - no HTTPS, no authentication, no WAN exposure. If you want to deploy it on the open web, fork the repo and add your own auth/reverse-proxy layer. A few things to be aware of if you go that route:
+
+- `crypto.randomUUID()` requires a secure context (HTTPS). The `Math.random`-based fallback in `generateId()` exists so LAN testing over plain HTTP works. If you add HTTPS, you can drop the fallback.
+- No CSRF protection, no rate limiting, no session management. Remember to add them.
+
+(The [demo branch](https://github.com/yujinz/sheet-folio/tree/demo) is a different beast — it's a self-contained static site where all data lives in the browser. None of the above applies.)
+
+</details>
+
 ## Quick Start
 
 ### Option 1: Docker Compose
@@ -56,33 +68,6 @@ If you later add containers that need to talk to each other (e.g., a database), 
 
 </details>
 
-### Option 2: pnpm (requires Node.js/pnpm)
-
-```bash
-pnpm install
-pnpm build
-pnpm start
-
-# To rebuild after code changes: 
-pnpm build && pnpm start
-```
-
-Open `http://localhost:3000` in your browser. This runs a production server on `0.0.0.0` (all network interfaces). Data persists in `./data/sheet-folio.db`.
-
-<details>
-<summary><b>Note:</b> <code>pnpm start</code> vs <code>pnpm dev</code></summary>
-
-`pnpm start` is used instead of `pnpm dev` so the app is accessible from other devices on the same LAN (see LAN Manual Test section at the end).
-
-</details>
-
-<details>
-<summary><b>Note:</b> Docker standalone output</summary>
-
-Docker needs `output: "standalone"` while `pnpm start` needs to run without it. The `next.config.ts` only enables standalone when `NEXT_OUTPUT_STANDALONE=true` (set in the Dockerfile's builder stage), so no manual toggling is needed between LAN testing and Docker builds.
-
-</details>
-
 ## Demo
 
 A browser-only demo of sheet-folio on the [`demo`](https://github.com/yujinz/sheet-folio/tree/demo) branch — the same UI, but all data is stored in `sessionStorage` and lost when you close the tab. Not meant for real use.
@@ -96,28 +81,18 @@ The demo can also be deployed to GitHub Pages — see the [workflow](.github/wor
 
 ## Data Export
 
+```bash
+./scripts/export-data.sh
+```
+Exports the database from the running container, builds the export image, and outputs to `export-data/`. Requires the sheet-folio container to be running.
+
 Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format):
 - `pieces.json` — all pieces with tags, images, and links
 - `tags.json` — all tags
 - `images/{id}/{kind}/` — re-encoded images with EXIF metadata stripped
 - `manifest.json` — export metadata
 
-### Option 1: Docker
-
-```bash
-./scripts/export-data.sh
-```
-
-Exports the database from the running container, builds the export image, and outputs to `export-data/`. Requires the sheet-folio container to be running.
-
 Logs milestones to `$HOME/logs/sheet-folio-export-data.log`. On failure, the last 20 lines of output are appended to the log.
-
-### Option 2: pnpm (requires Node.js)
-
-```bash
-pnpm export-data
-```
-
 
 ## Data Backup
 
@@ -130,26 +105,26 @@ Creates compressed, SHA-deduplicated backups of both docker app volumes and expo
 ./backup.sh
 ./backup.sh --export-dir <path>  # custom export source (default: export-data/)
 
-# Also upload export to Cloudflare R2 (requires awscli)
-./backup.sh --r2-bucket <bucket-name>
-
-# Run export first, then backup (convenience for cron)
+# Run export first, then backup
 ./backup.sh --with-export
 ./backup.sh --with-export --r2-bucket <bucket-name>
+
+# Also upload export to Cloudflare R2 (requires awscli)
+./backup.sh --r2-bucket <bucket-name>
 
 # Custom retention
 ./backup.sh --keep 10            # keep last 10 local archives (default: 5)
 ./backup.sh --r2-keep 20         # keep last 20 on R2 (default: same as --keep)
 ```
 
-Logs milestones to `$HOME/logs/sheet-folio-backup.log` — created archives, SHA dedup events, and pruned file names are recorded. On failure, the last 20 lines of output are appended.
+Logs milestones to `$HOME/logs/sheet-folio-backup.log` - created archives, SHA dedup events, and pruned file names are recorded. On failure, the last 20 lines of output are appended.
 
 ### Automation (cron)
 
 Run `crontab -e` and add a daily job to run export + backup together:
 
 ```cron
-# Runs at 3 AM every day — export fresh data, then backup and upload to R2
+# Runs at 3 AM every day - export fresh data, then backup and upload to R2
 0 3 * * * cd /path/to/sheet-folio && ./backup.sh --with-export --r2-bucket <bucket-name>
 ```
 
@@ -179,35 +154,85 @@ tail -n 10 $HOME/logs/sheet-folio-backup.log
    ./backup.sh --r2-bucket sheet-folio-backup
    ```
 
-## LAN Manual Test - Develop on PC and test on mobile devices under the same LAN
+## Development
 
-<details>
-<summary>Click to expand</summary>
+For local development and testing outside Docker, run with pnpm.
 
-Build and start the production server for LAN access:
+### Quick start 
+
+Requires Node.js and pnpm.
 
 ```bash
+pnpm install
+pnpm build
+pnpm start
+
+# To rebuild after code changes: 
 pnpm build && pnpm start
 ```
 
-The start command listens on `0.0.0.0` by default (`--hostname 0.0.0.0` in `package.json`), so it can be accessed from other devices on the same LAN.
+Open `http://localhost:3000` in your browser. Data persists in `./data/sheet-folio.db`.
 
-If running inside **WSL2**, the WSL2 virtual network is not directly reachable from the LAN. Run the following setup:
+<details>
+<summary><b>Note:</b> <code>pnpm start</code> vs <code>pnpm dev</code></summary>
 
-### 1. Enable mirrored networking mode
+`pnpm start` is used instead of `pnpm dev` so the app is accessible from other devices on the same LAN (see LAN testing below).
 
-Create/edit `%USERPROFILE%\.wslconfig` on Windows:
+</details>
+
+<details>
+<summary><b>Note:</b> Docker standalone output</summary>
+
+Docker needs `output: "standalone"` while `pnpm start` needs to run without it. The `next.config.ts` only enables standalone when `NEXT_OUTPUT_STANDALONE=true` (set in the Dockerfile's builder stage), so no manual toggling is needed between LAN testing and Docker builds.
+
+</details>
+
+### LAN testing
+
+Develop on PC and test on mobile devices under the same LAN. Useful for verifying the responsive UI and touch interactions on real phones/tablets.
+
+
+#### 1. Build and start
+
+Make sure the server is running (`pnpm build && pnpm start` from the quick start above).
+
+#### 2. Find your PC's LAN IP
+
+The production server already listens on `0.0.0.0` (`--hostname 0.0.0.0` in `package.json`), so it's reachable from LAN devices without extra config.
+
+| OS | Command |
+|---|---|
+| Linux / macOS | `hostname -I` or `ip addr show` |
+| Windows (native) | `ipconfig` |
+| WSL2 | `hostname -I` (see WSL2 notes below) |
+
+#### 3. Access from mobile
+
+Open `http://<lan-ip>:3000` in your mobile browser.
+
+If the page loads but features relying on device IDs behave oddly, check that `crypto.randomUUID()` isn't throwing in an HTTPS-only context - the `Math.random` fallback in `generateId()` should be in place for plain HTTP.
+
+---
+
+<details>
+<summary><b>Note:</b> WSL2 setup</summary>
+
+If you are developing from WSL2, WSL2 runs on a virtual network not directly reachable from the LAN. Two approaches to fix this:
+
+**A — Mirrored networking (recommended):**
+
+Add to `%USERPROFILE%\.wslconfig` on Windows:
 
 ```ini
 [wsl2]
 networkingMode=mirrored
 ```
 
-Then restart WSL2: `wsl --shutdown` and reopen your WSL2 terminal.
+Then restart WSL2 (`wsl --shutdown`, reopen terminal). Your WSL services now share the Windows host IP directly.
 
-### 2. If you encounter issue where buttons are not clickable on mobile device
+**B — Port proxy (if mirrored networking doesn't work):**
 
-Run the following in **PowerShell as Administrator** could help, but you shouldn't need this if you've done the previous step right. The proxy also occupies port 3000 on Windows, interfering with docker run.
+Run in **PowerShell as Administrator**:
 
 ```powershell
 $wslIP = (wsl hostname -I).Trim().Split()[0]
@@ -215,25 +240,19 @@ netsh interface portproxy add v4tov4 listenport=3000 listenaddress=0.0.0.0 conne
 New-NetFirewallRule -DisplayName "WSL Next.js 3000" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow
 ```
 
-### 3. Access from LAN
-
-Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3000`.
-
-<details>
-<summary><b>Note:</b> WSL2 IP changes</summary>
-
-WSL2's internal IP may change after restart, run `hostname -I`.
+> WSL2 IP changes after restart. Re-check with `hostname -I` and update the port proxy if needed.
 
 </details>
 
-<details>
-<summary><b>Reminder:</b> <code>crypto.randomUUID()</code> HTTPS requirement</summary>
 
-`crypto.randomUUID()` requires a secure context (HTTPS). The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
 
-</details>
 
-</details>
+
+### Data export
+
+```bash
+pnpm export-data
+```
 
 ## Reference
 
@@ -278,7 +297,7 @@ The app exposes `/api/health` for container health checks. Docker Compose and or
 
 ## License
 
-[AGPLv3](LICENSE) — you may use, modify, and distribute this software freely,
+[AGPLv3](LICENSE) - you may use, modify, and distribute this software freely,
 but if you run it as a network service or distribute modified versions, you
 must make your changes available under the same license.
 
