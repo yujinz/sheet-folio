@@ -172,18 +172,18 @@ export default function Detail({ songId }: { songId: number }) {
 
   const images = useMemo(() => piece?.images?.[tab] ?? [], [piece, tab]);
 
-  // Auto-scroll to images section if there are images (only on initial load)
+  // Auto-scroll to images section if there are images (only on initial load).
+  // Waits for both piece data and tab to settle (tab may be auto-switched from
+  // "staff" to "numbered" by the sibling effect), then scrolls the images
+  // section into view within the <main> scroll container.
   useEffect(() => {
     if (!piece || hasScrolledToImages.current) return;
     const hasImages = Object.values(piece.images ?? {}).some((arr) => arr.length > 0);
     if (hasImages) {
       hasScrolledToImages.current = true;
-      // Small delay to ensure DOM is rendered
-      requestAnimationFrame(() => {
-        imagesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+      imagesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }, [piece]);
+  }, [piece, tab]);
 
   // Auto-switch tab if current one is empty but the other has images.
   // Only runs when piece data changes (initial load / after upload), not on manual tab switch.
@@ -195,10 +195,12 @@ export default function Detail({ songId }: { songId: number }) {
     }
   }, [piece]);
 
-  if (!piece) return <main className="p-6">{t.loading}</main>;
-
   return (
     <main className="sheet-page" style={{ overflowY: "auto" }}>
+      {!piece ? (
+        <div className="p-6">{t.loading}</div>
+      ) : (
+        <>
       <header ref={headerRef} className="grid gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-2">
           <LocaleSwitch className="order-1 sm:order-last self-end sm:self-auto" />
@@ -285,19 +287,24 @@ export default function Detail({ songId }: { songId: number }) {
           </label>
         )}
       </div>
+        </>
+      )}
 
+      {/* imagesSectionRef is always rendered so the auto-scroll ref is valid from mount */}
       <div ref={imagesSectionRef}>
-        {editingImages ? (
+        {piece && (editingImages ? (
           <ImageEditor images={images} upload={upload} deleteImage={deleteImage} moveImage={moveImage} onUpdatePiece={setPiece} />
         ) : (
           <Browser images={images} zoom={zoom} onOpen={setPageIndex} links={piece.links ?? []} setLinks={saveLinks} />
-        )}
+        ))}
       </div>
+      {piece && (
       <Link className="fixed bottom-4 right-4 z-30 icon-button bg-white/80 backdrop-blur-sm shadow-md hover:bg-white" href="/" aria-label={t.backToDirectory}>
         <House size={16} />
       </Link>
+      )}
 
-      {pageIndex !== null && (
+      {pageIndex !== null && piece && (
         <Pager images={images} tab={tab} setTab={setTab} index={pageIndex} setIndex={setPageIndex} zoom={zoom} />
       )}
     </main>
@@ -460,15 +467,15 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
     <div className="fullscreen-view">
       <div className="absolute right-3 top-3 z-40 flex gap-2">
         {(["staff", "numbered"] as ImageKind[]).map((kind) => (
-          <button key={kind} className={`select-none rounded-md bg-white/20 px-2.5 py-1.5 text-sm text-white backdrop-blur-sm transition-colors ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}>{t[kind]}</button>
+          <button key={kind} className={`select-none rounded-md bg-white/20 px-2.5 py-1.5 text-sm text-white backdrop-blur-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-colors ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}>{t[kind]}</button>
         ))}
       </div>
       <div className="absolute left-3 top-3 z-40 flex gap-2 select-none">
-        <button className="rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
+        <button className="rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
           <XIcon size={24} />
         </button>
         <button
-          className="rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm hover:bg-white/40 transition-colors"
+          className="rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:bg-white/40 transition-colors"
           aria-label={t.saveImage}
           onClick={() => {
             const a = document.createElement("a");
@@ -483,12 +490,12 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
         </button>
       </div>
       <button className="absolute inset-y-0 left-0 w-1/3 z-30 select-none" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
-        <div className="flex h-full items-center justify-start pl-2 opacity-30 hover:opacity-70 transition-opacity">
+        <div className="flex h-full items-center justify-start pl-2 opacity-30 hover:opacity-70 transition-opacity drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
           <ChevronLeft size={40} />
         </div>
       </button>
       <button className="absolute inset-y-0 right-0 w-1/3 z-30 select-none" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
-        <div className="flex h-full items-center justify-end pr-2 opacity-30 hover:opacity-70 transition-opacity">
+        <div className="flex h-full items-center justify-end pr-2 opacity-30 hover:opacity-70 transition-opacity drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
           <ChevronRight size={40} />
         </div>
       </button>
@@ -506,14 +513,14 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
           href={image.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 max-w-[80vw] truncate rounded-md bg-black/50 px-3 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/70"
+          className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 max-w-[80vw] truncate rounded-md bg-black/50 px-3 py-1 text-xs text-white backdrop-blur-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:bg-black/70"
         >
           {t.source}: {image.sourceUrl}
         </a>
       )}
       <Link
         href="/"
-        className="absolute bottom-3 right-3 z-40 flex items-center justify-center rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm hover:bg-white/40 transition-colors"
+        className="absolute bottom-3 right-3 z-40 flex items-center justify-center rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:bg-white/40 transition-colors"
         aria-label={t.backToDirectory}
       >
         <House size={24} />
