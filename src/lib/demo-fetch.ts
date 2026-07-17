@@ -12,8 +12,6 @@
  *    handler in the ROUTES array below AND the corresponding operation in
  *    demo-store.ts. The build will fail if a handler is missing.
  */
- * ⚠️ DEMO SYNC: If a new API route is added, add a handler here.
- */
 
 import * as demoStore from "@/lib/demo-store";
 
