@@ -1,6 +1,9 @@
 # Sheet Folio
 
-A sheet music manager with a web UI accessible from both PC and mobile device. The interface is available in Chinese (zh-CN) and English (en-US), but the data model supports arbitrary languages via primary and alternate name fields - designed for easy extension beyond the two currently implemented UI languages.
+A sheet music manager with a web UI accessible from both PC and mobile device. Built exclusively for **image-based sheet music (JPEG/PNG)**. Does not support PDFs or XMLs.
+
+
+The interface is available in Chinese (zh-CN) and English (en-US), but the data model supports arbitrary languages via primary and alternate name fields. Designed for easy extension beyond the two currently implemented UI languages.
 
 App features:
 - Create, edit, and delete pieces
@@ -25,9 +28,18 @@ The self-hosted version (Docker/pnpm) is designed for local LAN use over plain H
 
 </details>
 
+
+## Why Sheet Folio?
+
+As a casual music lover, most of my sheet music isn't neatly formatted PDFs. Instead, they are screenshots from social media, quick photos taken during practice, or images saved from forums. 
+
+Eventually, these scores end up **scattered all over my photo gallery**, mixed with daily photos and memes. Existing sheet music managers are traditionally architected around the PDF format. When you import photos, they force a conversion into a rigid PDF file. 
+
+I built this app to treat images as first-class citizens. You can throw your image scores in here, stack multiple photos into a single song, and have a clean, dedicated space to navigate scores and practice on your tablets.
+
 ## Quick Start
 
-### Option 1: Docker Compose
+### Option 1: Self Hosting with Docker Compose
 
 ```bash
 git clone https://github.com/yujinz/sheet-folio.git
