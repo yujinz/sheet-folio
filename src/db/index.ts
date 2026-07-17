@@ -14,17 +14,96 @@ declare global {
   var sheetFolioDb: DbCache | undefined;
 }
 
+/**
+ * File-based mutex using atomic mkdir.
+ *
+ * `fs.mkdirSync` succeeds only if the directory doesn't exist, making it an
+ * atomic test-and-set on Linux (including Docker's overlayfs). Workers that
+ * don't acquire the lock spin-wait with Atomics.wait (which yields the CPU
+ * without burning it) and retry up to `retries` times at `delayMs` intervals.
+ *
+ * If all retries are exhausted, the caller skips migration and proceeds with
+ * an open connection — safe because the lock holder will have finished by then
+ * (usually in <100ms). In the worst case (lock holder crashed), the stale lock
+ * directory is ephemeral and won't persist across container restarts.
+ */
+const MIGRATION_LOCK = ".migrate.lock";
+
+function acquireLock(lockDir: string, retries: number, delayMs: number): boolean {
+  for (let i = 0; i < retries; i++) {
+    try {
+      fs.mkdirSync(lockDir);
+      return true;
+    } catch {
+      if (i < retries - 1) {
+        // Yield CPU; another worker may be holding the lock while migrating.
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delayMs);
+      }
+    }
+  }
+  return false;
+}
+
+function releaseLock(lockDir: string) {
+  try {
+    fs.rmdirSync(lockDir);
+  } catch {
+    // Directory may have already been cleaned up — nothing to do.
+  }
+}
+
 function createDb() {
   const dbPath = process.env.DB_PATH || path.join(process.cwd(), "data", "sheet-folio.db");
   const dataDir = path.dirname(dbPath);
   fs.mkdirSync(dataDir, { recursive: true });
+
+  // ── Migration lock ──────────────────────────────────────────────────
+  //
+  // WHY THIS IS NEEDED:
+  // During `next build`, the "Collecting page data" phase runs multiple
+  // worker threads in parallel. Each worker evaluates server modules
+  // independently, so `globalThis` — used below to cache the DB connection
+  // — is NOT shared across workers. Every worker that imports @/db calls
+  // `createDb()`, opening its own better-sqlite3 connection to the same
+  // SQLite file. The first worker's `migrate()` then runs DDL (ALTER TABLE,
+  // CREATE TABLE) which needs an exclusive SQLite lock. Meanwhile another
+  // worker holds its own connection open, causing SQLITE_BUSY.
+  //
+  // This only manifests on a fresh database (no prior __drizzle_migrations
+  // table). On an already-migrated DB, `migrate()` is a fast no-op and the
+  // race window is too narrow to trigger.
+  //
+  // WHY NOT OTHER APPROACHES:
+  // • Move migrate() to docker-entrypoint.sh → requires sqlite3 CLI in
+  //   the slim container, couples infra to schema changes.
+  // • Lazy-init on first query → race just moves to the first query.
+  // • PRAGMA locking_mode = EXCLUSIVE → serializes ALL access, defeats
+  //   WAL mode entirely.
+  // • Modify migration SQL to use IF NOT EXISTS → only works for CREATE,
+  //   not ALTER TABLE RENAME. Breaks on re-generate.
+  //
+  // The file-based lock via atomic mkdir is a self-contained, predictable
+  // fix with no external dependencies. mkdir is atomic on the overlayfs
+  // used by Docker, and the lock directory is auto-cleaned on container
+  // restart (ephemeral filesystem).
+  //
+  // ──────────────────────────────────────────────────────────────────────
+  const lockDir = path.join(dataDir, MIGRATION_LOCK);
+  const hasLock = acquireLock(lockDir, 60, 100);
 
   const sqlite = new Database(dbPath);
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
 
   const db = drizzle(sqlite, { schema });
-  migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
+
+  if (hasLock) {
+    try {
+      migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
+    } finally {
+      releaseLock(lockDir);
+    }
+  }
 
   const presets = [
     ["pitch", "高音", "High notes", "#2563eb"],
