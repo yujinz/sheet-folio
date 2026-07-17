@@ -110,12 +110,7 @@ Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format):
 
 Exports the database from the running container, builds the export image, and outputs to `export-data/`. Requires the sheet-folio container to be running.
 
-Logs milestones to `$HOME/logs/sheet-folio-export-data.log`. On failure, the last 20 lines of output are appended to the log automatically.
-
-Quick check:
-```bash
-tail -n 6 $HOME/logs/sheet-folio-export-data.log
-```
+Logs milestones to `$HOME/logs/sheet-folio-export-data.log`. On failure, the last 20 lines of output are appended to the log.
 
 ### Option 2: pnpm (requires Node.js)
 
@@ -124,40 +119,65 @@ pnpm export-data
 ```
 
 
-## Backup
+## Data Backup
 
-Creates compressed, SHA-deduplicated backups of app volumes and export data, with optional object storage upload. Archives are named `<prefix>-<timestamp>-<sha12>.tar.gz` - identical data reuses the same file. Keeps the last 5 unique-SHA backups both locally and on R2.
+Creates compressed, SHA-deduplicated backups of both docker app volumes and exported data, with optional upload to object storage. Archives are named `<prefix>-<timestamp>-<sha12>.tar.gz` - identical data reuses the same file. Keeps the last 5 unique-SHA backups both locally and on cloud.
+
+> **Note:**  Run `./scripts/export-data.sh` first to get fresh data, or use `--with-export` to do both in one step.
 
 ```bash
 # Local backup (saves to ~/backups/sheet-folio/{volumes,exports}/)
 ./backup.sh
 ./backup.sh --export-dir <path>  # custom export source (default: export-data/)
 
-# Also upload export to Cloudflare R2
+# Also upload export to Cloudflare R2 (requires awscli)
 ./backup.sh --r2-bucket <bucket-name>
+
+# Run export first, then backup (convenience for cron)
+./backup.sh --with-export
+./backup.sh --with-export --r2-bucket <bucket-name>
 
 # Custom retention
 ./backup.sh --keep 10            # keep last 10 local archives (default: 5)
 ./backup.sh --r2-keep 20         # keep last 20 on R2 (default: same as --keep)
 ```
 
-Logs milestones to `$HOME/logs/sheet-folio-backup.log` — created archives, SHA dedup events, and pruned file names (with creation dates and SHAs) are all recorded. On failure, the last 20 lines of output are appended automatically.
+Logs milestones to `$HOME/logs/sheet-folio-backup.log` — created archives, SHA dedup events, and pruned file names are recorded. On failure, the last 20 lines of output are appended.
 
-Quick check:
+### Automation (cron)
+
+Run `crontab -e` and add a daily job to run export + backup together:
+
+```cron
+# Runs at 3 AM every day — export fresh data, then backup and upload to R2
+0 3 * * * cd /path/to/sheet-folio && ./backup.sh --with-export --r2-bucket <bucket-name>
+```
+
+Check the logs by:
+
 ```bash
+tail -n 6  $HOME/logs/sheet-folio-export-data.log
 tail -n 10 $HOME/logs/sheet-folio-backup.log
 ```
 
+
 **Setup for Cloudflare R2:**
 
-1. Get R2 credentials from [Cloudflare Dashboard](https://dash.cloudflare.com/) → R2 → Manage R2 API Tokens → Create API Token (Object Read & Write)
-2. Add to `.env` in the project root:
+> **Note:**  R2 is chosen over other S3-compatible providers for its free tier - 10 GB of storage and 1 million writes per month, with zero egress fees (as of July 2026). For a backup archive that's a few hundred MB and updated daily, this keeps the cost at $0.
+
+1. Create a bucket in the [R2 dashboard](https://dash.cloudflare.com/) → R2 → Create Bucket (e.g. `sheet-folio-backup`)
+2. Get R2 credentials from **Manage R2 API Tokens** → Create API Token (Object Read & Write)
+3. Add to `.env` in the project root:
    ```bash
    AWS_ACCESS_KEY_ID="your-access-key-id"
    AWS_SECRET_ACCESS_KEY="your-secret-key"
    AWS_ENDPOINT_URL_S3="https://<account-id>.r2.cloudflarestorage.com"
    ```
-   The `.env` file is auto-loaded by `backup.sh`.
+   The `.env` file is auto-loaded by `backup.sh`. Then pass the bucket name with `--r2-bucket`:
+
+   ```bash
+   ./backup.sh --r2-bucket sheet-folio-backup
+   ```
 
 ## LAN Manual Test - Develop on PC and test on mobile devices under the same LAN
 
