@@ -83,6 +83,17 @@ Docker needs `output: "standalone"` while `pnpm start` needs to run without it. 
 
 </details>
 
+## Demo
+
+A browser-only demo of sheet-folio on the [`demo`](https://github.com/yujinz/sheet-folio/tree/demo) branch — the same UI, but all data is stored in `sessionStorage` and lost when you close the tab. Not meant for real use.
+
+```bash
+git checkout demo
+# Then follow the demo instructions on that branch
+```
+
+The demo can also be deployed to GitHub Pages — see the [workflow](.github/workflows/deploy-demo.yml) for details.
+
 ## Data Export
 
 Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format):
