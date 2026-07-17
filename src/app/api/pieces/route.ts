@@ -5,6 +5,12 @@ import { songs } from "@/db/schema";
 import { getSongs, nowIso } from "@/lib/data";
 import { apiError, withErrorHandler } from "@/lib/api";
 
+/**
+ * 🔄 DEMO SYNC: If you add a new API route, add a matching handler in
+ * src/lib/demo-fetch.ts and the corresponding operation in src/lib/demo-store.ts
+ * on the `demo` branch. See also: src/lib/data.ts
+ */
+
 export const createSongSchema = z.object({
   title: z.string().default(""),
   titleAlt: z.string().default("")
