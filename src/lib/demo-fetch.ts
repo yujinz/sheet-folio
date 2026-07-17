@@ -82,10 +82,10 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
   {
     pattern: "/api/pieces",
     methods: {
-      GET: async () => jsonResponse(demoStore.getPieces()),
+      GET: async () => jsonResponse(await demoStore.getPieces()),
       POST: async (_url, init) => {
         const body = await readJson(init);
-        const song = demoStore.createPiece({
+        const song = await demoStore.createPiece({
           title: (body?.title as string) ?? "",
           titleAlt: (body?.titleAlt as string) ?? "",
         });
@@ -97,14 +97,14 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
     pattern: "/api/pieces/:id",
     methods: {
       GET: async (_url, _init, params) => {
-        const song = demoStore.getPiece(Number(params.id));
+        const song = await demoStore.getPiece(Number(params.id));
         if (!song) return notFound();
         return jsonResponse(song);
       },
       PATCH: async (_url, init, params) => {
         const body = await readJson(init);
         if (!body) return badRequest("Invalid JSON body");
-        const song = demoStore.updatePiece(Number(params.id), {
+        const song = await demoStore.updatePiece(Number(params.id), {
           title: body.title as string | undefined,
           titleAlt: body.titleAlt as string | undefined,
           difficulty: body.difficulty as number | undefined,
@@ -115,7 +115,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
         return jsonResponse(song);
       },
       DELETE: async (_url, _init, params) => {
-        demoStore.deletePiece(Number(params.id));
+        await demoStore.deletePiece(Number(params.id));
         return okResponse();
       },
     },
@@ -142,7 +142,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
           })),
         );
 
-        const song = demoStore.uploadImages(songId, kind, entries);
+        const song = await demoStore.uploadImages(songId, kind, entries);
         if (!song) return notFound();
         return jsonResponse(song);
       },
@@ -151,7 +151,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
         if (!body || !body.kind || !Array.isArray(body.ids)) {
           return badRequest("Expected { kind: string, ids: number[] }");
         }
-        const song = demoStore.reorderImages(Number(params.id), body.kind as "staff" | "numbered", body.ids as number[]);
+        const song = await demoStore.reorderImages(Number(params.id), body.kind as "staff" | "numbered", body.ids as number[]);
         if (!song) return notFound();
         return jsonResponse(song);
       },
@@ -160,7 +160,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
         if (!body || !Array.isArray(body.ids)) {
           return badRequest("Expected { ids: number[] }");
         }
-        const song = demoStore.deleteImages(Number(params.id), body.ids as number[]);
+        const song = await demoStore.deleteImages(Number(params.id), body.ids as number[]);
         if (!song) return notFound();
         return jsonResponse(song);
       },
@@ -174,7 +174,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
         if (!body || !("sourceUrl" in body)) {
           return badRequest("Expected { sourceUrl: string | null }");
         }
-        const song = demoStore.updateImageSource(
+        const song = await demoStore.updateImageSource(
           Number(params.id),
           Number(params.imageId),
           (body.sourceUrl as string | null) ?? null,
@@ -192,7 +192,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
         if (!body || !Array.isArray(body.links)) {
           return badRequest("Expected { links: [...] }");
         }
-        const song = demoStore.saveLinks(Number(params.id), body.links as { label: string; url: string }[]);
+        const song = await demoStore.saveLinks(Number(params.id), body.links as { label: string; url: string }[]);
         if (!song) return notFound();
         return jsonResponse(song);
       },
@@ -203,13 +203,13 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
   {
     pattern: "/api/tags",
     methods: {
-      GET: async () => jsonResponse(demoStore.getTags()),
+      GET: async () => jsonResponse(await demoStore.getTags()),
       POST: async (_url, init) => {
         const body = await readJson(init);
         if (!body || !body.name || !body.color || !body.category) {
           return badRequest("Expected { name, color, category }");
         }
-        const result = demoStore.createTag({
+        const result = await demoStore.createTag({
           name: body.name as string,
           nameAlt: (body.nameAlt as string) ?? "",
           color: body.color as string,
@@ -228,13 +228,13 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
         if (body.oldCategory === body.newCategory) {
           return jsonResponse({ error: "New category must differ from old category" }, 400);
         }
-        const tags = demoStore.renameTagCategory(body.oldCategory as string, body.newCategory as string);
+        const tags = await demoStore.renameTagCategory(body.oldCategory as string, body.newCategory as string);
         return jsonResponse({ updated: tags.length, tags });
       },
       DELETE: async (url) => {
         const category = url.searchParams.get("category");
         if (!category) return badRequest("category query parameter is required");
-        const deleted = demoStore.deleteTagsInCategory(category);
+        const deleted = await demoStore.deleteTagsInCategory(category);
         return jsonResponse({ deleted });
       },
     },
@@ -245,7 +245,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
       PATCH: async (_url, init, params) => {
         const body = await readJson(init);
         if (!body) return badRequest("Invalid JSON body");
-        const result = demoStore.updateTag(Number(params.id), {
+        const result = await demoStore.updateTag(Number(params.id), {
           name: body.name as string | undefined,
           nameAlt: body.nameAlt as string | undefined,
           color: body.color as string | undefined,
@@ -258,7 +258,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
         return jsonResponse(result);
       },
       DELETE: async (_url, _init, params) => {
-        demoStore.deleteTag(Number(params.id));
+        await demoStore.deleteTag(Number(params.id));
         return okResponse();
       },
     },
@@ -268,11 +268,11 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
   {
     pattern: "/api/categories",
     methods: {
-      GET: async () => jsonResponse(demoStore.getCategories()),
+      GET: async () => jsonResponse(await demoStore.getCategories()),
       POST: async (_url, init) => {
         const body = await readJson(init);
         if (!body || !body.key) return badRequest("Expected { key }");
-        const result = demoStore.createCategory({
+        const result = await demoStore.createCategory({
           key: body.key as string,
           name: body.name as string | undefined,
           nameAlt: body.nameAlt as string | undefined,
@@ -285,7 +285,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
       PATCH: async (_url, init) => {
         const body = await readJson(init);
         if (!body || !body.key) return badRequest("Expected { key }");
-        const result = demoStore.updateCategory({
+        const result = await demoStore.updateCategory({
           key: body.key as string,
           oldKey: body.oldKey as string | undefined,
           name: body.name as string | undefined,
@@ -296,7 +296,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
       DELETE: async (url) => {
         const key = url.searchParams.get("key");
         if (!key) return badRequest("key query parameter is required");
-        demoStore.deleteCategory(key);
+        await demoStore.deleteCategory(key);
         return okResponse();
       },
     },
@@ -306,11 +306,11 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
   {
     pattern: "/api/single-select-categories",
     methods: {
-      GET: async () => jsonResponse(demoStore.getSingleSelectCategories()),
+      GET: async () => jsonResponse(await demoStore.getSingleSelectCategories()),
       POST: async (_url, init) => {
         const body = await readJson(init);
         if (!body || !body.category) return badRequest("Expected { category }");
-        const result = demoStore.addSingleSelectCategory(body.category as string);
+        const result = await demoStore.addSingleSelectCategory(body.category as string);
         if ("error" in result) {
           return jsonResponse({ error: result.error }, result.status);
         }
@@ -319,7 +319,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
       DELETE: async (url) => {
         const category = url.searchParams.get("category");
         if (!category) return badRequest("category query parameter is required");
-        demoStore.removeSingleSelectCategory(category);
+        await demoStore.removeSingleSelectCategory(category);
         return okResponse();
       },
     },
@@ -333,14 +333,14 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
         const deviceId = url.searchParams.get("deviceId") ?? "";
         const songId = Number(url.searchParams.get("songId"));
         if (!deviceId || !songId) return jsonResponse({ zoom: 100 });
-        return jsonResponse({ zoom: demoStore.getDeviceZoom(deviceId, songId) });
+        return jsonResponse({ zoom: await demoStore.getDeviceZoom(deviceId, songId) });
       },
       PUT: async (_url, init) => {
         const body = await readJson(init);
         if (!body || !body.deviceId || !body.songId || body.zoom === undefined) {
           return badRequest("Expected { deviceId, songId, zoom }");
         }
-        demoStore.setDeviceZoom(body.deviceId as string, body.songId as number, body.zoom as number);
+        await demoStore.setDeviceZoom(body.deviceId as string, body.songId as number, body.zoom as number);
         return okResponse();
       },
     },
@@ -350,7 +350,7 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
   {
     pattern: "/api/health",
     methods: {
-      GET: async () => jsonResponse(demoStore.healthCheck()),
+      GET: async () => jsonResponse(await demoStore.healthCheck()),
     },
   },
 
