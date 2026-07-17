@@ -10,6 +10,7 @@ function buildSaveBody(
   notesRef: React.RefObject<HTMLTextAreaElement | null>,
   titleRef: React.RefObject<HTMLInputElement | null>,
   titleAltRef: React.RefObject<HTMLInputElement | null>,
+  shouldSyncOther: boolean,
 ): Record<string, string> | null {
   const notes = notesRef.current?.value ?? "";
   const body: Record<string, string> = { notes };
@@ -17,14 +18,14 @@ function buildSaveBody(
     const titleAlt = titleAltRef.current?.value ?? "";
     body.title = piece?.title ?? "";
     body.titleAlt = titleAlt;
-    if (!body.title.trim() && titleAlt.trim()) {
+    if (shouldSyncOther && titleAlt.trim()) {
       body.title = titleAlt;
     }
   } else {
     const title = titleRef.current?.value ?? "";
     body.title = title;
     body.titleAlt = piece?.titleAlt ?? "";
-    if (!body.titleAlt.trim() && title.trim()) {
+    if (shouldSyncOther && title.trim()) {
       body.titleAlt = title;
     }
   }
@@ -52,6 +53,16 @@ export function useAutoSave(
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDirtyRef = useRef(false);
   const isComposingRef = useRef(false);
+  // Whether to sync the active field's value to the other locale's field.
+  // Re-evaluated on initial piece load and whenever locale changes:
+  // true if the other field was empty at that point.
+  const shouldSyncOtherRef = useRef(false);
+  const syncLocaleRef = useRef<string | null>(null);
+  if (piece && syncLocaleRef.current !== locale) {
+    syncLocaleRef.current = locale;
+    shouldSyncOtherRef.current =
+      locale === "en-US" ? !piece.title?.trim() : !piece.titleAlt?.trim();
+  }
 
   const doSave = useCallback(
     (body: Record<string, string>) => {
@@ -74,18 +85,23 @@ export function useAutoSave(
     isDirtyRef.current = true;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      const body = buildSaveBody(locale, piece, notesRef, titleRef, titleAltRef);
+      // Don't save while IME composition is in progress — the input value may
+      // contain unconfirmed composition text. The save will be re-triggered
+      // via onCompositionEnd when the user finishes composing.
+      if (isComposingRef.current) return;
+      const body = buildSaveBody(locale, piece, notesRef, titleRef, titleAltRef, shouldSyncOtherRef.current);
       if (body) doSave(body);
     }, DEBOUNCE_MS.save);
   }, [locale, piece, doSave]);
 
   const flushSave = useCallback(() => {
+    if (isComposingRef.current) return;
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
     if (isDirtyRef.current) {
-      const body = buildSaveBody(locale, piece, notesRef, titleRef, titleAltRef);
+      const body = buildSaveBody(locale, piece, notesRef, titleRef, titleAltRef, shouldSyncOtherRef.current);
       if (body) doSave(body);
     }
   }, [locale, piece, doSave]);
