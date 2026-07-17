@@ -3,6 +3,13 @@ import { db } from "@/db";
 import { deviceZoom, songImages, songs, songTags, tags, videoLinks } from "@/db/schema";
 import type { ImageKind, Song, Tag } from "@/lib/types";
 
+/**
+ * 🔄 DEMO SYNC: Each function here has a counterpart in src/lib/demo-store.ts
+ * on the `demo` branch. If you add, remove, or change any data function below,
+ * update the matching function in demo-store.ts too.
+ * See also: src/app/api/pieces/route.ts (same note)
+ */
+
 export function nowIso() {
   return new Date().toISOString();
 }

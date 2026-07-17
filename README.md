@@ -1,6 +1,9 @@
 # Sheet Folio
 
-A sheet music manager with a web UI accessible from both PC and mobile device. The interface is available in Chinese (zh-CN) and English (en-US), but the data model supports arbitrary languages via primary and alternate name fields - designed for easy extension beyond the two currently implemented UI languages.
+A sheet music manager with a web UI accessible from both PC and mobile device. Built exclusively for **image-based sheet music (JPEG/PNG)**. Does not support PDFs or XMLs.
+
+
+The interface is available in Chinese (zh-CN) and English (en-US), but the data model supports arbitrary languages via primary and alternate name fields. Designed for easy extension beyond the two currently implemented UI languages.
 
 App features:
 - Create, edit, and delete pieces
@@ -13,9 +16,30 @@ App features:
 - Responsive UI polished across PC, iPad, and phone (frozen table headers, adaptive layouts, and touch-friendly interactions)
 - Automated backup with SHA dedup, pruning, and Cloudflare R2 sync (fully logged)
 
+<details>
+<summary><b>Note:</b> Self-hosted version is HTTP-only, LAN-only</summary>
+
+The self-hosted version (Docker/pnpm) is designed for local LAN use over plain HTTP - no HTTPS, no authentication, no WAN exposure. If you want to deploy it on the open web, fork the repo and add your own auth/reverse-proxy layer. A few things to be aware of if you go that route:
+
+- `crypto.randomUUID()` requires a secure context (HTTPS). The `Math.random`-based fallback in `generateId()` exists so LAN testing over plain HTTP works. If you add HTTPS, you can drop the fallback.
+- No CSRF protection, no rate limiting, no session management. Remember to add them.
+
+(The [demo branch](https://github.com/yujinz/sheet-folio/tree/demo) is a different beast — it's a self-contained static site where all data lives in the browser. None of the above applies.)
+
+</details>
+
+
+## Why Sheet Folio?
+
+As a casual music lover, most of my sheet music isn't neatly formatted PDFs. Instead, they are screenshots from social media, quick photos taken during practice, or images saved from forums. 
+
+Eventually, these scores end up **scattered all over my photo gallery**, mixed with daily photos and memes. Existing sheet music managers are traditionally architected around the PDF format. When you import photos, they force a conversion into a rigid PDF file. 
+
+I built this app to treat images as first-class citizens. You can throw your image scores in here, stack multiple photos into a single song, and have a clean, dedicated space to navigate scores and practice on your tablets.
+
 ## Quick Start
 
-### Option 1: Docker Compose
+### Option 1: Self Hosting with Docker
 
 ```bash
 git clone https://github.com/yujinz/sheet-folio.git
@@ -56,32 +80,10 @@ If you later add containers that need to talk to each other (e.g., a database), 
 
 </details>
 
-### Option 2: pnpm (requires Node.js/pnpm)
+### Option 2: Static Site Demo
+Deployed at https://yujinz.github.io/sheet-folio/
 
-```bash
-pnpm install
-pnpm build
-pnpm start
-
-# To rebuild after code changes: 
-pnpm build && pnpm start
-```
-
-Open `http://localhost:3000` in your browser. This runs a production server on `0.0.0.0` (all network interfaces). Data persists in `./data/sheet-folio.db`.
-
-<details>
-<summary><b>Note:</b> <code>pnpm start</code> vs <code>pnpm dev</code></summary>
-
-`pnpm start` is used instead of `pnpm dev` so the app is accessible from other devices on the same LAN (see LAN Manual Test section at the end).
-
-</details>
-
-<details>
-<summary><b>Note:</b> Docker standalone output</summary>
-
-Docker needs `output: "standalone"` while `pnpm start` needs to run without it. The `next.config.ts` only enables standalone when `NEXT_OUTPUT_STANDALONE=true` (set in the Dockerfile's builder stage), so no manual toggling is needed between LAN testing and Docker builds.
-
-</details>
+WIP
 
 ## Demo
 
@@ -131,44 +133,35 @@ To add seed pieces or images, edit `src/lib/demo-seed.ts` and rebuild.
 
 ## Data Export
 
+```bash
+./scripts/export-data.sh
+```
+Exports the database from the running container, builds the export image, and outputs to `export-data/`. Requires the sheet-folio container to be running.
+
 Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format):
 - `pieces.json` — all pieces with tags, images, and links
 - `tags.json` — all tags
 - `images/{id}/{kind}/` — re-encoded images with EXIF metadata stripped
 - `manifest.json` — export metadata
 
-### Option 1: Docker
+Logs milestones to `$HOME/logs/sheet-folio-export-data.log`. On failure, the last 20 lines of output are appended to the log.
 
-```bash
-./scripts/export-data.sh
-```
+## Data Backup
 
-Exports the database from the running container, builds the export image, and outputs to `export-data/`. Requires the sheet-folio container to be running.
+Creates compressed, SHA-deduplicated backups of both docker app volumes and exported data, with optional upload to object storage. Archives are named `<prefix>-<timestamp>-<sha12>.tar.gz` - identical data reuses the same file. Keeps the last 5 unique-SHA backups both locally and on cloud.
 
-Logs milestones to `$HOME/logs/sheet-folio-export-data.log`. On failure, the last 20 lines of output are appended to the log automatically.
-
-Quick check:
-```bash
-tail -n 6 $HOME/logs/sheet-folio-export-data.log
-```
-
-### Option 2: pnpm (requires Node.js)
-
-```bash
-pnpm export-data
-```
-
-
-## Backup
-
-Creates compressed, SHA-deduplicated backups of app volumes and export data, with optional object storage upload. Archives are named `<prefix>-<timestamp>-<sha12>.tar.gz` - identical data reuses the same file. Keeps the last 5 unique-SHA backups both locally and on R2.
+> **Note:**  Run `./scripts/export-data.sh` first to get fresh data, or use `--with-export` to do both in one step.
 
 ```bash
 # Local backup (saves to ~/backups/sheet-folio/{volumes,exports}/)
 ./backup.sh
 ./backup.sh --export-dir <path>  # custom export source (default: export-data/)
 
-# Also upload export to Cloudflare R2
+# Run export first, then backup
+./backup.sh --with-export
+./backup.sh --with-export --r2-bucket <bucket-name>
+
+# Also upload export to Cloudflare R2 (requires awscli)
 ./backup.sh --r2-bucket <bucket-name>
 
 # Custom retention
@@ -176,53 +169,122 @@ Creates compressed, SHA-deduplicated backups of app volumes and export data, wit
 ./backup.sh --r2-keep 20         # keep last 20 on R2 (default: same as --keep)
 ```
 
-Logs milestones to `$HOME/logs/sheet-folio-backup.log` — created archives, SHA dedup events, and pruned file names (with creation dates and SHAs) are all recorded. On failure, the last 20 lines of output are appended automatically.
+Logs milestones to `$HOME/logs/sheet-folio-backup.log` - created archives, SHA dedup events, and pruned file names are recorded. On failure, the last 20 lines of output are appended.
 
-Quick check:
+### Automation (cron)
+
+Run `crontab -e` and add a daily job to run export + backup together:
+
+```cron
+# Runs at 3 AM every day - export fresh data, then backup and upload to R2
+0 3 * * * cd /path/to/sheet-folio && ./backup.sh --with-export --r2-bucket <bucket-name>
+```
+
+Check the logs by:
+
 ```bash
+tail -n 6  $HOME/logs/sheet-folio-export-data.log
 tail -n 10 $HOME/logs/sheet-folio-backup.log
 ```
 
+
 **Setup for Cloudflare R2:**
 
-1. Get R2 credentials from [Cloudflare Dashboard](https://dash.cloudflare.com/) → R2 → Manage R2 API Tokens → Create API Token (Object Read & Write)
-2. Add to `.env` in the project root:
+> **Note:**  R2 is chosen over other S3-compatible providers for its free tier - 10 GB of storage and 1 million writes per month, with zero egress fees (as of July 2026). For a backup archive that's a few hundred MB and updated daily, this keeps the cost at $0.
+
+1. Create a bucket in the [R2 dashboard](https://dash.cloudflare.com/) → R2 → Create Bucket (e.g. `sheet-folio-backup`)
+2. Get R2 credentials from **Manage R2 API Tokens** → Create API Token (Object Read & Write)
+3. Add to `.env` in the project root:
    ```bash
    AWS_ACCESS_KEY_ID="your-access-key-id"
    AWS_SECRET_ACCESS_KEY="your-secret-key"
    AWS_ENDPOINT_URL_S3="https://<account-id>.r2.cloudflarestorage.com"
    ```
-   The `.env` file is auto-loaded by `backup.sh`.
+   The `.env` file is auto-loaded by `backup.sh`. Then pass the bucket name with `--r2-bucket`:
 
-## LAN Manual Test - Develop on PC and test on mobile devices under the same LAN
+   ```bash
+   ./backup.sh --r2-bucket sheet-folio-backup
+   ```
 
-<details>
-<summary>Click to expand</summary>
+## Development
 
-Build and start the production server for LAN access:
+For local development and testing outside Docker, run with pnpm.
+
+### Quick start 
+
+Requires Node.js and pnpm.
 
 ```bash
+pnpm install
+pnpm build
+pnpm start
+
+# To rebuild after code changes: 
 pnpm build && pnpm start
 ```
 
-The start command listens on `0.0.0.0` by default (`--hostname 0.0.0.0` in `package.json`), so it can be accessed from other devices on the same LAN.
+Open `http://localhost:3000` in your browser. Data persists in `./data/sheet-folio.db`.
 
-If running inside **WSL2**, the WSL2 virtual network is not directly reachable from the LAN. Run the following setup:
+<details>
+<summary><b>Note:</b> <code>pnpm start</code> vs <code>pnpm dev</code></summary>
 
-### 1. Enable mirrored networking mode
+`pnpm start` is used instead of `pnpm dev` so the app is accessible from other devices on the same LAN (see LAN testing below).
 
-Create/edit `%USERPROFILE%\.wslconfig` on Windows:
+</details>
+
+<details>
+<summary><b>Note:</b> Docker standalone output</summary>
+
+Docker needs `output: "standalone"` while `pnpm start` needs to run without it. The `next.config.ts` only enables standalone when `NEXT_OUTPUT_STANDALONE=true` (set in the Dockerfile's builder stage), so no manual toggling is needed between LAN testing and Docker builds.
+
+</details>
+
+### LAN testing
+
+Develop on PC and test on mobile devices under the same LAN. Useful for verifying the responsive UI and touch interactions on real phones/tablets.
+
+
+#### 1. Build and start
+
+Make sure the server is running (`pnpm build && pnpm start` from the quick start above).
+
+#### 2. Find your PC's LAN IP
+
+The production server already listens on `0.0.0.0` (`--hostname 0.0.0.0` in `package.json`), so it's reachable from LAN devices without extra config.
+
+| OS | Command |
+|---|---|
+| Linux / macOS | `hostname -I` or `ip addr show` |
+| Windows (native) | `ipconfig` |
+| WSL2 | `hostname -I` (see WSL2 notes below) |
+
+#### 3. Access from mobile
+
+Open `http://<lan-ip>:3000` in your mobile browser.
+
+If the page loads but features relying on device IDs behave oddly, check that `crypto.randomUUID()` isn't throwing in an HTTPS-only context - the `Math.random` fallback in `generateId()` should be in place for plain HTTP.
+
+---
+
+<details>
+<summary><b>Note:</b> WSL2 setup</summary>
+
+If you are developing from WSL2, WSL2 runs on a virtual network not directly reachable from the LAN. Two approaches to fix this:
+
+**A — Mirrored networking (recommended):**
+
+Add to `%USERPROFILE%\.wslconfig` on Windows:
 
 ```ini
 [wsl2]
 networkingMode=mirrored
 ```
 
-Then restart WSL2: `wsl --shutdown` and reopen your WSL2 terminal.
+Then restart WSL2 (`wsl --shutdown`, reopen terminal). Your WSL services now share the Windows host IP directly.
 
-### 2. If you encounter issue where buttons are not clickable on mobile device
+**B — Port proxy (if mirrored networking doesn't work):**
 
-Run the following in **PowerShell as Administrator** could help, but you shouldn't need this if you've done the previous step right. The proxy also occupies port 3000 on Windows, interfering with docker run.
+Run in **PowerShell as Administrator**:
 
 ```powershell
 $wslIP = (wsl hostname -I).Trim().Split()[0]
@@ -230,25 +292,30 @@ netsh interface portproxy add v4tov4 listenport=3000 listenaddress=0.0.0.0 conne
 New-NetFirewallRule -DisplayName "WSL Next.js 3000" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow
 ```
 
-### 3. Access from LAN
-
-Run `pnpm build && pnpm start` and access the app at `http://<Windows-host-IP>:3000`.
-
-<details>
-<summary><b>Note:</b> WSL2 IP changes</summary>
-
-WSL2's internal IP may change after restart, run `hostname -I`.
+> WSL2 IP changes after restart. Re-check with `hostname -I` and update the port proxy if needed.
 
 </details>
 
-<details>
-<summary><b>Reminder:</b> <code>crypto.randomUUID()</code> HTTPS requirement</summary>
 
-`crypto.randomUUID()` requires a secure context (HTTPS). The fix was to replace it with a `Math.random`-based fallback in `generateId()` — keep this in mind if touching device ID logic.
 
-</details>
 
-</details>
+
+### Data export
+
+```bash
+pnpm export-data
+```
+
+### Demo
+
+A browser-only demo of sheet-folio on the [`demo`](https://github.com/yujinz/sheet-folio/tree/demo) branch - the same UI, but all data lives in the browser and is lost when you close the tab. Not meant for real use.
+
+```bash
+git checkout demo
+# Then follow the demo instructions on that branch
+```
+
+The demo is deployed to GitHub Pages — see the [workflow](.github/workflows/deploy-demo.yml) for details.
 
 ## Reference
 
@@ -293,7 +360,7 @@ The app exposes `/api/health` for container health checks. Docker Compose and or
 
 ## License
 
-[AGPLv3](LICENSE) — you may use, modify, and distribute this software freely,
+[AGPLv3](LICENSE) - you may use, modify, and distribute this software freely,
 but if you run it as a network service or distribute modified versions, you
 must make your changes available under the same license.
 

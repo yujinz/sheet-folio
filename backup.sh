@@ -4,6 +4,7 @@
 # ============================================================================
 # Usage:
 #   ./backup.sh                                                     # local backup only
+#   ./backup.sh --with-export                                       # run export-data.sh first, then backup
 #   ./backup.sh --r2-bucket my-bucket                               # + upload export to R2
 #   ./backup.sh --r2-bucket my-bucket --r2-endpoint URL             # custom endpoint
 #   ./backup.sh --export-dir /path/to/export-data                   # custom export dir
@@ -71,6 +72,7 @@ EXPORT_DEFAULT="export-data"
 EXPORT_DIR="$EXPORT_DEFAULT"
 R2_BUCKET="${R2_BUCKET:-}"
 R2_ENDPOINT="${R2_ENDPOINT:-}"
+WITH_EXPORT=
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -79,6 +81,7 @@ while [[ $# -gt 0 ]]; do
     --r2-endpoint)   R2_ENDPOINT="$2"; shift 2 ;;
     --keep)          KEEP="$2";        shift 2 ;;
     --r2-keep)       R2_KEEP="$2";     shift 2 ;;
+    --with-export)   WITH_EXPORT=1;     shift 1 ;;
     --help|-h)       sed -n '/^# /,/^$/p' "$0" | sed 's/^# //'; exit 0 ;;
     *)               echo "Unknown option: $1"; exit 1 ;;
   esac
@@ -255,6 +258,15 @@ r2_prune() {
         log "  Pruned from R2: $name (created $date_part)"
       done
 }
+
+# ------------------------------------------------------------------
+# 0. Optional: run export-data.sh first
+# ------------------------------------------------------------------
+if [[ -n "$WITH_EXPORT" ]]; then
+  info "Step 0: Running export-data.sh ..."
+  ./scripts/export-data.sh
+  info "Export complete, proceeding to backup."
+fi
 
 # ------------------------------------------------------------------
 # 1. Volume backup (local)
