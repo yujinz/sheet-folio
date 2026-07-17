@@ -276,12 +276,15 @@ export default function Directory() {
     const shell = shellRef.current;
     if (!shell) return;
     const onScroll = () => {
-      setShowScrollTop(shell.scrollTop > shell.clientHeight);
+      setShowScrollTop(shell.scrollTop > shell.clientHeight * 0.5);
       scrollYRef.current = shell.scrollTop;
     };
     shell.addEventListener("scroll", onScroll, { passive: true });
     return () => shell.removeEventListener("scroll", onScroll);
   }, []);
+
+  const hasActiveFilter =
+    Object.values(filters).some((ids) => ids.length > 0) || difficultyFilter.value !== null;
 
   /** Extra category keys from DB tags not yet in userCategories. */
   const extraCategoryKeys = useMemo(() => {
@@ -784,12 +787,22 @@ export default function Directory() {
 
       {showScrollTop && (
         <button
-          className="fixed bottom-4 right-4 z-30 icon-button bg-white/80 backdrop-blur-sm shadow-md hover:bg-white"
+          className={`fixed bottom-4 right-4 z-30 flex h-9 w-9 items-center justify-center rounded-full border shadow-md transition-colors ${
+            hasActiveFilter
+              ? "border-[var(--accent)] bg-[var(--accent)] text-white hover:opacity-90"
+              : "border-[var(--line)] bg-white/80 backdrop-blur-sm hover:bg-white"
+          }`}
           type="button"
-          onClick={() => shellRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
-          aria-label="Scroll to top"
+          onClick={() => {
+            shellRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+            if (hasActiveFilter) {
+              setFilters(Object.fromEntries(Object.keys(filters).map((k) => [k, []])));
+              difficultyFilter.reset();
+            }
+          }}
+          aria-label={hasActiveFilter ? "Scroll to top and reset filters" : "Scroll to top"}
         >
-          <ArrowUp size={16} />
+          {hasActiveFilter ? <RotateCcw size={14} /> : <ArrowUp size={16} />}
         </button>
       )}
     </main>
