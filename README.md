@@ -39,7 +39,7 @@ I built this app to treat images as first-class citizens. You can throw your ima
 
 ## Quick Start
 
-### Option 1: Self Hosting with Docker Compose
+### Option 1: Self Hosting with Docker
 
 ```bash
 git clone https://github.com/yujinz/sheet-folio.git
@@ -80,16 +80,10 @@ If you later add containers that need to talk to each other (e.g., a database), 
 
 </details>
 
-## Demo
+### Option 2: Static Site Demo
+Deployed at https://yujinz.github.io/sheet-folio/
 
-A browser-only demo of sheet-folio on the [`demo`](https://github.com/yujinz/sheet-folio/tree/demo) branch — the same UI, but all data is stored in `sessionStorage` and lost when you close the tab. Not meant for real use.
-
-```bash
-git checkout demo
-# Then follow the demo instructions on that branch
-```
-
-The demo can also be deployed to GitHub Pages — see the [workflow](.github/workflows/deploy-demo.yml) for details.
+WIP
 
 ## Data Export
 
@@ -265,6 +259,17 @@ New-NetFirewallRule -DisplayName "WSL Next.js 3000" -Direction Inbound -Protocol
 ```bash
 pnpm export-data
 ```
+
+### Demo
+
+A browser-only demo of sheet-folio on the [`demo`](https://github.com/yujinz/sheet-folio/tree/demo) branch - the same UI, but all data lives in the browser and is lost when you close the tab. Not meant for real use.
+
+```bash
+git checkout demo
+# Then follow the demo instructions on that branch
+```
+
+The demo is deployed to GitHub Pages — see the [workflow](.github/workflows/deploy-demo.yml) for details.
 
 ## Reference
 
