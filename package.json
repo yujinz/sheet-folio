@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
+    "build:demo": "NEXT_PUBLIC_DEMO_MODE=true next build",
     "start": "next start --hostname 0.0.0.0",
     "lint": "next lint",
     "test": "vitest run",
@@ -13,7 +14,8 @@
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push",
-    "export-data": "tsx scripts/export-data.ts"
+    "export-data": "tsx scripts/export-data.ts",
+    "check:demo-routes": "tsx scripts/check-demo-routes.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -29,6 +31,7 @@
     "drizzle-orm": "^0.45.1",
     "lucide-react": "^0.468.0",
     "next": "^16.1.6",
+    "dexie": "^4.4.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "zod": "^3.24.2"
