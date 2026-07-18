@@ -181,7 +181,7 @@ vi.mock("@/lib/useLocale", () => ({
       pitch: "音高",
       technique: "技巧",
       rhythm: "节拍",
-      addTag: "新增标签",
+      addTag: "添加标签",
       removeTag: "移除标签",
       tagColor: "标签颜色",
       deleteTag: "删除标签",
@@ -200,7 +200,7 @@ describe("TagPicker compact mode", () => {
     cleanup();
   });
 
-  it("opens the create tag dialog when '+ 新增标签' is selected from the dropdown", () => {
+  it("opens the create tag dialog when '+ 添加标签' is selected from the dropdown", () => {
     const tags = [
       { id: 1, name: "高音", nameAlt: "", color: "#2563eb", category: "pitch" as const },
       { id: 2, name: "低音", nameAlt: "", color: "#0891b2", category: "pitch" as const },
@@ -218,14 +218,14 @@ describe("TagPicker compact mode", () => {
     );
 
     // The select should exist
-    const select = screen.getByLabelText("新增标签") as HTMLSelectElement;
+    const select = screen.getByLabelText("添加标签") as HTMLSelectElement;
     expect(select).toBeInTheDocument();
 
     // Select the "__new__" option to trigger the create dialog
     fireEvent.change(select, { target: { value: "__new__" } });
 
-    // The create dialog should now be visible — "新增标签" appears as heading + button
-    expect(screen.getAllByText("新增标签").length).toBeGreaterThanOrEqual(2);
+    // The create dialog should now be visible — "添加标签" appears as heading + button
+    expect(screen.getAllByText("添加标签").length).toBeGreaterThanOrEqual(2);
     // The dialog should show input fields
     expect(screen.getByPlaceholderText("音高")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Pitch")).toBeInTheDocument();
