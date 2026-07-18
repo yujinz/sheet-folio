@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
@@ -53,6 +54,7 @@ export default function Directory() {
   const [titleSortDir, setTitleSortDir] = useState<"asc" | "desc">("asc");
   const [createdAtSortDir, setCreatedAtSortDir] = useState<"asc" | "desc">("desc");
   const { favoriteIds } = useFavorites();
+  const router = useRouter();
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
   const createTag = useCreateTag(setTags, (created) =>
     setDefaultColor((prev) => pickDefaultColor([...tags, created], prev)),
@@ -242,7 +244,7 @@ export default function Directory() {
       alert(`Error: no id returned. Response: ${JSON.stringify(row)}`);
       return;
     }
-    location.href = `/piece/${row.id}`;
+    router.push(`/piece/${row.id}`);
   }
 
   async function deleteTag(tag: Tag) {
