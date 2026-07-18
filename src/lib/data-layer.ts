@@ -10,8 +10,13 @@
  *  1. Add it to this interface
  *  2. Implement in src/lib/data.ts (main — Drizzle)
  *  3. Implement in src/lib/demo-store.ts (demo — Dexie)
- *  4. Add route handler in src/lib/demo-fetch.ts
- *  5. Run `pnpm check:demo-routes` and `pnpm build:demo`
+ *  4. Add route handler in src/lib/demo-fetch.ts (demo)
+ *  5. Run `pnpm check:demo-routes` (demo) and `pnpm build:demo` (demo)
+ *
+ * Note: On the main branch, some operations (create/update/delete pieces,
+ * tags, categories, etc.) are handled directly in API route handlers
+ * rather than in data.ts. The interface documents the full contract.
+ * On the demo branch, all operations live in demo-store.ts.
  */
 
 import type { CategoryEntry, ImageKind, Song, SongImage, Tag, VideoLink } from "@/lib/types";
