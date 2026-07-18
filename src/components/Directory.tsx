@@ -531,11 +531,21 @@ export default function Directory() {
             <Search className="absolute left-3 top-2.5 text-[var(--muted)]" size={16} />
             <input
               className="input"
-              style={{ paddingLeft: 36, fontSize: "14px" }}
+              style={{ paddingLeft: 36, paddingRight: query ? 32 : undefined, fontSize: "14px" }}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t.searchTitle}
             />
+            {query && (
+              <button
+                className="absolute right-2 top-2.5 text-[var(--muted)] hover:text-[var(--foreground)]"
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -565,14 +575,14 @@ export default function Directory() {
           })}
         </div>
         <div className="flex items-center gap-1 order-1 sm:order-last sm:ml-auto self-end sm:self-auto">
+          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${editingTags ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => setEditingTags((value) => !value)}>
+            <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
+          </button>
           <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(Object.values(filters).some((ids) => ids.length > 0) || difficultyFilter.value !== null) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
             setFilters(Object.fromEntries(Object.keys(filters).map((k) => [k, []])));
             difficultyFilter.reset();
           }}>
             <RotateCcw size={12} /> {t.resetFilters}
-          </button>
-          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${editingTags ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => setEditingTags((value) => !value)}>
-            <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
           </button>
         </div>
       </div>
