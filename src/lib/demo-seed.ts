@@ -13,6 +13,13 @@
 
 import type { CategoryEntry, Tag } from "@/lib/types";
 
+/**
+ * Base path for image URLs. On GitHub Pages (demo deploy) this is "/sheet-folio".
+ * Locally it's empty string. Using NEXT_PUBLIC_* ensures it's available at runtime
+ * in the browser (Next.js inlines public env vars).
+ */
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 export interface SeedPiece {
   id: number;
   title: string;
@@ -89,8 +96,9 @@ export const SEED_DATA: SeedData = {
   ],
   singleSelectCategories: [],
   images: [
-    { songId: 2, kind: "staff", url: "/uploads/2/staff/Screenshot_2026-07-17_222554.png", filename: "Screenshot_2026-07-17_222554.png" },
-    { songId: 2, kind: "staff", url: "/uploads/2/staff/Screenshot_2026-07-17_222623.png", filename: "Screenshot_2026-07-17_222623.png" },
-    { songId: 2, kind: "staff", url: "/uploads/2/staff/Screenshot_2026-07-17_222700.png", filename: "Screenshot_2026-07-17_222700.png" },
+    { songId: 1, kind: "staff", url: `${BASE}/uploads/1/staff/Screenshot%202026-07-16%20225039.png`, filename: "Screenshot 2026-07-16 225039.png" },
+    { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/Screenshot_2026-07-17_222554.png`, filename: "Screenshot_2026-07-17_222554.png" },
+    { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/Screenshot_2026-07-17_222623.png`, filename: "Screenshot_2026-07-17_222623.png" },
+    { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/Screenshot_2026-07-17_222700.png`, filename: "Screenshot_2026-07-17_222700.png" },
   ],
 };
