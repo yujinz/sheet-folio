@@ -57,6 +57,18 @@ function createDb() {
   const dataDir = path.dirname(dbPath);
   fs.mkdirSync(dataDir, { recursive: true });
 
+  // ── Demo mode guard ────────────────────────────────────────────────
+  //
+  // When NEXT_PUBLIC_DEMO_MODE=true (used by pnpm build:demo for the
+  // static-site demo), the app uses IndexedDB in the browser via Dexie.
+  // The server-side SQLite database should not be opened or migrated.
+  // Return a stub so the module compiles on both branches.
+  //
+  // ────────────────────────────────────────────────────────────────────
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+    return { db: undefined as unknown as ReturnType<typeof drizzle<typeof schema>>, sqlite: null as unknown as Database.Database };
+  }
+
   // ── Migration lock ──────────────────────────────────────────────────
   //
   // WHY THIS IS NEEDED:
@@ -98,6 +110,22 @@ function createDb() {
   const db = drizzle(sqlite, { schema });
 
   if (hasLock) {
+    // Auto-backup before migrating, so we can recover if something goes wrong
+    try {
+      const backupPath = path.join(dataDir, `sheet-folio.backup-${Date.now()}.db`);
+      sqlite.backup(backupPath);
+      // Keep only the 5 most recent backups
+      const backups = fs.readdirSync(dataDir)
+        .filter((f) => f.startsWith("sheet-folio.backup-") && f.endsWith(".db"))
+        .map((f) => ({ name: f, mtime: fs.statSync(path.join(dataDir, f)).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime);
+      for (const old of backups.slice(5)) {
+        fs.rmSync(path.join(dataDir, old.name), { force: true });
+      }
+    } catch {
+      // Backup is best-effort; don't block migration if it fails
+    }
+
     try {
       migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
     } finally {
