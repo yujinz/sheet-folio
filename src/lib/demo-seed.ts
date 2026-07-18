@@ -24,19 +24,30 @@ export interface SeedPiece {
   tagIds: number[];
 }
 
+export interface SeedImage {
+  songId: number;
+  kind: "staff" | "numbered";
+  url: string;
+  filename: string;
+}
+
 export interface SeedData {
   pieces: SeedPiece[];
   tags: Tag[];
   categories: CategoryEntry[];
   singleSelectCategories: string[];
+  images: SeedImage[];
 }
 
-export const SEED_PIECE_IDS: number[] = [1];
+export const SEED_PIECE_IDS: number[] = [1, 2];
 
 const SEED_TAGS: Tag[] = [
   // Pitch
   { id: 1, name: "高音", nameAlt: "High notes", color: "#2563eb", category: "pitch" },
   { id: 2, name: "低音", nameAlt: "Low notes", color: "#0891b2", category: "pitch" },
+  { id: 8, name: "C4", nameAlt: "C4", color: "#82c98c", category: "pitch" },
+  { id: 9, name: "G3", nameAlt: "G3", color: "#8ec982", category: "pitch" },
+  { id: 10, name: "D5", nameAlt: "D5", color: "#82c9c7", category: "pitch" },
   // Technique
   { id: 3, name: "连音", nameAlt: "Legato", color: "#ea580c", category: "technique" },
   { id: 4, name: "颤音", nameAlt: "Trill", color: "#dc2626", category: "technique" },
@@ -44,6 +55,7 @@ const SEED_TAGS: Tag[] = [
   // Rhythm
   { id: 6, name: "附点", nameAlt: "Dotted", color: "#c026d3", category: "rhythm" },
   { id: 7, name: "三连音", nameAlt: "Triplet", color: "#7c3aed", category: "rhythm" },
+  { id: 11, name: "十六分音符", nameAlt: "Sixteenth Note", color: "#9e6aba", category: "rhythm" },
 ];
 
 export const SEED_DATA: SeedData = {
@@ -55,8 +67,18 @@ export const SEED_DATA: SeedData = {
       difficulty: 1,
       notes: "",
       createdAt: "2026-06-26T22:40:00.000Z",
-      updatedAt: "2026-06-26T22:40:00.000Z",
-      tagIds: [1, 3], // High notes + Legato
+      updatedAt: "2026-07-18T02:32:59.549Z",
+      tagIds: [6, 8, 9], // Dotted + C4 + G3
+    },
+    {
+      id: 2,
+      title: "空之境界 M18",
+      titleAlt: "Garden of Sinners M18",
+      difficulty: 5,
+      notes: "",
+      createdAt: "2026-07-18T02:33:16.637Z",
+      updatedAt: "2026-07-18T02:45:26.097Z",
+      tagIds: [3, 6, 10, 11], // Legato + Dotted + D5 + Sixteenth Note
     },
   ],
   tags: SEED_TAGS,
@@ -66,4 +88,9 @@ export const SEED_DATA: SeedData = {
     { key: "technique", name: "技巧", nameAlt: "Technique", sortOrder: 2 },
   ],
   singleSelectCategories: [],
+  images: [
+    { songId: 2, kind: "staff", url: "/uploads/2/staff/Screenshot_2026-07-17_222554.png", filename: "Screenshot_2026-07-17_222554.png" },
+    { songId: 2, kind: "staff", url: "/uploads/2/staff/Screenshot_2026-07-17_222623.png", filename: "Screenshot_2026-07-17_222623.png" },
+    { songId: 2, kind: "staff", url: "/uploads/2/staff/Screenshot_2026-07-17_222700.png", filename: "Screenshot_2026-07-17_222700.png" },
+  ],
 };

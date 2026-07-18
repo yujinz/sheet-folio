@@ -119,6 +119,40 @@ export class DemoDb extends Dexie {
         seed.singleSelectCategories.map((c) => ({ category: c })),
       );
     }
+
+    // Seed images by fetching from public URLs and converting to data URLs
+    if (seed.images && seed.images.length > 0) {
+      const imageRows: SongImage[] = [];
+      for (let i = 0; i < seed.images.length; i++) {
+        const img = seed.images[i];
+        try {
+          const response = await fetch(img.url);
+          const blob = await response.blob();
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+          });
+          imageRows.push({
+            id: i + 1,
+            songId: img.songId,
+            kind: img.kind,
+            url: dataUrl,
+            filename: img.filename,
+            sortOrder: i + 1,
+            sourceUrl: null,
+            createdAt: new Date().toISOString(),
+          });
+        } catch {
+          // Skip images that fail to load
+          console.warn(`Failed to seed image: ${img.url}`);
+        }
+      }
+      if (imageRows.length > 0) {
+        await this.images.bulkAdd(imageRows);
+      }
+    }
   }
 }
 
