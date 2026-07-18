@@ -318,7 +318,13 @@ pnpm install
 pnpm build:demo
 ```
 
-Open `out/index.html` in your browser. (WIP) A starter piece ("Ode to Joy") + 7 preset tags are auto-loaded on first visit.
+Open `out/index.html` in your browser, or serve it locally:
+
+```bash
+npx serve out # then open http://localhost:3000
+```
+
+Two starter pieces and a couple preset tags are auto-loaded on first visit.
 
 #### Adding features on `main`: remember to sync `demo`
 
