@@ -3,51 +3,92 @@
 A sheet music manager with a web UI accessible from both PC and mobile device. Built exclusively for **image-based sheet music (JPEG/PNG)**. Does not support PDFs or XMLs.
 
 
-The interface is available in Chinese (zh-CN) and English (en-US), but the data model supports arbitrary languages via primary and alternate name fields. Designed for easy extension beyond the two currently implemented UI languages.
+## Why Sheet Folio?
 
-App features:
-- Create, edit, and delete pieces
-- Browse, search, filter, and sort a directory of pieces
-- Upload, delete, and reorder sheet images
-- Scroll and page-flip sheet views
-- Color-coded difficulty/technique/pitch/rhythm tags with support for adding custom tag categories (pitch tags get rainbow colors by octave, sorted low→high)
-- Per-device zoom persistence and favorite pieces
-- Sheet source link and video links
-- Responsive UI polished across PC, iPad, and phone (frozen table headers, adaptive layouts, and touch-friendly interactions)
-- Automated backup with SHA dedup, pruning, and Cloudflare R2 sync (fully logged)
-- TODO: import and export zipped data
+As a casual music lover, most of my sheet music isn't neatly formatted PDFs. Instead, they are screenshots from social media, photos taken during practice, or images saved from forums. Eventually, these sheets end up **scattered all over my photo gallery**, mixed with daily photos.
 
+Existing music managers are built around PDFs. They force you to convert your photos into a PDF file just to import them. Once converted, adding a new photo or changing the image order becomes a chore.
+
+I built this app to treat images as first-class citizens. You can throw your image sheets in here and have a clean, dedicated space to navigate and practice.
+
+
+## Features
+
+### Reading & Practice
+- **Cross-Device Access:** Responsive UI polished across PC, iPad, and phone. Data syncs between devices for the self-hosting version.
+
+<ul>
 <details>
 <summary><b>Note:</b> Self-hosted version is HTTP-only, LAN-only</summary>
 
-The self-hosted version (Docker/pnpm) is designed for local LAN use over plain HTTP - no HTTPS, no authentication, no WAN exposure. If you want to deploy it on the open web, fork the repo and add your own auth/reverse-proxy layer. A few things to be aware of if you go that route:
-
-- `crypto.randomUUID()` requires a secure context (HTTPS). The `Math.random`-based fallback in `generateId()` exists so LAN testing over plain HTTP works. If you add HTTPS, you can drop the fallback.
-- No CSRF protection, no rate limiting, no session management. Remember to add them.
-
-(The [demo branch](https://github.com/yujinz/sheet-folio/tree/demo) is a different beast — it's a self-contained static site where all data lives in the browser. None of the above applies.)
-
+ - The self-hosted version (Docker/pnpm) is designed for local LAN use over plain HTTP. No HTTPS, no authentication, no WAN exposure. If you want to deploy it on the open web, fork the repo and add your own auth/reverse-proxy layer.
 </details>
+</ul>
+
+- **Image Stacking:** Group multiple images into a single piece for continuous scrolling or page-flipping views.
+- **Reading Enhancements:** Per-device zoom persistence and favorite pieces.
+
+### Library Management
+- **Directory Management:** Create, edit, and delete pieces. Browse, search, filter, and sort your collection.
+- **Tagging & Filtering:** Assign color-coded tags to your pieces and use them to filter the main directory. Pitch tags receive rainbow colors by octave, sorted low→high. Supports adding custom tag categories.
+- **Notes and External Links:** Write practice notes and attach links for videos or sheet sources to your pieces.
+
+### ⚙️ Technical Highlights
+
+- **Two-Step Data Preservation Workflow:** Built-in scripts to keep your data secure and portable:
+  1. **Data Export:** Export your collection into human-readable JSON metadata alongside your image files (see [SCHEMA.md](SCHEMA.md)). It also automatically strips all EXIF metadata from images to protect your privacy.
+  2. **Backup & Cloud Sync:** Compress Docker volumes and the exported data into `.tar.gz` archives. Utilize SHA deduplication to reduce storage footprint, with native support for pruning old files and syncing to Cloudflare R2
+- **Comprehensive Logging:** Milestones and error traces of the export and backup process are logged. Making it easy to manage with cron and monitor.
+- **Easy Self-Hosting:** Designed for straightforward deployment on your home network. The backend is intentionally HTTP-only and LAN-only to keep setup simple. For a zero-server alternative, a static Demo mode runs the complete application entirely through your browser's IndexedDB.
+
+### Language & Localization
+
+* **UI**
+  * **Built-in Languages:** Natively supports English (`en-US`) and 简体中文 (`zh-CN`).
+  * **Easy Extension:** Extend beyond the two currently implemented languages by writing your own i18n JSON.
+
+* **User Data**
+  * **No Language Limits:** Song titles, tags, and descriptions support arbitrary languages.
+  * **Alternative Bilingual Fields:** You can manage your library in a single language, or use the optional alternate name fields to display titles and tags in two languages .
 
 
-## Why Sheet Folio?
 
-As a casual music lover, most of my sheet music isn't neatly formatted PDFs. Instead, they are screenshots from social media, quick photos taken during practice, or images saved from forums. 
-
-Eventually, these scores end up **scattered all over my photo gallery**, mixed with daily photos and memes. Existing sheet music managers are traditionally architected around the PDF format. When you import photos, they force a conversion into a rigid PDF file. 
-
-I built this app to treat images as first-class citizens. You can throw your image scores in here, stack multiple photos into a single song, and have a clean, dedicated space to navigate scores and practice on your tablets.
 
 ## Quick Start
 
-### Option 1: Self Hosting with Docker
+### Option 1: Static Site Demo
+Deployed at https://yujinz.github.io/sheet-folio/
+
+Offers the exact same UI/UX but utilizes the browser's IndexedDB to replace the backend database.
+
+**Pros**: 
+- Zero setup. Instantly test the UI and features directly in your browser. 
+- Accessible from WAN.
+
+(Note: If you encounter errors after loading a newly deployed version, clear your browser cache and IndexedDB).
+
+**Cons** (⚠️Why it's not recommended for real use):
+
+- Browsers may automatically clear your data after 7 days of inactivity.
+
+- **Safari/iOS Auto-Deletion:** Safari automatically wipes local browser storage after 7 days of inactivity. To prevent data loss on Apple devices, you could use the "Add to Home Screen" feature to request persistent storage.
+
+- Maximum storage size limits depend heavily on your specific browser.
+
+- Data is sandboxed and does not sync between your devices.
+
+(Roadmap: Add import/export zip interface on the app).
+
+
+
+### Option 2: Self-Hosting (Recommended)
 
 ```bash
 git clone https://github.com/yujinz/sheet-folio.git
 cd sheet-folio
 docker compose up -d
 
-# To rebuild after code changes: 
+# To rebuild after pulling code changes: 
 docker compose up -d --build
 ```
 
@@ -81,10 +122,7 @@ If you later add containers that need to talk to each other (e.g., a database), 
 
 </details>
 
-### Option 2: Static Site Demo
-Deployed at https://yujinz.github.io/sheet-folio/
 
-WIP: static site with same uiux but uses browser indexeddb to replace backend db. not recommened for real use because: 1. browser could clear the data after 7 days 2. max db size limit depend on browser 3. data does not sync between ur devices. Note: if error after loading newly deployed version, clear cache indexeddb
 
 ## Data Export
 
@@ -145,7 +183,7 @@ tail -n 10 $HOME/logs/sheet-folio-backup.log
 
 **Setup for Cloudflare R2:**
 
-> **Note:**  R2 is chosen over other S3-compatible providers for its free tier - 10 GB of storage and 1 million writes per month, with zero egress fees (as of July 2026). For a backup archive that's a few hundred MB and updated daily, this keeps the cost at $0.
+R2 is chosen over other S3-compatible providers for its free tier: 10 GB of storage and 1 million writes per month, with zero egress fees (as of July 2026). For a backup archive that's a few hundred MB and updated daily, this keeps the cost at $0.
 
 1. Create a bucket in the [R2 dashboard](https://dash.cloudflare.com/) → R2 → Create Bucket (e.g. `sheet-folio-backup`)
 2. Get R2 credentials from **Manage R2 API Tokens** → Create API Token (Object Read & Write)
@@ -276,7 +314,7 @@ pnpm build:demo
 Open `out/index.html` in your browser, or serve it locally:
 
 ```bash
-npx serve out # http://localhost:3000
+npx serve out -p 3456 # http://localhost:3456
 ```
 
 Two starter pieces and a couple preset tags are auto-loaded on first visit.
@@ -286,9 +324,13 @@ Two starter pieces and a couple preset tags are auto-loaded on first visit.
 
 After pulling demo changes that modify the database schema (new tables, new columns, etc.), you may need to clear the IndexedDB database for the new schema to take effect. Old data stored under a previous schema version can cause errors.
 
-Open **DevTools** → **Application** → **Storage** → **IndexedDB** → right-click `sheet-folio-demo` → **Delete**, then refresh the page. The seed data will be re-created on next visit.
+| Browser | Steps |
+|---|---|
+| Chrome / Edge | **DevTools** → **Application** → **Storage** → **IndexedDB** → right-click `sheet-folio-demo` → **Delete**, then refresh |
+| Firefox | **DevTools** → **Storage** → **IndexedDB** → right-click `sheet-folio-demo` → **Delete All**, then refresh |
+| Safari | **Developer** → **Show Web Inspector** → **Storage** → **IndexedDB** → select `sheet-folio-demo` → **Clear**, then refresh |
 
-Alternatively, clear all site data for the demo domain at once: DevTools → **Application** → **Storage** → **Clear site data**.
+Alternatively, clear all site data for the demo domain at once: DevTools → **Application** → **Storage** → **Clear site data** (Chrome/Edge), or the equivalent **Clear storage** in other browsers.
 
 </details>
 
@@ -324,12 +366,12 @@ You're on `main` and you add a new backend feature. What about `demo`?
 
 
 
-## Reference
+### Reference
 
 <details>
 <summary>Environment Variables, Database Migrations, Health Check</summary>
 
-### Environment Variables
+#### Environment Variables
 
 | Variable      | Default                        | Description                  |
 |---------------|--------------------------------|------------------------------|
@@ -345,7 +387,7 @@ Docker Compose overrides `PORT` to `8888` — the app is accessible at `http://l
 
 </details>
 
-### Database Migrations
+#### Database Migrations
 
 Migrations run automatically on container startup. To generate new migrations during development:
 
@@ -359,7 +401,7 @@ To manually apply migrations:
 pnpm db:migrate
 ```
 
-### Health Check
+#### Health Check
 
 The app exposes `/api/health` for container health checks. Docker Compose and orchestrators will monitor this endpoint.
 
