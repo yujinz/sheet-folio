@@ -15,6 +15,7 @@ App features:
 - Sheet source link and video links
 - Responsive UI polished across PC, iPad, and phone (frozen table headers, adaptive layouts, and touch-friendly interactions)
 - Automated backup with SHA dedup, pruning, and Cloudflare R2 sync (fully logged)
+- TODO: import and export zipped data
 
 <details>
 <summary><b>Note:</b> Self-hosted version is HTTP-only, LAN-only</summary>
@@ -83,7 +84,7 @@ If you later add containers that need to talk to each other (e.g., a database), 
 ### Option 2: Static Site Demo
 Deployed at https://yujinz.github.io/sheet-folio/
 
-WIP
+WIP: static site with same uiux but uses browser indexeddb to replace backend db. not recommened for real use because: 1. browser could clear the data after 7 days 2. max db size limit depend on browser 3. data does not sync between ur devices. Note: if error after loading newly deployed version, clear cache indexeddb
 
 ## Data Export
 
@@ -275,10 +276,21 @@ pnpm build:demo
 Open `out/index.html` in your browser, or serve it locally:
 
 ```bash
-npx serve out # then open http://localhost:3000
+npx serve out # http://localhost:3000
 ```
 
 Two starter pieces and a couple preset tags are auto-loaded on first visit.
+
+<details>
+<summary><b>Note:</b> Clearing IndexedDB after updating</summary>
+
+After pulling demo changes that modify the database schema (new tables, new columns, etc.), you may need to clear the IndexedDB database for the new schema to take effect. Old data stored under a previous schema version can cause errors.
+
+Open **DevTools** → **Application** → **Storage** → **IndexedDB** → right-click `sheet-folio-demo` → **Delete**, then refresh the page. The seed data will be re-created on next visit.
+
+Alternatively, clear all site data for the demo domain at once: DevTools → **Application** → **Storage** → **Clear site data**.
+
+</details>
 
 #### Adding features on `main`: remember to sync `demo`
 
