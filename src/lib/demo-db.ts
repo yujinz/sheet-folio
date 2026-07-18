@@ -127,6 +127,10 @@ export class DemoDb extends Dexie {
         const img = seed.images[i];
         try {
           const response = await fetch(img.url);
+          if (!response.ok) {
+            console.warn(`Failed to seed image: ${img.url} (HTTP ${response.status})`);
+            continue;
+          }
           const blob = await response.blob();
           const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
