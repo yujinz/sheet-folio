@@ -201,6 +201,12 @@ body {
   background: var(--panel);
 }
 
+.filter-section {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
 .song-table {
   width: 100%;
   min-width: 770px;
