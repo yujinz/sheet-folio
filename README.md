@@ -262,14 +262,49 @@ pnpm export-data
 
 ### Demo
 
-A browser-only demo of sheet-folio on the [`demo`](https://github.com/yujinz/sheet-folio/tree/demo) branch - the same UI, but all data lives in the browser and is lost when you close the tab. Not meant for real use.
+A browser-only demo of sheet-folio on the [`demo`](https://github.com/yujinz/sheet-folio/tree/demo) branch — the same UI/UX, but all data lives in the browser. Uses client-side **IndexedDB** (via Dexie.js) instead of server-side database in the main branch. Data still persists after tab/browser close.
+
+Deployed to GitHub Pages — see the [workflow](.github/workflows/deploy-demo.yml).
 
 ```bash
 git checkout demo
-# Then follow the demo instructions on that branch
+pnpm install
+pnpm build:demo
 ```
 
-The demo is deployed to GitHub Pages — see the [workflow](.github/workflows/deploy-demo.yml) for details.
+Open `out/index.html` in your browser. (WIP) A starter piece ("Ode to Joy") + 7 preset tags are auto-loaded on first visit.
+
+#### Adding features on `main`: remember to sync `demo`
+
+**UI-only changes** (components, styles, i18n) — no sync needed. Just merge:
+
+```bash
+git checkout demo
+git merge main
+```
+
+
+ - UI files (`src/components/*`, `src/lib/types.ts`, `src/app/**/*.tsx`, `src/lib/i18n*`) merge cleanly
+ - Files only exist on `demo` (`src/lib/demo-*` and `DemoInit.tsx`) are ignored during the merge from `main`
+ - `src/db/*` and server-side `src/app/api/*` only meaningfully exist on `main` (demo replaces them with the fetch interceptor)
+ - `src/lib/data-layer.ts` and `package.json` may have merge conflicts that need resolving.
+
+
+**Backend/data layer changes** (new API routes, data operations, schema):
+
+You're on `main` and you add a new backend feature. What about `demo`?
+
+1. Add the new operation to the shared `DataLayer` interface (`src/lib/data-layer.ts`) in `main`. This file is a contract between `main` and `demo`.
+   >  Note: If you forget this step, there's nothing to catch — main doesn't enforce it. But if you do update the interface and forget to implement the demo side as in step 5-6, `pnpm build:demo` will fail — that's the safety net.
+2. Build passes. Commit on `main`.
+3. Switch to `demo`, `git merge main`. The `DataLayer` interface changes come with the merge.
+4. Implement the new `DataLayer` methods in `src/lib/demo-store.ts`
+5. Add route handlers in `src/lib/demo-fetch.ts`
+6. Mirror schema changes in `src/lib/demo-db.ts`
+7. Run `pnpm check:demo-routes` + `pnpm build:demo` to verify
+   > Note:  Update `scripts/check-demo-routes.ts` if route patterns changed
+
+
 
 ## Reference
 
