@@ -36,11 +36,16 @@ function groupTags(tags: Tag[]): Record<string, Tag[]> {
  * subsequent calls.
  */
 let seeded = false;
+let seeding: Promise<void> | null = null;
 async function ensureSeeded(): Promise<void> {
   if (seeded) return;
-  await demoDb.open();
-  await demoDb.initializeSeed();
-  seeded = true;
+  if (seeding) return seeding;
+  seeding = (async () => {
+    await demoDb.open();
+    await demoDb.initializeSeed();
+    seeded = true;
+  })();
+  return seeding;
 }
 
 // ─── Pieces ────────────────────────────────────────────────────────────────

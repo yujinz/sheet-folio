@@ -147,3 +147,7 @@ vite.config.ts.timestamp-*
 # Data export output
 export-data/
 *.png
+
+# Allow demo seed images
+!/public/uploads/1/staff/*.png
+!/public/uploads/2/staff/*.png

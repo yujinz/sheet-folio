@@ -120,42 +120,22 @@ export class DemoDb extends Dexie {
       );
     }
 
-    // Seed images by fetching from public URLs and converting to data URLs
+    // Seed images — store the URL directly (no data URL conversion).
+    // The <img> tag loads the file from the server. Works in both local
+    // dev and deployed (GitHub Pages) since NEXT_PUBLIC_BASE_PATH is inlined.
     if (seed.images && seed.images.length > 0) {
-      const imageRows: SongImage[] = [];
-      for (let i = 0; i < seed.images.length; i++) {
-        const img = seed.images[i];
-        try {
-          const response = await fetch(img.url);
-          if (!response.ok) {
-            console.warn(`Failed to seed image: ${img.url} (HTTP ${response.status})`);
-            continue;
-          }
-          const blob = await response.blob();
-          const dataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(blob);
-          });
-          imageRows.push({
-            id: i + 1,
-            songId: img.songId,
-            kind: img.kind,
-            url: dataUrl,
-            filename: img.filename,
-            sortOrder: i + 1,
-            sourceUrl: null,
-            createdAt: new Date().toISOString(),
-          });
-        } catch {
-          // Skip images that fail to load
-          console.warn(`Failed to seed image: ${img.url}`);
-        }
-      }
-      if (imageRows.length > 0) {
-        await this.images.bulkAdd(imageRows);
-      }
+      await this.images.bulkAdd(
+        seed.images.map((img, i) => ({
+          id: i + 1,
+          songId: img.songId,
+          kind: img.kind,
+          url: img.url,
+          filename: img.filename,
+          sortOrder: i + 1,
+          sourceUrl: null,
+          createdAt: new Date().toISOString(),
+        })),
+      );
     }
   }
 }
