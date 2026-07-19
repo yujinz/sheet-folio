@@ -5,8 +5,9 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
+    "dev:demo": "NEXT_PUBLIC_DEMO_MODE=true next dev -H 0.0.0.0",
     "build": "next build",
-    "build:demo": "NEXT_PUBLIC_DEMO_MODE=true next build",
+    "build:demo": "node scripts/build-demo.mjs",
     "start": "next start --hostname 0.0.0.0",
     "lint": "next lint",
     "test": "vitest run",

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import DemoInit from "@/demo/init";
 
 export const metadata: Metadata = {
   title: "乐谱管理器",
@@ -24,7 +25,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
       </head>
-      <body>{children}</body>
+      <body>
+        {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && <DemoInit />}
+        {children}
+      </body>
     </html>
   );
 }

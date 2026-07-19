@@ -301,20 +301,25 @@ pnpm export-data
 
 ### Demo
 
-A browser-only demo of sheet-folio on the [`demo`](https://github.com/yujinz/sheet-folio/tree/demo) branch — the same UI/UX, but all data lives in the browser. Uses client-side **IndexedDB** (via Dexie.js) instead of server-side database in the main branch. Data still persists after tab/browser close.
+A browser-only demo of sheet-folio — the same UI/UX, but all data lives in the browser. Uses client-side **IndexedDB** (via Dexie.js) instead of server-side SQLite database. Data persists after tab/browser close.
+
+The demo data layer lives on **`main`** alongside the server code, under `src/demo/`:
+- `src/demo/store.ts` — IndexedDB data operations (mirrors `src/lib/data.ts`)
+- `src/demo/fetch.ts` — fetch interceptor that routes `/api/*` to the demo store
+- `src/demo/db.ts` — Dexie schema (mirrors `src/db/schema.ts`)
+- `src/demo/seed.ts` — initial seed data
+- `src/demo/init.tsx` — client-side initializer
 
 Deployed to GitHub Pages — see the [workflow](.github/workflows/deploy-demo.yml).
 
 ```bash
-git checkout demo
-pnpm install
+# Run demo mode locally (no SQLite, no Docker):
+pnpm dev:demo
+
+# Build static export (for GitHub Pages deployment):
+NEXT_PUBLIC_BASE_PATH="/sheet-folio" pnpm build:demo   # or without BASE_PATH for local preview
 pnpm build:demo
-```
-
-Open `out/index.html` in your browser, or serve it locally:
-
-```bash
-npx serve out -p 3456 # http://localhost:3456
+npx serve out -p 3456   # http://localhost:3456
 ```
 
 Two starter pieces and a couple preset tags are auto-loaded on first visit.
@@ -334,35 +339,28 @@ Alternatively, clear all site data for the demo domain at once: DevTools → **A
 
 </details>
 
-#### Adding features on `main`: remember to sync `demo`
+#### Adding features: remember to sync the demo layer
 
-**UI-only changes** (components, styles, i18n) — no sync needed. Just merge:
+Both data layers now live on **`main`**. When you change the server-side data layer, update the demo layer in the **same PR**.
 
-```bash
-git checkout demo
-git merge main
-```
-
-
- - UI files (`src/components/*`, `src/lib/types.ts`, `src/app/**/*.tsx`, `src/lib/i18n*`) merge cleanly
- - Files only exist on `demo` (`src/lib/demo-*` and `DemoInit.tsx`) are ignored during the merge from `main`
- - `src/db/*` and server-side `src/app/api/*` only meaningfully exist on `main` (demo replaces them with the fetch interceptor)
- - `src/lib/data-layer.ts` and `package.json` may have merge conflicts that need resolving.
-
+**UI-only changes** (components, styles, i18n) — no sync needed. Both layers share the same UI code.
 
 **Backend/data layer changes** (new API routes, data operations, schema):
 
-You're on `main` and you add a new backend feature. What about `demo`?
+1. Implement the server side in `src/lib/data.ts` and `src/app/api/**`.
+2. Implement the demo side in `src/demo/store.ts`.
+3. Add route handlers in `src/demo/fetch.ts`.
+4. Mirror schema changes in `src/demo/db.ts` (Dexie).
+5. Run `pnpm check:demo-routes` + `pnpm build:demo` to verify.
 
-1. Add the new operation to the shared `DataLayer` interface (`src/lib/data-layer.ts`) in `main`. This file is a contract between `main` and `demo`.
-   >  Note: If you forget this step, there's nothing to catch — main doesn't enforce it. But if you do update the interface and forget to implement the demo side as in step 5-6, `pnpm build:demo` will fail — that's the safety net.
-2. Build passes. Commit on `main`.
-3. Switch to `demo`, `git merge main`. The `DataLayer` interface changes come with the merge.
-4. Implement the new `DataLayer` methods in `src/lib/demo-store.ts`
-5. Add route handlers in `src/lib/demo-fetch.ts`
-6. Mirror schema changes in `src/lib/demo-db.ts`
-7. Run `pnpm check:demo-routes` + `pnpm build:demo` to verify
-   > Note:  Update `scripts/check-demo-routes.ts` if route patterns changed
+| Server file | Demo file | What to sync |
+|---|---|---|
+| `src/lib/data.ts` | `src/demo/store.ts` | Every data operation |
+| `src/app/api/**/route.ts` | `src/demo/fetch.ts` ROUTES | Every API route |
+| `src/db/schema.ts` | `src/demo/db.ts` | Table/column changes |
+| `src/lib/seed.ts` | `src/demo/seed.ts` | Seed data |
+
+> **Safety net**: If you implement the server side but forget the demo side, `pnpm build:demo` will fail at compile time (missing functions), and the route checker (`pnpm check:demo-routes`) catches missing handlers.
 
 
 
