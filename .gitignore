@@ -125,8 +125,20 @@ dist
 # TernJS port file
 .tern-port
 
-# Stores VSCode versions used for testing VSCode extensions
+# VS Code
+.vscode/
 .vscode-test
+
+# Playwright test output
+test-results/
+
+# Root-level screenshots
+Screenshot*
+
+# Windows NTFS zone identifier artifacts
+*.png:Zone.Identifier
+*.jpg:Zone.Identifier
+*.jpeg:Zone.Identifier
 
 # pnpm
 .pnpm-store
