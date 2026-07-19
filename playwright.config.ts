@@ -11,13 +11,13 @@ export default defineConfig({
     ["list"],
   ],
   use: {
-    baseURL: "http://localhost:3001",
+    baseURL: "http://localhost:3002",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "NEXT_PUBLIC_DEMO_MODE=true next dev -p 3001",
-    port: 3001,
+    command: "NEXT_PUBLIC_DEMO_MODE=true next dev -p 3002",
+    port: 3002,
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
   },

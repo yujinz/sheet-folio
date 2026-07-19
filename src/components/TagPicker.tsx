@@ -233,7 +233,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
   // ── Dialog fragments (shared between compact & normal layouts) ──
   const editDialog = editingTags && editTag && onUpdate && (
     <div ref={editDialogRef} className="fixed inset-0 z-[999] flex items-center justify-center bg-black/30" onClick={() => setEditTag(null)}>
-      <div className="mx-4 w-full max-w-xs rounded-lg bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+      <div data-testid="edit-dialog" className="mx-4 w-full max-w-xs rounded-lg bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-3 text-sm font-semibold">{t.editTags}</div>
         <div className="grid gap-2">
           <input ref={editNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={editName} onChange={(e) => { setEditName(e.target.value); editAutoFillSourceRef.current = "name"; }} onFocus={() => setActiveEditInput("name")} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
@@ -303,7 +303,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
 
   const createDialog = showCreateDialog && (
     <div ref={createDialogRef} className="fixed inset-0 z-[999] flex items-center justify-center bg-black/30" onClick={() => setShowCreateDialog(false)}>
-      <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+      <div data-testid="create-dialog" className="mx-4 w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-4 text-sm font-semibold">{t.addTag}</div>
         <div className="grid gap-3">
           <input ref={createNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={createName} onChange={(e) => { setCreateName(e.target.value); autoFillSourceRef.current = "name"; }} onFocus={() => setActiveCreateInput("name")} onKeyDown={(e) => { if (e.key === "Enter") { if (createNameAltInputRef.current && !createNameAlt.trim()) { createNameAltInputRef.current.focus(); e.preventDefault(); } else { handleCreateFromDialog(); } } if (e.key === "Escape") setShowCreateDialog(false); }} />
