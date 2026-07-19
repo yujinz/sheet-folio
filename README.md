@@ -299,6 +299,21 @@ New-NetFirewallRule -DisplayName "WSL Next.js 3000" -Direction Inbound -Protocol
 pnpm export-data
 ```
 
+### Testing
+
+```bash
+# Unit tests (Vitest):
+pnpm test
+
+# E2e tests (Playwright) against demo mode:
+pnpm test:e2e          # headless
+pnpm test:e2e:ui       # interactive Playwright UI
+```
+
+E2e tests run against the demo mode dev server (port 3001). They seed their own
+IndexedDB data and reset between test files, so no setup is needed beyond running
+the command.
+
 ### Demo
 
 A browser-only demo of sheet-folio — the same UI/UX, but all data lives in the browser. Uses client-side **IndexedDB** (via Dexie.js) instead of server-side SQLite database. Data persists after tab/browser close.
@@ -309,6 +324,8 @@ The demo data layer lives on **`main`** alongside the server code, under `src/de
 - `src/demo/db.ts` — Dexie schema (mirrors `src/db/schema.ts`)
 - `src/demo/seed.ts` — initial seed data
 - `src/demo/init.tsx` — client-side initializer
+
+The demo mode also serves as the test environment for **Playwright e2e tests** — no SQLite dependency required.
 
 Deployed to GitHub Pages — see the [workflow](.github/workflows/deploy-demo.yml).
 
