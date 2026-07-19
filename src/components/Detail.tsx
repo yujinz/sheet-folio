@@ -173,11 +173,19 @@ export default function Detail({ songId }: { songId: number }) {
   const images = useMemo(() => piece?.images?.[tab] ?? [], [piece, tab]);
 
   // Auto-scroll to images section if there are images (only on initial load).
-  // Waits for both piece data and tab to settle (tab may be auto-switched from
-  // "staff" to "numbered" by the sibling effect), then scrolls the images
-  // section into view within the <main> scroll container.
+  // Also auto-switches to the correct tab ("staff" vs "numbered") so scrolling
+  // only happens after the tab is settled — no flash of the wrong tab content.
   useEffect(() => {
     if (!piece || hasScrolledToImages.current) return;
+
+    // Auto-switch tab if current one is empty but the other has images
+    if (!piece.images) return;
+    const other: ImageKind = tab === "staff" ? "numbered" : "staff";
+    if ((piece.images[tab]?.length ?? 0) === 0 && (piece.images[other]?.length ?? 0) > 0) {
+      setTab(other);
+      return; // don't scroll yet — wait for the next render with the correct tab
+    }
+
     const hasImages = Object.values(piece.images ?? {}).some((arr) => arr.length > 0);
     if (hasImages) {
       hasScrolledToImages.current = true;
@@ -185,10 +193,11 @@ export default function Detail({ songId }: { songId: number }) {
     }
   }, [piece, tab]);
 
-  // Auto-switch tab if current one is empty but the other has images.
-  // Only runs when piece data changes (initial load / after upload), not on manual tab switch.
+  // Auto-switch tab after uploads / piece data changes (not during initial load).
+  // Initial-load tab switching is handled above; the guard on hasScrolledToImages
+  // prevents double-toggling since by then the tab is already correct.
   useEffect(() => {
-    if (!piece?.images) return;
+    if (!piece?.images || hasScrolledToImages.current) return;
     const other: ImageKind = tab === "staff" ? "numbered" : "staff";
     if ((piece.images[tab]?.length ?? 0) === 0 && (piece.images[other]?.length ?? 0) > 0) {
       setTab(other);
@@ -467,15 +476,15 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
     <div className="fullscreen-view">
       <div className="absolute right-3 top-3 z-40 flex gap-2">
         {(["staff", "numbered"] as ImageKind[]).map((kind) => (
-          <button key={kind} className={`select-none rounded-md bg-white/20 px-2.5 py-1.5 text-sm text-white backdrop-blur-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-colors ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/40"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}>{t[kind]}</button>
+          <button key={kind} className={`select-none rounded-md bg-black/10 px-2 py-1 text-sm text-white backdrop-blur-sm transition-colors ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/20"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}><span className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">{t[kind]}</span></button>
         ))}
       </div>
       <div className="absolute left-3 top-3 z-40 flex gap-2 select-none">
-        <button className="rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:bg-white/40 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
-          <XIcon size={24} />
+        <button className="rounded-md bg-black/10 px-2 py-1.5 text-white backdrop-blur-sm hover:bg-white/20 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
+          <XIcon size={24} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
         </button>
         <button
-          className="rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:bg-white/40 transition-colors"
+          className="rounded-md bg-black/10 px-2 py-1.5 text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
           aria-label={t.saveImage}
           onClick={() => {
             const a = document.createElement("a");
@@ -486,17 +495,17 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
             document.body.removeChild(a);
           }}
         >
-          <Download size={24} />
+          <Download size={24} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
         </button>
       </div>
       <button className="absolute inset-y-0 left-0 w-1/3 z-30 select-none" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
-        <div className="flex h-full items-center justify-start pl-2 opacity-30 hover:opacity-70 transition-opacity drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-          <ChevronLeft size={40} />
+        <div className="flex h-full items-center justify-start pl-2 opacity-40 hover:opacity-80 transition-opacity">
+          <ChevronLeft size={40} className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
         </div>
       </button>
       <button className="absolute inset-y-0 right-0 w-1/3 z-30 select-none" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
-        <div className="flex h-full items-center justify-end pr-2 opacity-30 hover:opacity-70 transition-opacity drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-          <ChevronRight size={40} />
+        <div className="flex h-full items-center justify-end pr-2 opacity-40 hover:opacity-80 transition-opacity">
+          <ChevronRight size={40} className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
         </div>
       </button>
       {/* Image at z-20 above background, below nav buttons at z-30.
@@ -513,17 +522,17 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
           href={image.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 max-w-[80vw] truncate rounded-md bg-black/50 px-3 py-1 text-xs text-white backdrop-blur-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:bg-black/70"
+          className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 max-w-[80vw] truncate rounded-md bg-black/30 px-3 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/50 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
         >
           {t.source}: {image.sourceUrl}
         </a>
       )}
       <Link
         href="/"
-        className="absolute bottom-3 right-3 z-40 flex items-center justify-center rounded-md bg-white/20 px-2.5 py-1.5 text-white backdrop-blur-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:bg-white/40 transition-colors"
+        className="absolute bottom-3 right-3 z-40 flex items-center justify-center rounded-md bg-black/10 px-2 py-1.5 text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
         aria-label={t.backToDirectory}
       >
-        <House size={24} />
+        <House size={24} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
       </Link>
     </div>
   );
