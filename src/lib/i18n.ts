@@ -63,8 +63,9 @@ export const messages = {
     titleRequired: "中文和英文曲名不能同时为空",
     tagExists: "该分类下已存在同名标签",
     other: "其他",
-    resetFilters: "重置筛选"
-  },
+    resetFilters: "重置筛选",
+    formatEnharmonic: "等音显示",
+    assignPitchColor: "按音高配色",  },
   "en-US": {
     appTitle: "Sheet Folio",
     searchTitle: "Search titles",
@@ -122,7 +123,9 @@ export const messages = {
     titleRequired: "Both Chinese and English titles cannot be empty",
     tagExists: "A tag with this name already exists in this category",
     resetFilters: "Reset filters",
-    other: "Other"
+    other: "Other",
+    formatEnharmonic: "Format enharmonic",
+    assignPitchColor: "Assign color by pitch",
   }
 } as const;
 

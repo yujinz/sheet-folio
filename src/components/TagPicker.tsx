@@ -2,10 +2,11 @@
 
 import { Music, Palette, Pencil, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocale } from "@/lib/useLocale";
 import { type Locale, messages } from "@/lib/i18n";
 import { getLocalizedField } from "@/lib/i18n-utils";
-import { PITCH_RE, pitchSortKey, pitchColorFromName } from "@/lib/pitch-utils";
+import { PITCH_RE, pitchOctaveInfo, pitchSortKey, pitchColorFromName, getEnharmonicEquivalent, normalizeAccidentals } from "@/lib/pitch-utils";
 import { TAG_COLORS, nextTagColor, pickDefaultColor } from "@/lib/color-utils";
 import type { Tag, TagCategory } from "@/lib/types";
 
@@ -109,6 +110,14 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
   const editNameAltInputRef = useRef<HTMLInputElement>(null);
   const editDialogRef = useRef<HTMLDivElement>(null);
   const editAutoFillSourceRef = useRef<"name" | "nameAlt" | null>(null);
+
+  // Whether the current edit-dialog input is a recognized pitch
+  const editDetectedPitch = useMemo(() => {
+    if (!isPitchCategory) return null;
+    const name = (editName || editNameAlt).trim();
+    const m = name.match(PITCH_RE);
+    return m ? m[0] : null;
+  }, [editName, editNameAlt, isPitchCategory]);
 
   useEffect(() => {
     if (editTag) {
@@ -223,8 +232,8 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
 
   // ── Dialog fragments (shared between compact & normal layouts) ──
   const editDialog = editingTags && editTag && onUpdate && (
-    <div ref={editDialogRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setEditTag(null)}>
-      <div className="mx-4 w-full max-w-xs rounded-lg bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div ref={editDialogRef} className="fixed inset-0 z-[999] flex items-center justify-center bg-black/30" onClick={() => setEditTag(null)}>
+      <div className="mx-4 w-full max-w-xs rounded-lg bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-3 text-sm font-semibold">{t.editTags}</div>
         <div className="grid gap-2">
           <input ref={editNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={editName} onChange={(e) => { setEditName(e.target.value); editAutoFillSourceRef.current = "name"; }} onFocus={() => setActiveEditInput("name")} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
@@ -232,16 +241,56 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
           <div className="flex items-center gap-2">
             {isPitchCategory && (
               <>
-                {["♭", "♯", "♮"].map((mark) => (
-                  <button key={mark} className="pill-add-button" type="button" onClick={() => { const setter = activeEditInput === "nameAlt" ? setEditNameAlt : setEditName; setter((value) => mark + value); const ref = activeEditInput === "nameAlt" ? editNameAltInputRef : editNameInputRef; ref.current?.focus(); }}>{mark}</button>
+                {["♭", "♯"].map((mark) => (
+                  <button key={mark} className="pill-add-button" type="button" onClick={() => { const setter = activeEditInput === "nameAlt" ? setEditNameAlt : setEditName; setter((value) => mark + value); editAutoFillSourceRef.current = activeEditInput; const ref = activeEditInput === "nameAlt" ? editNameAltInputRef : editNameInputRef; ref.current?.focus(); }}>{mark}</button>
                 ))}
-                <button aria-label="Assign pitch color" className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap" style={{ background: "none" }} type="button" title="Assign color based on pitch octave" onClick={() => { const pitchName = getLocalizedField(locale, editName, editNameAlt); const c = pitchColorFromName(pitchName); if (c) setEditColor(c); }}><Music size={12} /> Assign color by pitch</button>
+                {(() => {
+                  const name = (editName || editNameAlt).trim();
+                  const alreadyFormatted = name.includes(' ') || name.includes('|');
+                  const hasAccidental = editDetectedPitch && pitchOctaveInfo(editDetectedPitch)?.accidental !== 0;
+                  const isDisabled = !hasAccidental && !alreadyFormatted;
+                  const isActive = hasAccidental && !alreadyFormatted;
+                  return (
+                    <button
+                      className={`inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[10px] whitespace-nowrap ${isDisabled ? "opacity-40 cursor-default border-[var(--line)] bg-white" : isActive ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)] cursor-pointer" : "border-[var(--line)] bg-white cursor-pointer"}`}
+                      disabled={isDisabled}
+                      type="button"
+                      onClick={() => {
+                        if (isDisabled) return;
+                        const rawName = (editName || editNameAlt).trim();
+                        if (rawName.includes(' ') || rawName.includes('|')) return;
+                        const pitchName = normalizeAccidentals(rawName);
+                        const info = pitchOctaveInfo(pitchName);
+                        if (info && info.accidental !== 0) {
+                          const sharp = info.accidental > 0 ? pitchName : getEnharmonicEquivalent(pitchName)!;
+                          const flat  = info.accidental < 0 ? pitchName : getEnharmonicEquivalent(pitchName)!;
+                          const formatted = `${sharp} ${flat}`;
+                          setEditName(formatted);
+                          setEditNameAlt(formatted);
+                        }
+                      }}
+                    >
+                      {t.formatEnharmonic}
+                    </button>
+                  );
+                })()}
               </>
             )}
-            {!isPitchCategory && (
-              <button aria-label="Cycle tag color" className="h-6 w-auto rounded-full overflow-hidden cursor-pointer border-0 p-0 flex items-center justify-center gap-1 text-[8px] leading-none whitespace-nowrap" style={{ background: "none" }} type="button" title="Next palette color" onClick={() => setEditColor(nextTagColor(editColor))}><Palette size={12} /> Cycle color</button>
-            )}
-            <input aria-label={t.tagColor} className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={editColor} onChange={(e) => setEditColor(e.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
+            <span className="ml-auto inline-flex items-center gap-2">
+              {isPitchCategory ? (() => {
+                const editPitchName = (editName || editNameAlt).trim();
+                const pc = pitchColorFromName(editPitchName);
+                const colorMatches = pc === editColor;
+                const isDisabled = !pc;
+                const isActive = !!pc && !colorMatches;
+                return (
+                  <button aria-label="Assign pitch color" className={`inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[10px] whitespace-nowrap ${isDisabled ? "opacity-40 cursor-default border-[var(--line)] bg-white" : isActive ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)] cursor-pointer" : "border-[var(--line)] bg-white cursor-pointer"}`} type="button" title={pc ? `Assign color for ${editPitchName}` : "Assign color based on pitch octave"} disabled={isDisabled} onClick={() => { if (isDisabled) return; const c = pitchColorFromName(editPitchName); if (c) setEditColor(c); }}><Music size={12} /> {t.assignPitchColor}</button>
+                );
+              })() : (
+                <button aria-label="Cycle tag color" className="inline-flex h-6 items-center gap-1 rounded-full border border-[var(--line)] bg-white px-2 text-[10px] whitespace-nowrap cursor-pointer" type="button" title="Next palette color" onClick={() => setEditColor(nextTagColor(editColor))}><Palette size={12} /> Cycle color</button>
+              )}
+              <input aria-label={t.tagColor} className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={editColor} onChange={(e) => setEditColor(e.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
+            </span>
           </div>
         </div>
         <div className="mt-3 flex justify-end gap-2">
@@ -253,29 +302,65 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
   );
 
   const createDialog = showCreateDialog && (
-    <div ref={createDialogRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowCreateDialog(false)}>
-      <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div ref={createDialogRef} className="fixed inset-0 z-[999] flex items-center justify-center bg-black/30" onClick={() => setShowCreateDialog(false)}>
+      <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-4 text-sm font-semibold">{t.addTag}</div>
         <div className="grid gap-3">
           <input ref={createNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={createName} onChange={(e) => { setCreateName(e.target.value); autoFillSourceRef.current = "name"; }} onFocus={() => setActiveCreateInput("name")} onKeyDown={(e) => { if (e.key === "Enter") { if (createNameAltInputRef.current && !createNameAlt.trim()) { createNameAltInputRef.current.focus(); e.preventDefault(); } else { handleCreateFromDialog(); } } if (e.key === "Escape") setShowCreateDialog(false); }} />
           <input ref={createNameAltInputRef} className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={createNameAlt} onChange={(e) => { setCreateNameAlt(e.target.value); autoFillSourceRef.current = "nameAlt"; }} onFocus={() => setActiveCreateInput("nameAlt")} onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }} />
-          {isPitchCategory && (
-            <div className="flex items-center gap-1.5">
-              {["♭", "♯", "♮"].map((mark) => (
-                <button key={mark} className="pill-add-button" type="button" onClick={() => { const ref = activeCreateInput === "nameAlt" ? createNameAltInputRef : createNameInputRef; const input = ref.current; const setter = activeCreateInput === "nameAlt" ? setCreateNameAlt : setCreateName; setter((value) => mark + value); input?.focus(); }}>{mark}</button>
-              ))}
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            {isPitchCategory ? (
-              <button aria-label="Assign pitch color" className={`inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs whitespace-nowrap cursor-pointer transition-colors ${detectedPitch ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--line)] bg-white"}`} type="button" title={detectedPitch ? `Assign color for ${detectedPitch}` : "Assign color based on pitch octave"} onClick={() => { const pitchName = getLocalizedField(locale, createName, createNameAlt); const c = pitchColorFromName(pitchName); if (c) setCreateColor(c); }}><Music size={12} /> Assign color by pitch</button>
-            ) : (
-              <button aria-label="Cycle tag color" className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--line)] bg-white px-3 text-xs whitespace-nowrap cursor-pointer" type="button" title="Next palette color" onClick={() => setCreateColor(nextTagColor(createColor))}><Palette size={12} /> Cycle color</button>
+          <div className="flex items-center gap-1.5">
+            {isPitchCategory && (
+              <>
+                {["♭", "♯"].map((mark) => (
+                  <button key={mark} className="pill-add-button" type="button" onClick={() => { const ref = activeCreateInput === "nameAlt" ? createNameAltInputRef : createNameInputRef; const input = ref.current; const setter = activeCreateInput === "nameAlt" ? setCreateNameAlt : setCreateName; setter((value) => mark + value); autoFillSourceRef.current = activeCreateInput; input?.focus(); }}>{mark}</button>
+                ))}
+                {(() => {
+                  const name = (createName || createNameAlt).trim();
+                  const alreadyFormatted = name.includes(' ') || name.includes('|');
+                  const hasAccidental = detectedPitch && pitchOctaveInfo(detectedPitch)?.accidental !== 0;
+                  const isDisabled = !hasAccidental && !alreadyFormatted;
+                  const isActive = hasAccidental && !alreadyFormatted;
+                  return (
+                    <button
+                      className={`inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[10px] whitespace-nowrap ${isDisabled ? "opacity-40 cursor-default border-[var(--line)] bg-white" : isActive ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)] cursor-pointer" : "border-[var(--line)] bg-white cursor-pointer"}`}
+                      disabled={isDisabled}
+                      type="button"
+                      onClick={() => {
+                        if (isDisabled) return;
+                        const rawName = (createName || createNameAlt).trim();
+                        if (rawName.includes(' ') || rawName.includes('|')) return;
+                        const pitchName = normalizeAccidentals(rawName);
+                        const info = pitchOctaveInfo(pitchName);
+                        if (info && info.accidental !== 0) {
+                          const sharp = info.accidental > 0 ? pitchName : getEnharmonicEquivalent(pitchName)!;
+                          const flat  = info.accidental < 0 ? pitchName : getEnharmonicEquivalent(pitchName)!;
+                          const formatted = `${sharp} ${flat}`;
+                          setCreateName(formatted);
+                          setCreateNameAlt(formatted);
+                        }
+                      }}
+                    >
+                      {t.formatEnharmonic}
+                    </button>
+                  );
+                })()}
+              </>
             )}
-            <div className="ml-auto flex items-center gap-1">
-              <span className="text-xs text-[var(--muted)]">{t.tagColor}</span>
-              <input aria-label={t.tagColor} className="h-7 w-7 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={createColor} onChange={(e) => setCreateColor(e.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
-            </div>
+            <span className="ml-auto inline-flex items-center gap-2">
+              {isPitchCategory ? (() => {
+                const createPitchName = (createName || createNameAlt).trim();
+                const pc = pitchColorFromName(createPitchName);
+                const colorMatches = pc === createColor;
+                const isDisabled = !pc;
+                const isActive = !!pc && !colorMatches;
+                return (
+                  <button aria-label="Assign pitch color" className={`inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[10px] whitespace-nowrap ${isDisabled ? "opacity-40 cursor-default border-[var(--line)] bg-white" : isActive ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)] cursor-pointer" : "border-[var(--line)] bg-white cursor-pointer"}`} type="button" title={pc ? `Assign color for ${createPitchName}` : "Assign color based on pitch octave"} disabled={isDisabled} onClick={() => { if (isDisabled) return; const c = pitchColorFromName(createPitchName); if (c) setCreateColor(c); }}><Music size={12} /> {t.assignPitchColor}</button>
+                );
+              })() : (
+                <button aria-label="Cycle tag color" className="inline-flex h-6 items-center gap-1 rounded-full border border-[var(--line)] bg-white px-2 text-[10px] whitespace-nowrap cursor-pointer" type="button" title="Next palette color" onClick={() => setCreateColor(nextTagColor(createColor))}><Palette size={12} /> Cycle color</button>
+              )}
+              <input aria-label={t.tagColor} className="h-6 w-6 rounded-full overflow-hidden cursor-pointer border-0 p-0" type="color" value={createColor} onChange={(e) => setCreateColor(e.target.value)} style={{ background: "none", WebkitAppearance: "none" }} />
+            </span>
           </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">
@@ -331,8 +416,8 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
               />
             )}
           </span>
-          {editDialog}
-          {createDialog}
+          {editDialog && createPortal(editDialog, document.body)}
+          {createDialog && createPortal(createDialog, document.body)}
         </>
       );
     }
@@ -387,8 +472,8 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
             </span>
           )}
         </span>
-        {editDialog}
-        {createDialog}
+        {editDialog && createPortal(editDialog, document.body)}
+        {createDialog && createPortal(createDialog, document.body)}
       </>
     );
   }
@@ -474,9 +559,9 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
           <Plus size={14} />
         </button>
       </div>
-      {editDialog}
+      {editDialog && createPortal(editDialog, document.body)}
 
-      {createDialog}
+      {createDialog && createPortal(createDialog, document.body)}
     </div>
   );
 }
