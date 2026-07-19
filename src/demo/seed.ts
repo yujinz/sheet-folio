@@ -33,6 +33,7 @@ export interface SeedImage {
   kind: "staff" | "numbered";
   url: string;
   filename: string;
+  sourceUrl?: string | null;
 }
 
 export interface SeedData {
@@ -43,7 +44,7 @@ export interface SeedData {
   images: SeedImage[];
 }
 
-export const SEED_PIECE_IDS: number[] = [1, 2];
+export const SEED_PIECE_IDS: number[] = [1, 2, 3];
 
 const SEED_TAGS: Tag[] = [
   // Pitch
@@ -60,6 +61,7 @@ const SEED_TAGS: Tag[] = [
   { id: 6, name: "附点", nameAlt: "Dotted", color: "#c026d3", category: "rhythm" },
   { id: 7, name: "三连音", nameAlt: "Triplet", color: "#7c3aed", category: "rhythm" },
   { id: 11, name: "十六分音符", nameAlt: "Sixteenth Note", color: "#9e6aba", category: "rhythm" },
+  { id: 12, name: "C5", nameAlt: "C5", color: "#82c9bf", category: "pitch" },
 ];
 
 export const SEED_DATA: SeedData = {
@@ -78,11 +80,21 @@ export const SEED_DATA: SeedData = {
       id: 2,
       title: "空之境界 M18",
       titleAlt: "Garden of Sinners M18",
-      difficulty: 5,
+      difficulty: 4,
       notes: "",
       createdAt: "2026-07-18T02:33:16.637Z",
       updatedAt: "2026-07-18T02:45:26.097Z",
       tagIds: [3, 6, 10, 11], // Legato + Dotted + D5 + Sixteenth Note
+    },
+    {
+      id: 3,
+      title: "鼓浪屿之波",
+      titleAlt: "鼓浪屿之波",
+      difficulty: 2,
+      notes: "",
+      createdAt: "2026-07-19T02:50:41.594Z",
+      updatedAt: "2026-07-19T02:51:36.450Z",
+      tagIds: [3, 12], // Legato + C5
     },
   ],
   tags: SEED_TAGS,
@@ -93,9 +105,11 @@ export const SEED_DATA: SeedData = {
   ],
   singleSelectCategories: [],
   images: [
-    { songId: 1, kind: "staff", url: `${BASE}/uploads/1/staff/Screenshot%202026-07-16%20225039.png`, filename: "Screenshot 2026-07-16 225039.png" },
+    { songId: 1, kind: "staff", url: `${BASE}/uploads/1/staff/Screenshot%202026-07-16%20225039.png`, filename: "Screenshot 2026-07-16 225039.png", sourceUrl: "https://musopen.org/music/46078-ode-to-joy/" },
+    { songId: 1, kind: "numbered", url: `${BASE}/uploads/1/numbered/Screenshot_1619942960220067.jpg`, filename: "Screenshot_1619942960220067.jpg", sourceUrl: "http://www.51sax.cn/caseshow-8-211.html" },
     { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/Screenshot_2026-07-17_222554.png`, filename: "Screenshot_2026-07-17_222554.png" },
     { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/Screenshot_2026-07-17_222623.png`, filename: "Screenshot_2026-07-17_222623.png" },
     { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/Screenshot_2026-07-17_222700.png`, filename: "Screenshot_2026-07-17_222700.png" },
+    { songId: 3, kind: "numbered", url: `${BASE}/uploads/3/numbered/Screenshot_c1f97633e3cf47f4a61174263f1a17f1.gif`, filename: "Screenshot_c1f97633e3cf47f4a61174263f1a17f1.gif", sourceUrl: "http://www.jianpu.cn/pu/60/60631.htm" },
   ],
 };

@@ -123,7 +123,7 @@ export class DemoDb extends Dexie {
           url: img.url,
           filename: img.filename,
           sortOrder: i + 1,
-          sourceUrl: null,
+          sourceUrl: img.sourceUrl ?? null,
           createdAt: new Date().toISOString(),
         })),
       );
