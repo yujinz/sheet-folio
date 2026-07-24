@@ -433,6 +433,28 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
   }, [draft, links]);
   useEffect(() => setDraft(links), [links]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prevZoom = useRef(zoom);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || prevZoom.current === zoom) return;
+    // Keep the center content visually stable as zoom changes.
+    const ratio = zoom / prevZoom.current;
+    el.scrollLeft = el.scrollLeft * ratio + (el.clientWidth * (ratio - 1)) / 2;
+    prevZoom.current = zoom;
+  }, [zoom]);
+  // On initial load, if the first image is wider than the viewport,
+  // scroll horizontally so its center is visible.
+  const hasCenteredFirst = useRef(false);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || images.length === 0 || hasCenteredFirst.current) return;
+    const first = el.firstElementChild as HTMLElement | null;
+    if (!first) return;
+    if (first.offsetWidth > el.clientWidth) {
+      el.scrollLeft = (first.offsetWidth - el.clientWidth) / 2;
+    }
+    hasCenteredFirst.current = true;
+  }, [images]);
   return (
     <section className="px-3 py-4">
       {images.length === 0 && (
@@ -440,7 +462,7 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
       )}
       <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4">
         {images.map((image, index) => (
-          <div key={image.id} className="flex-shrink-0" style={{ width: `${zoom}vw`, maxWidth: "95vw" }}>
+          <div key={image.id} className="flex-shrink-0" style={{ width: `${zoom}vw` }}>
             <button className="border-0 bg-transparent p-0 block w-full" style={{ touchAction: "manipulation" }} onClick={() => onOpen(index)}>
               <img src={image.url} alt="" className="block w-full h-auto" />
             </button>
