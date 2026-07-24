@@ -455,14 +455,47 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
     }
     hasCenteredFirst.current = true;
   }, [images]);
+
+  const [activeIndex, setActiveIndex] = useState(0);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showDots, setShowDots] = useState(true);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || images.length <= 1) return;
+    function onScroll() {
+      const children = Array.from(el!.children) as HTMLElement[];
+      const center = el!.scrollLeft + el!.clientWidth / 2;
+      let closestIndex = 0;
+      let closestDist = Infinity;
+      children.forEach((child, i) => {
+        const dist = Math.abs(child.offsetLeft + child.offsetWidth / 2 - center);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestIndex = i;
+        }
+      });
+      setActiveIndex(closestIndex);
+      setShowDots(true);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = setTimeout(() => setShowDots(false), 2000);
+    }
+    el.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [images]);
+
   return (
     <section className="px-3 py-4">
       {images.length === 0 && (
         <p className="py-40 text-center text-sm text-[var(--muted)]">{t.noImages}</p>
       )}
-      <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4">
+      <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory" style={{ WebkitOverflowScrolling: "touch" }}>
         {images.map((image, index) => (
-          <div key={image.id} className="flex-shrink-0" style={{ width: `${zoom}vw` }}>
+          <div key={image.id} className="flex-shrink-0 snap-center" style={{ width: `${zoom}vw` }}>
             <button className="border-0 bg-transparent p-0 block w-full" style={{ touchAction: "manipulation" }} onClick={() => onOpen(index)}>
               <img src={image.url} alt="" className="block w-full h-auto" />
             </button>
@@ -474,6 +507,28 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
           </div>
         ))}
       </div>
+      {images.length > 1 && showDots && (
+        <div className="fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-2 rounded-full bg-black/20 px-3 py-1.5 backdrop-blur-sm">
+          {images.map((_, index) => (
+            <button
+              key={index}
+              type="button"
+              className={`h-2.5 w-2.5 rounded-full border-0 p-0 transition-colors ${
+                index === activeIndex ? "bg-[var(--accent)]" : "bg-white/60"
+              }`}
+              onClick={() => {
+                const el = scrollRef.current;
+                const child = el?.children[index] as HTMLElement | null;
+                if (child && el) {
+                  const left = child.offsetLeft + child.offsetWidth / 2 - el.clientWidth / 2;
+                  el.scrollTo({ left, behavior: "smooth" });
+                }
+              }}
+              aria-label={`Go to image ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
       <div className="mx-auto grid w-full max-w-3xl gap-2 pb-8">
         {draft.map((link, index) => (
           <div key={index} className="grid gap-2 sm:grid-cols-[1fr_2fr_auto_auto]">
