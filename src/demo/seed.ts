@@ -105,11 +105,11 @@ export const SEED_DATA: SeedData = {
   ],
   singleSelectCategories: [],
   images: [
-    { songId: 1, kind: "staff", url: `${BASE}/uploads/1/staff/Screenshot%202026-07-16%20225039.png`, filename: "Screenshot 2026-07-16 225039.png", sourceUrl: "https://musopen.org/music/46078-ode-to-joy/" },
-    { songId: 1, kind: "numbered", url: `${BASE}/uploads/1/numbered/Screenshot_1619942960220067.jpg`, filename: "Screenshot_1619942960220067.jpg", sourceUrl: "http://www.51sax.cn/caseshow-8-211.html" },
-    { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/Screenshot_2026-07-17_222554.png`, filename: "Screenshot_2026-07-17_222554.png" },
-    { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/Screenshot_2026-07-17_222623.png`, filename: "Screenshot_2026-07-17_222623.png" },
-    { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/Screenshot_2026-07-17_222700.png`, filename: "Screenshot_2026-07-17_222700.png" },
-    { songId: 3, kind: "numbered", url: `${BASE}/uploads/3/numbered/Screenshot_c1f97633e3cf47f4a61174263f1a17f1.gif`, filename: "Screenshot_c1f97633e3cf47f4a61174263f1a17f1.gif", sourceUrl: "http://www.jianpu.cn/pu/60/60631.htm" },
+    { songId: 1, kind: "staff", url: `${BASE}/uploads/1/staff/ode-to-joy-staff.png`, filename: "ode-to-joy-staff.png", sourceUrl: "https://musopen.org/music/46078-ode-to-joy/" },
+    { songId: 1, kind: "numbered", url: `${BASE}/uploads/1/numbered/ode-to-joy-numbered.jpg`, filename: "ode-to-joy-numbered.jpg", sourceUrl: "http://www.51sax.cn/caseshow-8-211.html" },
+    { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/garden-of-sinners-m18-staff-1.png`, filename: "garden-of-sinners-m18-staff-1.png" },
+    { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/garden-of-sinners-m18-staff-2.png`, filename: "garden-of-sinners-m18-staff-2.png" },
+    { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/garden-of-sinners-m18-staff-3.png`, filename: "garden-of-sinners-m18-staff-3.png" },
+    { songId: 3, kind: "numbered", url: `${BASE}/uploads/3/numbered/gulangyu-wave-numbered.gif`, filename: "gulangyu-wave-numbered.gif", sourceUrl: "http://www.jianpu.cn/pu/60/60631.htm" },
   ],
 };
