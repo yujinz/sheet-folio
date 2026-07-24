@@ -221,6 +221,10 @@ export default function Detail({ songId }: { songId: number }) {
                 key={`title-${songId}-${locale}`}
                 className="input max-w-lg min-w-[100px] flex-1 text-base font-semibold"
                 defaultValue={getLocalizedField(locale, piece.title, piece.titleAlt)}
+                onFocus={(e) => {
+                  const len = (e.target as HTMLInputElement).value.length;
+                  setTimeout(() => (e.target as HTMLInputElement).setSelectionRange(len, len), 0);
+                }}
                 onChange={scheduleSave}
                 onBlur={handleTitleBlur}
                 onCompositionStart={() => { isComposingRef.current = true; }}
@@ -240,6 +244,10 @@ export default function Detail({ songId }: { songId: number }) {
           className="textarea"
           rows={1}
           defaultValue={piece.notes}
+          onFocus={(e) => {
+            const len = (e.target as HTMLTextAreaElement).value.length;
+            setTimeout(() => (e.target as HTMLTextAreaElement).setSelectionRange(len, len), 0);
+          }}
           onChange={scheduleSave}
           placeholder={t.notes}
         />

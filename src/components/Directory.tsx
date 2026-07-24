@@ -533,6 +533,10 @@ export default function Directory() {
               className="input"
               style={{ paddingLeft: 36, paddingRight: query ? 32 : undefined, fontSize: "14px" }}
               value={query}
+              onFocus={(e) => {
+                const len = (e.target as HTMLInputElement).value.length;
+                setTimeout(() => (e.target as HTMLInputElement).setSelectionRange(len, len), 0);
+              }}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t.searchTitle}
             />
