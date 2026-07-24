@@ -2,7 +2,7 @@
 
 A sheet music manager with a web UI accessible from both PC and mobile device. Built exclusively for **image-based sheet music (JPEG/PNG)**. Does not support PDFs or XMLs.
 
-[**Try the live demo →**](#option-1-static-site-demo)
+[**Try the live demo →**](https://yujinz.github.io/sheet-folio/)
 
 
 ## Why Sheet Folio?

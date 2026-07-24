@@ -7,7 +7,10 @@ const storageKey = "sheet-folio-locale";
 
 function readLocale(): Locale {
   if (typeof window === "undefined") return "zh-CN";
-  return localStorage.getItem(storageKey) === "en-US" ? "en-US" : "zh-CN";
+  const stored = localStorage.getItem(storageKey);
+  if (stored === "en-US" || stored === "zh-CN") return stored;
+  // Default to English in demo mode so visitors see EN first
+  return process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "en-US" : "zh-CN";
 }
 
 export function useLocale() {
