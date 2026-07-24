@@ -19,7 +19,7 @@ test("shows format enharmonic button when pitch has accidental", async ({ page }
   await page.waitForTimeout(200);
 
   // Format button should be visible and not disabled
-  const formatBtn = page.locator('button:has-text("Format enharmonic")');
+  const formatBtn = page.locator('button:has-text("等音显示")');
   await expect(formatBtn).toBeVisible();
   await expect(formatBtn).not.toBeDisabled();
 
@@ -36,7 +36,7 @@ test("does not show highlighted format button for natural pitch", async ({ page 
   await page.waitForTimeout(200);
 
   // Format button should be visible but greyed/disabled for natural note
-  const formatBtn = page.locator('button:has-text("Format enharmonic")');
+  const formatBtn = page.locator('button:has-text("等音显示")');
   await expect(formatBtn).toBeVisible();
   await expect(formatBtn).toBeDisabled();
 });
@@ -51,7 +51,7 @@ test("format button converts to Unicode pair with sharp first", async ({ page })
   // Type #C4 and format
   await nameInput.fill("#C4");
   await page.waitForTimeout(200);
-  await page.locator('button:has-text("Format enharmonic")').click();
+  await page.locator('button:has-text("等音显示")').click();
 
   // Should produce ♯C4 ♭D4 (sharp first, flat second)
   await expect(nameInput).toHaveValue("♯C4 ♭D4");
@@ -67,7 +67,7 @@ test("format converts flat input to sharp-first order", async ({ page }) => {
   // Type bD4 (flat) and format — should still produce sharp first
   await nameInput.fill("bD4");
   await page.waitForTimeout(200);
-  await page.locator('button:has-text("Format enharmonic")').click();
+  await page.locator('button:has-text("等音显示")').click();
 
   // Should be sharp first even though input was flat
   await expect(nameInput).toHaveValue("♯C4 ♭D4");
@@ -82,12 +82,12 @@ test("re-clicking format on already-formatted name does nothing", async ({ page 
   // Format once
   await nameInput.fill("#C4");
   await page.waitForTimeout(200);
-  await page.locator('button:has-text("Format enharmonic")').click();
+  await page.locator('button:has-text("等音显示")').click();
   await page.waitForTimeout(100);
   await expect(nameInput).toHaveValue("♯C4 ♭D4");
 
   // Re-click format — value should not change (no "null" appended)
-  await page.locator('button:has-text("Format enharmonic")').click();
+  await page.locator('button:has-text("等音显示")').click();
   await page.waitForTimeout(100);
   await expect(nameInput).toHaveValue("♯C4 ♭D4");
 });
@@ -101,10 +101,10 @@ test("format button shows normal state when already formatted", async ({ page })
   // Format first
   await nameInput.fill("#C4");
   await page.waitForTimeout(200);
-  await page.locator('button:has-text("Format enharmonic")').click();
+  await page.locator('button:has-text("等音显示")').click();
 
   // After formatting, button should be in "done" state (normal, not highlighted, not disabled)
-  const formatBtn = page.locator('button:has-text("Format enharmonic")');
+  const formatBtn = page.locator('button:has-text("等音显示")');
   await expect(formatBtn).toBeVisible();
   await expect(formatBtn).not.toBeDisabled();
   await expect(formatBtn).not.toHaveClass(/border-\[var\(--accent\)\]/); // not highlighted
@@ -122,7 +122,7 @@ test("assign color button highlights when pitch is detected", async ({ page }) =
   await page.waitForTimeout(200);
 
   // Assign color button should be highlighted (active)
-  const colorBtn = page.locator('button:has-text("Assign color by pitch")');
+  const colorBtn = page.locator('button:has-text("按音高配色")');
   await expect(colorBtn).toBeVisible();
   await expect(colorBtn).not.toBeDisabled();
   await expect(colorBtn).toHaveClass(/border-\[var\(--accent\)\]/);
@@ -137,10 +137,10 @@ test("assign color button works on already-formatted pitch", async ({ page }) =>
   // Format to ♯C4 ♭D4
   await nameInput.fill("#C4");
   await page.waitForTimeout(200);
-  await page.locator('button:has-text("Format enharmonic")').click();
+  await page.locator('button:has-text("等音显示")').click();
 
   // Assign color button should still work (not greyed) for formatted name
-  const colorBtn = page.locator('button:has-text("Assign color by pitch")');
+  const colorBtn = page.locator('button:has-text("按音高配色")');
   await expect(colorBtn).toBeVisible();
   await expect(colorBtn).not.toBeDisabled();
 });
@@ -175,7 +175,7 @@ test("formatted pitch tag saves and displays correctly", async ({ page }) => {
   const nameInput = page.locator('[data-testid="create-dialog"] input:not([type="color"])').first();
   await nameInput.fill("#C4");
   await page.waitForTimeout(200);
-  await page.locator('button:has-text("Format enharmonic")').click();
+  await page.locator('button:has-text("等音显示")').click();
 
   // Click save (dialog's "新标签" save button, not the aria-label button)
   await page.locator('[data-testid="create-dialog"] button:has-text("新标签")').click();
@@ -204,7 +204,7 @@ test("edit dialog shows format button for non-formatted pitch with accidental", 
   await page.waitForTimeout(200);
 
   // Format button should appear in edit dialog
-  const formatBtn = page.locator('[data-testid="create-dialog"] button:has-text("Format enharmonic")');
+  const formatBtn = page.locator('[data-testid="edit-dialog"] button:has-text("等音显示")');
   await expect(formatBtn).toBeVisible();
   await expect(formatBtn).not.toBeDisabled();
 });
@@ -224,10 +224,10 @@ test("edit dialog format button works", async ({ page }) => {
   await editBtn.click();
   await page.waitForTimeout(200);
 
-  await page.locator('[data-testid="create-dialog"] button:has-text("Format enharmonic")').click();
+  await page.locator('[data-testid="edit-dialog"] button:has-text("等音显示")').click();
 
   // Save the edit
-  await page.locator('[data-testid="create-dialog"] button:has-text("保存")').click();
+  await page.locator('[data-testid="edit-dialog"] button:has-text("保存")').click();
   await page.waitForTimeout(300);
 
   // Should now display as formatted
