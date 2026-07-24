@@ -107,15 +107,16 @@ export async function getPiece(id: number): Promise<Song | null> {
 export async function createPiece(body: { title?: string; titleAlt?: string }): Promise<Song> {
   await ensureSeeded();
   const time = nowIso();
-  const id = await demoDb.pieces.add({
+  const data = {
     title: body.title ?? "",
     titleAlt: body.titleAlt ?? "",
     difficulty: 1,
-    notes: "",
+    notes: "You are using the demo version. Data lives in your browser and may be lost. For proper self-hosting setup, see https://github.com/yujinz/sheet-folio",
     createdAt: time,
     updatedAt: time,
-  });
-  return { id, title: body.title ?? "", titleAlt: body.titleAlt ?? "", difficulty: 1, notes: "", createdAt: time, updatedAt: time, tags: {} };
+  };
+  const id = await demoDb.pieces.add(data);
+  return { id, ...data, tags: {} };
 }
 
 /** PATCH /api/pieces/[id] — updates piece fields and optionally replaces tags. */
