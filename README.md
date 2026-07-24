@@ -2,10 +2,12 @@
 
 A sheet music manager with a web UI accessible from both PC and mobile device. Built exclusively for **image-based sheet music (JPEG/PNG)**. Does not support PDFs or XMLs.
 
+[**Try the live demo →**](#option-1-static-site-demo)
+
 
 ## Why Sheet Folio?
 
-As a casual music lover, most of my sheet music isn't neatly formatted PDFs. Instead, they are screenshots from social media, photos taken during practice, or images saved from forums. Eventually, these sheets end up **scattered all over my photo gallery**, mixed with daily photos.
+As a casual music lover, most of my sheet music isn't neatly formatted PDFs. Instead, they are screenshots from social media, photos taken during practice, or images saved from forums. Eventually, these **sheets end up scattered all over my photo gallery**, mixed with daily photos.
 
 Existing music managers are built around PDFs. They force you to convert your photos into a PDF file just to import them. Once converted, adding a new photo or changing the image order becomes a chore.
 
@@ -33,7 +35,7 @@ I built this app to treat images as first-class citizens. You can throw your ima
 - **Tagging & Filtering:** Assign color-coded tags to your pieces and use them to filter the main directory. Pitch tags receive rainbow colors by octave, sorted low→high. Supports adding custom tag categories.
 - **Notes and External Links:** Write practice notes and attach links for videos or sheet sources to your pieces.
 
-### ⚙️ Technical Highlights
+### Technical Highlights
 
 - **Two-Step Data Preservation Workflow:** Built-in scripts to keep your data secure and portable:
   1. **Data Export:** Export your collection into human-readable JSON metadata alongside your image files (see [SCHEMA.md](SCHEMA.md)). It also automatically strips all EXIF metadata from images to protect your privacy.
@@ -56,28 +58,51 @@ I built this app to treat images as first-class citizens. You can throw your ima
 
 ## Quick Start
 
-### Option 1: Static Site Demo
+### Option 1: Static Demo
 Deployed at https://yujinz.github.io/sheet-folio/
 
-Offers the exact same UI/UX but utilizes the browser's IndexedDB to replace the backend database.
+Offers the exact same UI/UX, but utilizes the browser's IndexedDB to replace the backend database.
+
+
+<details>
+<summary><b>Note:</b> Errors after a new version is deployed?</summary>
+
+When the demo is updated with database changes, your browser's stored data may be incompatible with the new version. If you see errors after loading, clear the stored data:
+
+**Quick method:** Open your browser's settings → **Privacy & Security** → **Clear browsing data** → select **Cached images and files** + **Cookies and site data** (for `yujinz.github.io`) → clear, then refresh.
+
+**Browser-specific (via DevTools):**
+
+| Browser | Steps |
+|---|---|
+| Chrome / Edge | Press `F12` → **Application** tab → **Storage** → **Clear site data** → refresh |
+| Firefox | Press `F12` → **Storage** tab → **IndexedDB** → right-click `sheet-folio-demo` → **Delete All** → refresh |
+| Safari | **Develop** menu → **Show Web Inspector** → **Storage** → **IndexedDB** → select `sheet-folio-demo` → **Clear** → refresh |
+
+⚠️ This will delete any data you've added in the demo - your pieces, tags, and images will be lost.
+
+For more details, see the [Demo section under Development](#demo).
+
+</details>
+
+---
 
 **Pros**: 
-- Zero setup. Instantly test the UI and features directly in your browser. 
+- **No setup required**, runs entirely in your browser. 
 - Accessible from WAN.
 
-(Note: If you encounter errors after loading a newly deployed version, clear your browser cache and IndexedDB).
 
 **Cons** (⚠️Why it's not recommended for real use):
 
-- Browsers may automatically clear your data after 7 days of inactivity.
+- **No database migration:** When the demo app is updated with schema changes, your stored data may become incompatible - requiring you to manually clear IndexedDB (see the note above). Unlike the self-hosted version, there is no automatic migration between versions.
 
-- **Safari/iOS Auto-Deletion:** Safari automatically wipes local browser storage after 7 days of inactivity. To prevent data loss on Apple devices, you could use the "Add to Home Screen" feature to request persistent storage.
+- **Browsers may clear your data:**  Safari automatically wipes local browser storage after 7 days of inactivity. To prevent data loss on Apple devices, you could use the "Add to Home Screen" feature to request persistent storage.
 
-- Maximum storage size limits depend heavily on your specific browser.
+- Maximum storage size limits depend on your specific browser.
 
 - Data is sandboxed and does not sync between your devices.
 
-(Roadmap: Add import/export zip interface on the app).
+  - Roadmap: Add import/export zip interface.
 
 
 
@@ -94,6 +119,16 @@ docker compose up -d --build
 
 Open `http://localhost:8888` in your browser. Stop with `docker compose down`. Data persists in Docker volumes. 
 
+You can also access it from phones or tablets on the same Wi-Fi. Find your PC's LAN IP:
+
+| OS | Command |
+|---|---|
+| Linux / macOS | `hostname -I` |
+| Windows | `ipconfig` |
+
+Then open `http://<your-lan-ip>:8888` on your other device.
+
+
 <details>
 <summary><b>Note:</b> WSL2 setup</summary>
 
@@ -109,19 +144,17 @@ Then restart WSL2 with `wsl --shutdown`, reopen your WSL2 terminal, and start do
 
 </details>
 
-<details>
-<summary><b>Note: <code>network_mode: host</code></b></summary>
+---
 
-The `docker-compose.yml` uses `network_mode: host` instead of the more common `ports:` mapping, so that browsers on Windows can access the docker running inside WSL. This makes the container share the host's network stack directly without Docker's NAT/bridge layer. This is okay because:
+**Pros**:
+- **Full control over your data:** export, backup, and sync to cloud storage.
+- Database migrations run automatically when you pull updates.
+- No storage limits - only limited by your disk.
 
-- Sheet-folio is a LAN-only app with no reverse proxy or HTTPS requirement
-- No inter-container communication is needed (no database or other companion containers)
-- No other Docker container on the same machine is using the same 8888 port
-
-If you later add containers that need to talk to each other (e.g., a database), switch to bridge networking with explicit `ports:` mapping.
-
-</details>
-
+**Cons**:
+- Requires Docker and basic terminal usage.
+- Must keep the Docker container running to access your library.
+- **LAN-only** by design. No WAN access without setting up a reverse proxy and auth yourself.
 
 
 ## Data Export
@@ -131,11 +164,7 @@ If you later add containers that need to talk to each other (e.g., a database), 
 ```
 Exports the database from the running container, builds the export image, and outputs to `export-data/`. Requires the sheet-folio container to be running.
 
-Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format):
-- `pieces.json` — all pieces with tags, images, and links
-- `tags.json` — all tags
-- `images/{id}/{kind}/` — re-encoded images with EXIF metadata stripped
-- `manifest.json` — export metadata
+Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format).
 
 Logs milestones to `$HOME/logs/sheet-folio-export-data.log`. On failure, the last 20 lines of output are appended to the log.
 
@@ -229,6 +258,19 @@ Open `http://localhost:3000` in your browser. Data persists in `./data/sheet-fol
 <summary><b>Note:</b> Docker standalone output</summary>
 
 Docker needs `output: "standalone"` while `pnpm start` needs to run without it. The `next.config.ts` only enables standalone when `NEXT_OUTPUT_STANDALONE=true` (set in the Dockerfile's builder stage), so no manual toggling is needed between LAN testing and Docker builds.
+
+</details>
+
+<details>
+<summary><b>Note: <code>network_mode: host</code></b></summary>
+
+The `docker-compose.yml` uses `network_mode: host` instead of the more common `ports:` mapping, so that browsers on Windows can access the docker running inside WSL. This makes the container share the host's network stack directly without Docker's NAT/bridge layer. This is okay because:
+
+- Sheet-folio is a LAN-only app with no reverse proxy or HTTPS requirement
+- No inter-container communication is needed (no database or other companion containers)
+- No other Docker container on the same machine is using the same 8888 port
+
+If you later add containers that need to talk to each other (e.g., a database), switch to bridge networking with explicit `ports:` mapping.
 
 </details>
 
@@ -369,16 +411,6 @@ Both data layers now live on **`main`**. When you change the server-side data la
 3. Add route handlers in `src/demo/fetch.ts`.
 4. Mirror schema changes in `src/demo/db.ts` (Dexie).
 5. Run `pnpm check:demo-routes` + `pnpm build:demo` to verify.
-
-| Server file | Demo file | What to sync |
-|---|---|---|
-| `src/lib/data.ts` | `src/demo/store.ts` | Every data operation |
-| `src/app/api/**/route.ts` | `src/demo/fetch.ts` ROUTES | Every API route |
-| `src/db/schema.ts` | `src/demo/db.ts` | Table/column changes |
-| `src/lib/seed.ts` | `src/demo/seed.ts` | Seed data |
-
-> **Safety net**: If you implement the server side but forget the demo side, `pnpm build:demo` will fail at compile time (missing functions), and the route checker (`pnpm check:demo-routes`) catches missing handlers.
-
 
 
 ### Reference
