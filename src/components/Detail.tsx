@@ -454,10 +454,16 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
       </div>
       <div className="mx-auto grid w-full max-w-3xl gap-2 pb-8">
         {draft.map((link, index) => (
-          <div key={index} className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
+          <div key={index} className="grid gap-2 sm:grid-cols-[1fr_2fr_auto_auto]">
             <input className="input" value={link.label} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, label: event.target.value } : item))} placeholder={t.linkTitle} />
             <input className="input" value={link.url} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, url: event.target.value } : item))} placeholder={t.videoLink} />
             <a className="text-button" href={link.url} target="_blank">{t.open}</a>
+            <button className="icon-button" type="button" onClick={() => {
+              if (!confirm(t.removeLinkConfirm)) return;
+              const next = draft.filter((_, i) => i !== index);
+              setDraft(next);
+              setLinks(next);
+            }} aria-label={t.removeLink}><X size={14} /></button>
           </div>
         ))}
         <div className="flex gap-2">
