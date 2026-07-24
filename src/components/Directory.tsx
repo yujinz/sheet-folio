@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Music, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
 import { categoryKey, canAddCategory } from "@/lib/category";
 import type { CategoryEntry, Song, Tag, TagCategory } from "@/lib/types";
-import { PITCH_CATEGORY_KEY, isPitchKey } from "@/lib/types";
+import { usePitchCategory } from "@/lib/useIsPitchCategory";
 import { getLocalizedField } from "@/lib/i18n-utils";
 import { useSingleSelectFilter } from "@/lib/useSingleSelectFilter";
 import { useCreateTag } from "@/lib/useTagMutations";
@@ -97,6 +97,7 @@ export default function Directory() {
   const [newCategoryNameZh, setNewCategoryNameZh] = useState("");
   const [newCategoryNameAlt, setNewCategoryNameAlt] = useState("");
   const [newCategorySingleSelect, setNewCategorySingleSelect] = useState(false);
+  const { isPitch: isPitchCategory, toggle: togglePitch } = usePitchCategory();
 
   // Category rename state
   const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
@@ -593,6 +594,8 @@ export default function Directory() {
       <div className="grid gap-2 lg:grid-cols-3">
           {allCategoryKeys.map((category) => {
             const userCat = userCategories.find((c) => c.key === category);
+            const categoryLabel = userCat ? categoryDisplayName(userCat, locale) : getCategoryLabel(userCategories, category, locale);
+            const isPitch = isPitchCategory(category, categoryLabel);
             return (
             <div key={category}>
               {editingTags && renamingCategory === category ? (
@@ -623,12 +626,20 @@ export default function Directory() {
                   />
                   <button className="text-button primary-button" type="button" style={{ fontSize: "12px" }} onClick={() => renameCategory(category, renameZh, renameAlt)}>{t.save}</button>
                   <button className="text-button" type="button" style={{ fontSize: "12px" }} onClick={() => setRenamingCategory(null)}>{t.cancel}</button>
+                  <button
+                    className={`flex h-5 w-5 items-center justify-center rounded-full ${isPitch ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] text-[var(--muted)]"}`}
+                    type="button"
+                    title={isPitch ? "Pitch features active" : "Mark as pitch category"}
+                    onClick={(e) => { e.stopPropagation(); togglePitch(category); }}
+                  >
+                    <Music size={10} />
+                  </button>
                 </div>
               ) : (
                 <TagPicker
                   category={category}
-                  isPitchCategory={isPitchKey(category)}
-                  label={userCat ? categoryDisplayName(userCat, locale) : getCategoryLabel(userCategories, category, locale)}
+                  isPitchCategory={isPitch}
+                  label={categoryLabel}
                   tags={tags.filter((tag) => tag.category === category)}
                   selected={filters[category] ?? []}
                   onChange={(ids) => setFilters((value) => ({ ...value, [category]: ids }))}
@@ -781,7 +792,7 @@ export default function Directory() {
                     <TagPicker
                       compact
                       selectedOnly
-                      isPitchCategory={isPitchKey(category)}
+                      isPitchCategory={isPitchCategory(category)}
                       singleSelect={singleSelectCategories.has(category)}
                       category={category}
                       tags={tags.filter((tag) => tag.category === category)}

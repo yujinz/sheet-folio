@@ -4,6 +4,7 @@ export const STORAGE_KEYS = {
   favorites: "sheet-folio-favorites",
   deviceId: "sheet-folio-device-id",
   locale: "sheet-folio-locale",
+  pitchCategories: "sheet-folio-pitch-categories",
 } as const;
 
 /** Difficulty levels 1–10. */

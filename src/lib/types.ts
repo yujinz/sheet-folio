@@ -3,9 +3,12 @@ export type TagCategory = string;
 /** Categories are stored in the tag_categories table. The "pitch" key has special sorting/color behavior. */
 export const PITCH_CATEGORY_KEY = "pitch";
 
-/** Convenience helper — checks whether a category key is the pitch category. */
+/**
+ * Checks whether a category key looks like a pitch category (case-insensitive).
+ * This is the auto-detect fallback; users can override via localStorage toggle.
+ */
 export function isPitchKey(key: string): boolean {
-  return key === PITCH_CATEGORY_KEY;
+  return key.toLowerCase().includes(PITCH_CATEGORY_KEY);
 }
 
 export type ImageKind = "staff" | "numbered";

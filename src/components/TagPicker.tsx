@@ -484,6 +484,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
     <div className="grid gap-x-1.5 gap-y-1 items-start" style={{ gridTemplateColumns: `${labelColumnWidth} 1fr` }}>
       <span className="text-xs font-semibold text-[var(--foreground)] inline-flex items-center gap-0.5">
         <span className="truncate">{categoryLabel}</span>
+        {isPitchCategory && <span title={t.pitch}><Music size={12} className="shrink-0 text-[var(--muted)]" /></span>}
         {singleSelect && <span className="text-[10px] text-[var(--muted)] font-normal">({t.single})</span>}
         {editingTags && onRenameCategory && (
           <button

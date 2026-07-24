@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
 import { useLocale } from "@/lib/useLocale";
-import { isPitchKey } from "@/lib/types";
+import { usePitchCategory } from "@/lib/useIsPitchCategory";
 import { getLocalizedField } from "@/lib/i18n-utils";
 import { STORAGE_KEYS, DIFFICULTY_LEVELS, ZOOM_MIN, ZOOM_MAX, DEBOUNCE_MS } from "@/lib/constants";
 import { useCreateTag } from "@/lib/useTagMutations";
@@ -38,6 +38,7 @@ export default function Detail({ songId }: { songId: number }) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(new Set());
   const [categoryLabelsMap, setCategoryLabelsMap] = useState<Record<string, { zh: string; en: string }>>({});
+  const { isPitch: isPitchCategory } = usePitchCategory();
   const [tab, setTab] = useState<ImageKind>("staff");
   const [editingImages, setEditingImages] = useState(false);
   const [pageIndex, setPageIndex] = useState<number | null>(null);
@@ -268,20 +269,23 @@ export default function Detail({ songId }: { songId: number }) {
               if (!lbl) return undefined;
               return getLocalizedField(locale, lbl.zh, lbl.en);
             }
-            return allCats.map((category) => (
+            return allCats.map((category) => {
+              const label = getLabel(category);
+              const isPitch = isPitchCategory(category, label);
+              return (
               <TagPicker
                 key={category}
                 compact
-                isPitchCategory={isPitchKey(category)}
+                isPitchCategory={isPitch}
                 singleSelect={singleSelectCategories.has(category)}
-                label={getLabel(category)}
+                label={label}
                 category={category}
                 tags={tags.filter((tag) => tag.category === category)}
                 selected={piece.tags[category]?.map((tag) => tag.id) ?? []}
                 onCreate={createTag}
                 onChange={(ids) => patch({ tagIds: buildTagIds(category, ids) })}
               />
-            ));
+            )});
           })()}
         </div>
       </header>
