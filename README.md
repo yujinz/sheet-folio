@@ -7,11 +7,9 @@ A sheet music manager with a web UI accessible from both PC and mobile device. B
 
 ## Why Sheet Folio?
 
-As a casual music lover, most of my sheet music isn't neatly formatted PDFs. Instead, they are screenshots from social media, photos taken during practice, or images saved from forums. Eventually, these **sheets end up scattered all over my photo gallery**, mixed with daily photos.
+As a casual music lover, I gather sheet images from social media, handwritten notes, or practice snapshots. They end up **scattered in my photo gallery**. Existing tools force you to convert everything into PDFs just to import them, making every update a chore.
 
-Existing music managers are built around PDFs. They force you to convert your photos into a PDF file just to import them. Once converted, adding a new photo or changing the image order becomes a chore.
-
-I built this app to treat images as first-class citizens. You can throw your image sheets in here and have a clean, dedicated space to navigate and practice.
+Sheet Folio treats images as first-class: throw your sheets in and get a clean, dedicated space to browse and practice.
 
 
 ## Features
@@ -123,8 +121,9 @@ You can also access it from phones or tablets on the same Wi-Fi. Find your PC's 
 
 | OS | Command |
 |---|---|
-| Linux / macOS | `hostname -I` |
+| Linux / macOS | `hostname -I` or `ip addr show` |
 | Windows | `ipconfig` |
+| WSL2 | `hostname -I` (see WSL2 notes below) |
 
 Then open `http://<your-lan-ip>:8888` on your other device.
 
@@ -285,13 +284,7 @@ Make sure the server is running (`pnpm build && pnpm start` from the quick start
 
 #### 2. Find your PC's LAN IP
 
-The production server already listens on `0.0.0.0` (`--hostname 0.0.0.0` in `package.json`), so it's reachable from LAN devices without extra config.
-
-| OS | Command |
-|---|---|
-| Linux / macOS | `hostname -I` or `ip addr show` |
-| Windows (native) | `ipconfig` |
-| WSL2 | `hostname -I` (see WSL2 notes below) |
+The production server already listens on `0.0.0.0` (`--hostname 0.0.0.0` in `package.json`), so it's reachable from LAN devices without extra config. See [Option 2: Self-Hosting](#option-2-self-hosting-recommended) for how to find your PC's LAN IP.
 
 #### 3. Access from mobile
 
