@@ -36,12 +36,19 @@ export interface SeedImage {
   sourceUrl?: string | null;
 }
 
+export interface SeedVideoLink {
+  songId: number;
+  label: string;
+  url: string;
+}
+
 export interface SeedData {
   pieces: SeedPiece[];
   tags: Tag[];
   categories: CategoryEntry[];
   singleSelectCategories: string[];
   images: SeedImage[];
+  videoLinks: SeedVideoLink[];
 }
 
 export const SEED_PIECE_IDS: number[] = [1, 2, 3];
@@ -111,5 +118,8 @@ export const SEED_DATA: SeedData = {
     { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/garden-of-sinners-m18-staff-2.png`, filename: "garden-of-sinners-m18-staff-2.png" },
     { songId: 2, kind: "staff", url: `${BASE}/uploads/2/staff/garden-of-sinners-m18-staff-3.png`, filename: "garden-of-sinners-m18-staff-3.png" },
     { songId: 3, kind: "numbered", url: `${BASE}/uploads/3/numbered/gulangyu-wave-numbered.gif`, filename: "gulangyu-wave-numbered.gif", sourceUrl: "http://www.jianpu.cn/pu/60/60631.htm" },
+  ],
+  videoLinks: [
+    { songId: 2, label: "Bilibili", url: "https://www.bilibili.com/video/BV1TG41117PN/" },
   ],
 };

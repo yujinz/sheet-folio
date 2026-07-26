@@ -128,6 +128,19 @@ export class DemoDb extends Dexie {
         })),
       );
     }
+
+    // Seed video links
+    if (seed.videoLinks && seed.videoLinks.length > 0) {
+      await this.links.bulkAdd(
+        seed.videoLinks.map((vl, i) => ({
+          id: i + 1,
+          songId: vl.songId,
+          label: vl.label,
+          url: vl.url,
+          sortOrder: i + 1,
+        })),
+      );
+    }
   }
 }
 
