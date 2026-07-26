@@ -190,7 +190,9 @@ export default function Detail({ songId }: { songId: number }) {
     const hasImages = Object.values(piece.images ?? {}).some((arr) => arr.length > 0);
     if (hasImages) {
       hasScrolledToImages.current = true;
-      imagesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      requestAnimationFrame(() => {
+        imagesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     }
   }, [piece, tab]);
 
@@ -501,7 +503,7 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
         {images.map((image, index) => (
           <div key={image.id} className="flex-shrink-0 snap-center" style={{ width: `${zoom}vw` }}>
             <button className="border-0 bg-transparent p-0 block w-full" style={{ touchAction: "manipulation" }} onClick={() => onOpen(index)}>
-              <img src={image.url} alt="" className="block w-full h-auto" />
+              <img src={image.url} alt="" className="block w-full h-auto aspect-[3/4]" />
             </button>
             {image.sourceUrl && (
               <a href={image.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-xs text-[var(--accent)] hover:underline" onClick={(e) => e.stopPropagation()}>
