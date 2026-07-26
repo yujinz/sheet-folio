@@ -1,6 +1,6 @@
 "use client";
 
-import { Music, Palette, Pencil, Plus, X } from "lucide-react";
+import { ListCheck, Music, Palette, Pencil, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocale } from "@/lib/useLocale";
@@ -484,8 +484,14 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
     <div className="grid gap-x-1.5 gap-y-1 items-start" style={{ gridTemplateColumns: `${labelColumnWidth} 1fr` }}>
       <span className="text-xs font-semibold text-[var(--foreground)] inline-flex items-center gap-0.5">
         <span className="truncate">{categoryLabel}</span>
-        {isPitchCategory && <span title={t.pitch}><Music size={12} className="shrink-0 text-[var(--muted)]" /></span>}
-        {singleSelect && <span className="text-[10px] text-[var(--muted)] font-normal">({t.single})</span>}
+        {isPitchCategory && (editingTags
+          ? <span className="text-[10px] text-[var(--muted)] font-normal">({t.pitch})</span>
+          : <span title={t.pitch}><Music size={12} className="shrink-0 text-[var(--muted)]" /></span>
+        )}
+        {singleSelect && (editingTags
+          ? <span className="text-[10px] text-[var(--muted)] font-normal">({t.single})</span>
+          : <span title={t.single}><ListCheck size={12} className="shrink-0 text-[var(--muted)]" /></span>
+        )}
         {editingTags && onRenameCategory && (
           <button
             className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white"
