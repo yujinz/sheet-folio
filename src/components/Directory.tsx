@@ -539,6 +539,12 @@ export default function Directory() {
                 setTimeout(() => (e.target as HTMLInputElement).setSelectionRange(len, len), 0);
               }}
               onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                }
+              }}
               placeholder={t.searchTitle}
             />
             {query && (
