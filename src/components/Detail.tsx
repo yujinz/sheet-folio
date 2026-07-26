@@ -190,9 +190,30 @@ export default function Detail({ songId }: { songId: number }) {
     const hasImages = Object.values(piece.images ?? {}).some((arr) => arr.length > 0);
     if (hasImages) {
       hasScrolledToImages.current = true;
-      requestAnimationFrame(() => {
-        imagesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+      const target = imagesSectionRef.current;
+      if (target) {
+        // Wait for images to load before scrolling, so the layout is stable.
+        // On first visit (cold cache), images load asynchronously; scrolling
+        // before they load produces an incorrect scroll position.
+        const imgs = Array.from(target.querySelectorAll("img"));
+        const unloaded = imgs.filter((img) => !img.complete);
+        if (unloaded.length === 0) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          let remaining = unloaded.length;
+          const onLoad = () => {
+            if (--remaining === 0) {
+              requestAnimationFrame(() => {
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
+            }
+          };
+          unloaded.forEach((img) => {
+            img.addEventListener("load", onLoad, { once: true });
+            img.addEventListener("error", onLoad, { once: true });
+          });
+        }
+      }
     }
   }, [piece, tab]);
 
@@ -503,7 +524,7 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
         {images.map((image, index) => (
           <div key={image.id} className="flex-shrink-0 snap-center" style={{ width: `${zoom}vw` }}>
             <button className="border-0 bg-transparent p-0 block w-full" style={{ touchAction: "manipulation" }} onClick={() => onOpen(index)}>
-              <img src={image.url} alt="" className="block w-full h-auto aspect-[3/4]" />
+              <img src={image.url} alt="" className="block w-full h-auto" />
             </button>
             {image.sourceUrl && (
               <a href={image.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-xs text-[var(--accent)] hover:underline" onClick={(e) => e.stopPropagation()}>
