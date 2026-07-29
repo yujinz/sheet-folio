@@ -532,7 +532,12 @@ export default function Directory() {
             <Search className="absolute left-3 top-2.5 text-[var(--muted)]" size={16} />
             <input
               className="input"
-              style={{ paddingLeft: 36, paddingRight: query ? 32 : undefined, fontSize: "14px" }}
+              style={{
+                paddingLeft: 36,
+                paddingRight: query ? 32 : undefined,
+                fontSize: "14px",
+                    ...(query ? { borderColor: "var(--accent)", boxShadow: "0 0 0 3px rgba(15, 118, 110, 0.14)" } : {}),
+              }}
               value={query}
               onFocus={(e) => {
                 const len = (e.target as HTMLInputElement).value.length;
