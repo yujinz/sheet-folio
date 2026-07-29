@@ -192,6 +192,25 @@ Creates compressed, SHA-deduplicated backups of both docker app volumes and expo
 
 Logs milestones to `$HOME/logs/sheet-folio-backup.log` - created archives, SHA dedup events, and pruned file names are recorded. On failure, the last 20 lines of output are appended.
 
+
+### Setup for Cloudflare R2
+
+R2 is chosen over other S3-compatible providers for its free tier: 10 GB of storage and 1 million writes per month, with zero egress fees (as of July 2026). For a backup archive that's a few hundred MB and updated daily, this keeps the cost at $0.
+
+1. Create a bucket in the [R2 dashboard](https://dash.cloudflare.com/) → R2 → Create Bucket (e.g. `sheet-folio-backup`)
+2. Get R2 credentials from **Manage R2 API Tokens** → Create API Token (Object Read & Write)
+3. Add to `.env` in the project root:
+   ```bash
+   AWS_ACCESS_KEY_ID="your-access-key-id"
+   AWS_SECRET_ACCESS_KEY="your-secret-key"
+   AWS_ENDPOINT_URL_S3="https://<account-id>.r2.cloudflarestorage.com"
+   ```
+   The `.env` file is auto-loaded by `backup.sh`. Then pass the bucket name with `--r2-bucket`:
+
+   ```bash
+   ./backup.sh --r2-bucket sheet-folio-backup
+   ```
+
 ### Automation (cron)
 
 Run `crontab -e` and add a daily job to run export + backup together:
@@ -209,23 +228,6 @@ tail -n 10 $HOME/logs/sheet-folio-backup.log
 ```
 
 
-**Setup for Cloudflare R2:**
-
-R2 is chosen over other S3-compatible providers for its free tier: 10 GB of storage and 1 million writes per month, with zero egress fees (as of July 2026). For a backup archive that's a few hundred MB and updated daily, this keeps the cost at $0.
-
-1. Create a bucket in the [R2 dashboard](https://dash.cloudflare.com/) → R2 → Create Bucket (e.g. `sheet-folio-backup`)
-2. Get R2 credentials from **Manage R2 API Tokens** → Create API Token (Object Read & Write)
-3. Add to `.env` in the project root:
-   ```bash
-   AWS_ACCESS_KEY_ID="your-access-key-id"
-   AWS_SECRET_ACCESS_KEY="your-secret-key"
-   AWS_ENDPOINT_URL_S3="https://<account-id>.r2.cloudflarestorage.com"
-   ```
-   The `.env` file is auto-loaded by `backup.sh`. Then pass the bucket name with `--r2-bucket`:
-
-   ```bash
-   ./backup.sh --r2-bucket sheet-folio-backup
-   ```
 
 ## Development
 
