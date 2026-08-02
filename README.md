@@ -25,8 +25,8 @@ Sheet Folio treats images as first-class: throw your sheets in and get a clean, 
 </details>
 </ul>
 
-- **Image Stacking:** Group multiple images into a single piece for continuous scrolling or page-flipping views.
-- **Reading Enhancements:** Per-device zoom persistence and favorite pieces.
+- **Image Stacking & Viewing:** Group multiple images into a single piece. Browse thumbnails with per-device zoom, then enter fullscreen to flip page-by-page or scroll continuously.
+- **Per-Device Favorites:** Mark pieces as favorites — stored locally per device.
 
 ### Library Management
 - **Directory Management:** Create, edit, and delete pieces. Browse, search, filter, and sort your collection.

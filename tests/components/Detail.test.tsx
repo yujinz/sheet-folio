@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ImageKind, SongImage } from "@/lib/types";
 
@@ -14,6 +14,10 @@ vi.mock("@/lib/useLocale", () => ({
       exitPager: "Exit pager",
       previousPage: "Previous page",
       nextPage: "Next page",
+      saveImage: "Save image",
+      backToDirectory: "Back to directory",
+      flipView: "Flip view",
+      scrollView: "Scroll view",
     },
     locale: "en-US",
   }),
@@ -24,6 +28,7 @@ import { Pager } from "@/components/Detail";
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 function makeImage(id: number, kind: ImageKind): SongImage {
@@ -54,7 +59,8 @@ describe("Pager", () => {
         setTab={setTab}
         index={1}
         setIndex={setIndex}
-        zoom={100}
+        viewMode="flip"
+        toggleViewMode={vi.fn()}
       />
     );
 
@@ -77,7 +83,8 @@ describe("Pager", () => {
         setTab={vi.fn()}
         index={0}
         setIndex={vi.fn()}
-        zoom={100}
+        viewMode="flip"
+        toggleViewMode={vi.fn()}
       />
     );
 
@@ -98,7 +105,8 @@ describe("Pager", () => {
         setTab={vi.fn()}
         index={0}
         setIndex={vi.fn()}
-        zoom={100}
+        viewMode="flip"
+        toggleViewMode={vi.fn()}
       />
     );
 
@@ -117,7 +125,8 @@ describe("Pager", () => {
         setTab={vi.fn()}
         index={1}
         setIndex={setIndex}
-        zoom={100}
+        viewMode="flip"
+        toggleViewMode={vi.fn()}
       />
     );
 
@@ -140,7 +149,8 @@ describe("Pager", () => {
         setTab={vi.fn()}
         index={0}
         setIndex={setIndex}
-        zoom={100}
+        viewMode="flip"
+        toggleViewMode={vi.fn()}
       />
     );
 
@@ -162,7 +172,8 @@ describe("Pager", () => {
         setTab={vi.fn()}
         index={0}
         setIndex={setIndex}
-        zoom={100}
+        viewMode="flip"
+        toggleViewMode={vi.fn()}
       />
     );
 
@@ -184,9 +195,110 @@ describe("Pager", () => {
           setTab={vi.fn()}
           index={5}
           setIndex={vi.fn()}
-          zoom={100}
+          viewMode="flip"
+          toggleViewMode={vi.fn()}
         />
       )
     ).not.toThrow();
+  });
+
+  it("toggles view mode when the mode button is clicked", async () => {
+    const user = userEvent.setup();
+    const toggleViewMode = vi.fn();
+    const images = [makeImage(1, "staff")];
+
+    render(
+      <Pager
+        images={images}
+        tab="staff"
+        setTab={vi.fn()}
+        index={0}
+        setIndex={vi.fn()}
+        viewMode="flip"
+        toggleViewMode={toggleViewMode}
+      />
+    );
+
+    // In flip mode the button advertises switching to scroll view
+    const toggleButton = screen.getByLabelText("Scroll view");
+    await user.click(toggleButton);
+
+    expect(toggleViewMode).toHaveBeenCalledTimes(1);
+  });
+
+  it("switches to scroll mode on center double-click", async () => {
+    const user = userEvent.setup();
+    const toggleViewMode = vi.fn();
+    const setIndex = vi.fn();
+    const images = [makeImage(1, "staff"), makeImage(2, "staff")];
+
+    const { container } = render(
+      <Pager
+        images={images}
+        tab="staff"
+        setTab={vi.fn()}
+        index={0}
+        setIndex={setIndex}
+        viewMode="flip"
+        toggleViewMode={toggleViewMode}
+      />
+    );
+
+    const img = container.querySelector("img")!;
+    await user.dblClick(img);
+
+    expect(toggleViewMode).toHaveBeenCalledTimes(1);
+    // Double-click should toggle, not exit
+    expect(setIndex).not.toHaveBeenCalledWith(null);
+  });
+
+  it("renders all images stacked in scroll mode", () => {
+    const images = [makeImage(1, "staff"), makeImage(2, "staff")];
+
+    const { container } = render(
+      <Pager
+        images={images}
+        tab="staff"
+        setTab={vi.fn()}
+        index={0}
+        setIndex={vi.fn()}
+        viewMode="scroll"
+        toggleViewMode={vi.fn()}
+      />
+    );
+
+    const imgs = container.querySelectorAll("img");
+    expect(imgs).toHaveLength(2);
+    expect(imgs[0]).toHaveAttribute("src", "/images/staff/1.jpg");
+    expect(imgs[1]).toHaveAttribute("src", "/images/staff/2.jpg");
+    // Page counter shows the current position
+    expect(screen.getByText("1 / 2")).toBeInTheDocument();
+  });
+
+  it("does not exit on single click in scroll mode", () => {
+    vi.useFakeTimers();
+    const setIndex = vi.fn();
+    const images = [makeImage(1, "staff"), makeImage(2, "staff")];
+
+    const { container } = render(
+      <Pager
+        images={images}
+        tab="staff"
+        setTab={vi.fn()}
+        index={0}
+        setIndex={setIndex}
+        viewMode="scroll"
+        toggleViewMode={vi.fn()}
+      />
+    );
+
+    const img = container.querySelector("img")!;
+    fireEvent.click(img);
+    // Advance past the 300ms single-click window
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+
+    expect(setIndex).not.toHaveBeenCalled();
   });
 });

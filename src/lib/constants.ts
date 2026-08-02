@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   deviceId: "sheet-folio-device-id",
   locale: "sheet-folio-locale",
   pitchCategories: "sheet-folio-pitch-categories",
+  pagerViewMode: "sheet-folio-pager-view-mode",
 } as const;
 
 /** Difficulty levels 1–10. */

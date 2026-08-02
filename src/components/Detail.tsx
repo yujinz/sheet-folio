@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Download, Heart, House, Images, Plus, Trash2, Upload, X, X as XIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { BookOpen, ChevronLeft, ChevronRight, Download, Heart, House, Images, Plus, ScrollText, Trash2, Upload, X, X as XIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
+import { messages, type Locale } from "@/lib/i18n";
 import { useLocale } from "@/lib/useLocale";
 import { usePitchCategory } from "@/lib/useIsPitchCategory";
 import { getLocalizedField } from "@/lib/i18n-utils";
@@ -11,7 +12,7 @@ import { STORAGE_KEYS, DIFFICULTY_LEVELS, ZOOM_MIN, ZOOM_MAX, DEBOUNCE_MS } from
 import { useCreateTag } from "@/lib/useTagMutations";
 import { useFavorites } from "@/lib/useFavorites";
 import { useAutoSave } from "@/lib/useAutoSave";
-import type { ImageKind, Song, SongImage, Tag, VideoLink } from "@/lib/types";
+import { type ImageKind, type Song, SongImage, type Tag, type VideoLink } from "@/lib/types";
 
 function generateId() {
   // crypto.randomUUID() requires secure context (HTTPS), use fallback for HTTP
@@ -32,6 +33,8 @@ function getDeviceId() {
   return next;
 }
 
+type PagerViewMode = "flip" | "scroll";
+
 export default function Detail({ songId }: { songId: number }) {
   const { t, locale } = useLocale();
   const [piece, setPiece] = useState<Song | null>(null);
@@ -43,6 +46,17 @@ export default function Detail({ songId }: { songId: number }) {
   const [editingImages, setEditingImages] = useState(false);
   const [pageIndex, setPageIndex] = useState<number | null>(null);
   const [zoom, setZoom] = useState(100);
+  const [viewMode, setViewMode] = useState<PagerViewMode>("flip");
+  // Restore the saved pager view mode after hydration (avoids hydration mismatch).
+  useEffect(() => {
+    const saved = sessionStorage.getItem(STORAGE_KEYS.pagerViewMode);
+    if (saved === "flip" || saved === "scroll") setViewMode(saved);
+  }, []);
+  const toggleViewMode = () => {
+    const next: PagerViewMode = viewMode === "flip" ? "scroll" : "flip";
+    setViewMode(next);
+    sessionStorage.setItem(STORAGE_KEYS.pagerViewMode, next);
+  };
   const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
   const headerRef = useRef<HTMLDivElement>(null);
   const { titleRef, titleAltRef, notesRef, scheduleSave, handleTitleBlur, isComposingRef, isDirtyRef } = useAutoSave(songId, piece, setPiece);
@@ -349,7 +363,7 @@ export default function Detail({ songId }: { songId: number }) {
       )}
 
       {pageIndex !== null && piece && (
-        <Pager images={images} tab={tab} setTab={setTab} index={pageIndex} setIndex={setPageIndex} zoom={zoom} />
+        <Pager images={images} tab={tab} setTab={setTab} index={pageIndex} setIndex={setPageIndex} viewMode={viewMode} toggleViewMode={toggleViewMode} />
       )}
     </main>
   );
@@ -579,20 +593,140 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
   );
 }
 
-export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
+export function Pager({ images, tab, setTab, index, setIndex, viewMode, toggleViewMode }: {
   images: SongImage[];
   tab: ImageKind;
   setTab: (kind: ImageKind) => void;
   index: number;
   setIndex: (value: number | null) => void;
-  zoom: number;
+  viewMode: PagerViewMode;
+  toggleViewMode: () => void;
 }) {
   const { t } = useLocale();
-  const image = images[index];
+  const isFlip = viewMode === "flip";
+
+  // --- Mode indicator toast (shown on open and on every mode switch) ---
+  const [toast, setToast] = useState<string | { label: string; hint: string } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((content: string | { label: string; hint: string }) => {
+    setToast(content);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 1000);
+  }, []);
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+  }, []);
+
+  // Read locale directly from localStorage for toast labels.
+  // This avoids the stale initial state of useLocale (always "zh-CN" on first render).
+  const getLocale = (): Locale => {
+    if (typeof window === "undefined") return "zh-CN";
+    const stored = localStorage.getItem(STORAGE_KEYS.locale);
+    return stored === "en-US" ? "en-US" : "zh-CN";
+  };
+  const modeLabel = (mode: PagerViewMode) =>
+    mode === "flip" ? messages[getLocale()].flipView : messages[getLocale()].scrollView;
+
+  const prevMode = useRef<PagerViewMode | null>(null);
+  const hintShown = useRef(false);
+  useEffect(() => {
+    if (prevMode.current !== viewMode) {
+      prevMode.current = viewMode;
+      const label = modeLabel(viewMode);
+      const hint = hintShown.current ? "" : messages[getLocale()].doubleClickHint;
+      hintShown.current = true;
+      showToast({ label, hint });
+    }
+  }, [viewMode, showToast]);
+
+  // --- Vertical scroll mode ---
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeScrollIndex, setActiveScrollIndex] = useState(index);
+  const activeScrollIndexRef = useRef(index);
+  const [showCounter, setShowCounter] = useState(true);
+  const counterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep the viewed page in sync with the parent index when leaving scroll mode.
+  const handleToggleMode = () => {
+    if (!isFlip && activeScrollIndexRef.current !== index) {
+      setIndex(activeScrollIndexRef.current);
+    }
+    toggleViewMode();
+  };
+
+  // Single-click exits (flip mode only); double-click toggles the view mode.
+  const handleCenterClick = () => {
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      handleToggleMode();
+      return;
+    }
+    clickTimer.current = setTimeout(() => {
+      clickTimer.current = null;
+      if (isFlip) setIndex(null);
+    }, 300);
+  };
+
+  // When in scroll mode, jump to the current index (on mode switch or tab switch).
+  useEffect(() => {
+    if (isFlip || !scrollRef.current || images.length === 0) return;
+    const el = scrollRef.current;
+    const child = el.children[index] as HTMLElement | undefined;
+    if (child) {
+      const top = child.offsetTop - (el.clientHeight - child.offsetHeight) / 2;
+      el.scrollTop = top;
+    }
+  }, [isFlip, index, images.length]);
+
+  // Track the image closest to the viewport center while scrolling; auto-hide counter.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || isFlip || images.length <= 1) return;
+    function onScroll() {
+      const children = Array.from(el!.children) as HTMLElement[];
+      const center = el!.scrollTop + el!.clientHeight / 2;
+      let closest = 0;
+      let closestDist = Infinity;
+      children.forEach((child, i) => {
+        const dist = Math.abs(child.offsetTop + child.offsetHeight / 2 - center);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = i;
+        }
+      });
+      activeScrollIndexRef.current = closest;
+      setActiveScrollIndex(closest);
+      setShowCounter(true);
+      if (counterTimer.current) clearTimeout(counterTimer.current);
+      counterTimer.current = setTimeout(() => setShowCounter(false), 2000);
+    }
+    el.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (counterTimer.current) clearTimeout(counterTimer.current);
+    };
+  }, [isFlip, images.length]);
+
+  // The image currently in view: parent index in flip mode, scroll position in scroll mode.
+  const currentImage = images[isFlip ? index : activeScrollIndex];
 
   return (
     <div className="fullscreen-view">
       <div className="absolute right-3 top-3 z-40 flex gap-2">
+        <button
+          type="button"
+          className="rounded-md bg-black/10 px-2 py-1.5 text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
+          aria-label={isFlip ? t.scrollView : t.flipView}
+          onClick={handleToggleMode}
+        >
+          {isFlip
+            ? <ScrollText size={24} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
+            : <BookOpen size={24} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />}
+        </button>
         {(["staff", "numbered"] as ImageKind[]).map((kind) => (
           <button key={kind} className={`select-none rounded-md bg-black/10 px-2 py-1 text-sm text-white backdrop-blur-sm transition-colors ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/20"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}><span className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">{t[kind]}</span></button>
         ))}
@@ -605,9 +739,10 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
           className="rounded-md bg-black/10 px-2 py-1.5 text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
           aria-label={t.saveImage}
           onClick={() => {
+            if (!currentImage) return;
             const a = document.createElement("a");
-            a.href = image.url;
-            a.download = image.filename;
+            a.href = currentImage.url;
+            a.download = currentImage.filename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -616,33 +751,86 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
           <Download size={24} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
         </button>
       </div>
-      <button className="absolute inset-y-0 left-0 w-1/3 z-30 select-none" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
-        <div className="flex h-full items-center justify-start pl-2 opacity-40 hover:opacity-80 transition-opacity">
-          <ChevronLeft size={40} className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+      {isFlip ? (
+        <>
+          <button className="absolute inset-y-0 left-0 w-1/3 z-30 select-none" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
+            <div className="flex h-full items-center justify-start pl-2 opacity-40 hover:opacity-80 transition-opacity">
+              <ChevronLeft size={40} className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+            </div>
+          </button>
+          <button className="absolute inset-y-0 right-0 w-1/3 z-30 select-none" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
+            <div className="flex h-full items-center justify-end pr-2 opacity-40 hover:opacity-80 transition-opacity">
+              <ChevronRight size={40} className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+            </div>
+          </button>
+          {/* Image at z-20 above background, below nav buttons at z-30.
+              Single click center to exit, double-click to switch view mode.
+              Long-press triggers iOS "Save to Photos". */}
+          <div
+            className="absolute inset-0 z-20 flex items-center justify-center"
+            style={{ userSelect: "none", WebkitTouchCallout: "default" }}
+            onClick={handleCenterClick}
+          >
+            {currentImage && <img src={currentImage.url} alt="" className="block max-h-full max-w-full object-contain" style={{ WebkitTouchCallout: "default" }} />}
+          </div>
+        </>
+      ) : (
+        <div
+          ref={scrollRef}
+          className="absolute inset-0 z-20 overflow-y-auto"
+          style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", userSelect: "none" }}
+          onClick={handleCenterClick}
+        >
+          {images.map((img) => (
+            <div key={img.id} className="flex w-full flex-col items-center justify-center">
+              <img src={img.url} alt="" className="block w-full h-auto" style={{ WebkitTouchCallout: "default" }} />
+              {img.sourceUrl && (
+                <a
+                  href={img.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="my-2 max-w-[90vw] truncate rounded-md bg-black/30 px-3 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/50 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
+                >
+                  {t.source}: {img.sourceUrl}
+                </a>
+              )}
+            </div>
+          ))}
         </div>
-      </button>
-      <button className="absolute inset-y-0 right-0 w-1/3 z-30 select-none" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
-        <div className="flex h-full items-center justify-end pr-2 opacity-40 hover:opacity-80 transition-opacity">
-          <ChevronRight size={40} className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+      )}
+      {/* Mode indicator toast */}
+      {toast && (
+        <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center gap-1">
+          <span
+            className="text-4xl font-medium text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]"
+            style={{ textShadow: "1px 0 0 rgba(0,0,0,0.5), -1px 0 0 rgba(0,0,0,0.5), 0 1px 0 rgba(0,0,0,0.5), 0 -1px 0 rgba(0,0,0,0.5)" }}
+          >
+            {typeof toast === "string" ? toast : toast.label}
+          </span>
+          {typeof toast !== "string" && toast.hint && (
+            <span
+              className="text-sm text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]"
+              style={{ textShadow: "1px 0 0 rgba(0,0,0,0.4), -1px 0 0 rgba(0,0,0,0.4), 0 1px 0 rgba(0,0,0,0.4), 0 -1px 0 rgba(0,0,0,0.4)" }}
+            >
+              {toast.hint}
+            </span>
+          )}
         </div>
-      </button>
-      {/* Image at z-20 above background, below nav buttons at z-30.
-          Tap center to exit, long-press to trigger iOS "Save to Photos". */}
-      <div
-        className="absolute inset-0 z-20 flex items-center justify-center"
-        style={{ userSelect: "none", WebkitTouchCallout: "default" }}
-        onClick={() => setIndex(null)}
-      >
-        {image && <img src={image.url} alt="" className="block max-h-full max-w-full object-contain" style={{ WebkitTouchCallout: "default" }} />}
-      </div>
-      {image?.sourceUrl && (
+      )}
+      {/* Page counter for scroll mode */}
+      {!isFlip && images.length > 1 && showCounter && (
+        <div className="pointer-events-none absolute bottom-4 left-4 z-30 select-none rounded-md bg-black/10 px-2 py-1.5 text-sm text-white backdrop-blur-sm">
+          {activeScrollIndex + 1} / {images.length}
+        </div>
+      )}
+      {isFlip && currentImage?.sourceUrl && (
         <a
-          href={image.sourceUrl}
+          href={currentImage.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 max-w-[80vw] truncate rounded-md bg-black/30 px-3 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/50 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
         >
-          {t.source}: {image.sourceUrl}
+          {t.source}: {currentImage.sourceUrl}
         </a>
       )}
       <Link
