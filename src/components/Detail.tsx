@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { BookOpen, ChevronLeft, ChevronRight, Download, Heart, House, Images, Plus, ScrollText, Trash2, Upload, X, X as XIcon } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Heart, House, Images, Plus, ScrollText, Trash2, Upload, X, X as XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
@@ -619,6 +619,12 @@ export function Pager({ images, tab, setTab, index, setIndex, viewMode, toggleVi
     if (clickTimer.current) clearTimeout(clickTimer.current);
   }, []);
 
+  // Keep the page background black while fullscreen, so no sub-pixel gap shows at the bottom.
+  useEffect(() => {
+    document.documentElement.classList.add("fullscreen-active");
+    return () => document.documentElement.classList.remove("fullscreen-active");
+  }, []);
+
   // Read locale directly from localStorage for toast labels.
   // This avoids the stale initial state of useLocale (always "zh-CN" on first render).
   const getLocale = (): Locale => {
@@ -731,35 +737,20 @@ export function Pager({ images, tab, setTab, index, setIndex, viewMode, toggleVi
           <button key={kind} className={`select-none rounded-md bg-black/10 px-2 py-1 text-sm text-white backdrop-blur-sm transition-colors ${tab === kind ? "bg-white/60 text-black" : "hover:bg-white/20"}`} type="button" onClick={() => { setTab(kind); setIndex(0); }}><span className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">{t[kind]}</span></button>
         ))}
       </div>
-      <div className="absolute left-3 top-3 z-40 flex gap-2 select-none">
+      <div className="absolute left-6 top-3 z-40 flex gap-2 select-none">
         <button className="rounded-md bg-black/10 px-2 py-1.5 text-white backdrop-blur-sm hover:bg-white/20 transition-colors" aria-label={t.exitPager} onClick={() => setIndex(null)}>
           <XIcon size={24} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
-        </button>
-        <button
-          className="rounded-md bg-black/10 px-2 py-1.5 text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
-          aria-label={t.saveImage}
-          onClick={() => {
-            if (!currentImage) return;
-            const a = document.createElement("a");
-            a.href = currentImage.url;
-            a.download = currentImage.filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          }}
-        >
-          <Download size={24} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
         </button>
       </div>
       {isFlip ? (
         <>
-          <button className="absolute inset-y-0 left-0 w-1/3 z-30 select-none" aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
-            <div className="flex h-full items-center justify-start pl-2 opacity-40 hover:opacity-80 transition-opacity">
+          <button className={`absolute inset-y-0 left-0 w-1/3 z-30 select-none ${index === 0 ? "pointer-events-none" : ""}`} aria-label={t.previousPage} onClick={() => setIndex(Math.max(0, index - 1))}>
+            <div className={`flex h-full items-center justify-start pl-2 transition-opacity ${index === 0 ? "opacity-15" : "opacity-40 hover:opacity-80"}`}>
               <ChevronLeft size={40} className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
             </div>
           </button>
-          <button className="absolute inset-y-0 right-0 w-1/3 z-30 select-none" aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
-            <div className="flex h-full items-center justify-end pr-2 opacity-40 hover:opacity-80 transition-opacity">
+          <button className={`absolute inset-y-0 right-0 w-1/3 z-30 select-none ${index === images.length - 1 ? "pointer-events-none" : ""}`} aria-label={t.nextPage} onClick={() => setIndex(Math.min(images.length - 1, index + 1))}>
+            <div className={`flex h-full items-center justify-end pr-2 transition-opacity ${index === images.length - 1 ? "opacity-15" : "opacity-40 hover:opacity-80"}`}>
               <ChevronRight size={40} className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
             </div>
           </button>
