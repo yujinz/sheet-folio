@@ -343,7 +343,7 @@ export default function Detail({ songId }: { songId: number }) {
         ))}
       </div>
       {piece && (
-      <Link className="fixed bottom-4 right-4 z-30 icon-button bg-white/80 backdrop-blur-sm shadow-md hover:bg-white" href="/" aria-label={t.backToDirectory}>
+      <Link className="fixed bottom-6 right-6 z-30 icon-button bg-white/80 backdrop-blur-sm shadow-md hover:bg-white" href="/" aria-label={t.backToDirectory}>
         <House size={16} />
       </Link>
       )}
@@ -647,7 +647,7 @@ export function Pager({ images, tab, setTab, index, setIndex, zoom }: {
       )}
       <Link
         href="/"
-        className="absolute bottom-3 right-3 z-40 flex items-center justify-center rounded-md bg-black/10 px-2 py-1.5 text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
+        className="absolute bottom-6 right-6 z-40 flex items-center justify-center rounded-md bg-black/10 px-2 py-1.5 text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
         aria-label={t.backToDirectory}
       >
         <House size={24} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />

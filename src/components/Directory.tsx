@@ -825,7 +825,7 @@ export default function Directory() {
 
       {showScrollTop && (
         <button
-          className={`fixed bottom-4 right-4 z-30 flex h-9 w-9 items-center justify-center rounded-full border shadow-md transition-colors ${
+          className={`fixed bottom-6 right-6 z-30 flex h-9 w-9 items-center justify-center rounded-full border shadow-md transition-colors ${
             hasActiveFilter
               ? "border-[var(--accent)] bg-[var(--accent)] text-white hover:opacity-90"
               : "border-[var(--line)] bg-white/80 backdrop-blur-sm hover:bg-white"
