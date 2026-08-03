@@ -766,7 +766,7 @@ export function Pager({ images, tab, setTab, index, setIndex, viewMode, toggleVi
             style={{ userSelect: "none", WebkitTouchCallout: "default" }}
             onClick={handleCenterClick}
           >
-            {currentImage && <img src={currentImage.url} alt="" className="block max-h-full max-w-full object-contain" style={{ WebkitTouchCallout: "default" }} />}
+            {currentImage && <img src={currentImage.url} alt="" className="block h-full w-full object-contain" style={{ WebkitTouchCallout: "default" }} />}
           </div>
         </>
       ) : (
