@@ -775,16 +775,6 @@ export function Pager({ images, tab, setTab, index, setIndex, viewMode, toggleVi
           {images.map((img) => (
             <div key={img.id} className="flex w-full flex-col items-center justify-center">
               <img src={img.url} alt="" className="block w-full h-auto" style={{ WebkitTouchCallout: "default" }} />
-              {img.sourceUrl && (
-                <a
-                  href={img.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="my-2 max-w-[90vw] truncate rounded-md bg-black/30 px-3 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/50 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
-                >
-                  {t.source}: {img.sourceUrl}
-                </a>
-              )}
             </div>
           ))}
         </div>
@@ -813,16 +803,6 @@ export function Pager({ images, tab, setTab, index, setIndex, viewMode, toggleVi
         <div className="pointer-events-none absolute bottom-4 left-4 z-30 select-none rounded-md bg-black/10 px-2 py-1.5 text-sm text-white backdrop-blur-sm">
           {activeScrollIndex + 1} / {images.length}
         </div>
-      )}
-      {isFlip && currentImage?.sourceUrl && (
-        <a
-          href={currentImage.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 max-w-[80vw] truncate rounded-md bg-black/30 px-3 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/50 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
-        >
-          {t.source}: {currentImage.sourceUrl}
-        </a>
       )}
       <Link
         href="/"

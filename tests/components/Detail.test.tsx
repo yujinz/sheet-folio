@@ -93,26 +93,6 @@ describe("Pager", () => {
     expect(img).toHaveAttribute("src", "/images/staff/1.jpg");
   });
 
-  it("shows source link when image has sourceUrl", () => {
-    const images: SongImage[] = [
-      { ...makeImage(1, "staff"), sourceUrl: "https://example.com/sheet" },
-    ];
-
-    render(
-      <Pager
-        images={images}
-        tab="staff"
-        setTab={vi.fn()}
-        index={0}
-        setIndex={vi.fn()}
-        viewMode="flip"
-        toggleViewMode={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText(/example.com\/sheet/)).toBeInTheDocument();
-  });
-
   it("navigates to previous image", async () => {
     const user = userEvent.setup();
     const setIndex = vi.fn();
