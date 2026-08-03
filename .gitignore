@@ -49,6 +49,9 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# Local agent instructions (not shared across clones)
+.github/copilot-instructions.md
+
 # Optional npm cache directory
 .npm
 
@@ -158,3 +161,6 @@ vite.config.ts.timestamp-*
 
 # Data export output
 export-data/
+
+# Local-only utility scripts (not shared)
+scripts-local/
