@@ -619,12 +619,6 @@ export function Pager({ images, tab, setTab, index, setIndex, viewMode, toggleVi
     if (clickTimer.current) clearTimeout(clickTimer.current);
   }, []);
 
-  // Keep the page background black while fullscreen, so no sub-pixel gap shows at the bottom.
-  useEffect(() => {
-    document.documentElement.classList.add("fullscreen-active");
-    return () => document.documentElement.classList.remove("fullscreen-active");
-  }, []);
-
   // Read locale directly from localStorage for toast labels.
   // This avoids the stale initial state of useLocale (always "zh-CN" on first render).
   const getLocale = (): Locale => {

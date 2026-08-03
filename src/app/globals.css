@@ -263,22 +263,10 @@ body {
 
 .fullscreen-view {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100dvw;
-  height: 100dvh;
+  inset: 0;
   z-index: 50;
   background: #111;
   color: #fff;
-}
-
-/* Keep html/body backgrounds black while the fullscreen pager is open,
-   so no sub-pixel strip shows at the viewport edge.
-   Use dvh so iOS Safari's dynamic toolbar doesn't leave a gap. */
-html.fullscreen-active,
-html.fullscreen-active body {
-  background: #111;
-  min-height: 100dvh;
 }
 
 /* Safari iOS: elements need cursor:pointer to be tappable */
