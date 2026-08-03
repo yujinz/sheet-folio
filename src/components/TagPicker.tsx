@@ -4,7 +4,7 @@ import { ListCheck, Music, Palette, Pencil, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocale } from "@/lib/useLocale";
-import { type Locale, messages } from "@/lib/i18n";
+import { type Locale, localeLabels, messages } from "@/lib/i18n";
 import { getLocalizedField } from "@/lib/i18n-utils";
 import { PITCH_RE, pitchOctaveInfo, pitchSortKey, pitchColorFromName, getEnharmonicEquivalent, normalizeAccidentals } from "@/lib/pitch-utils";
 import { TAG_COLORS, nextTagColor, pickDefaultColor } from "@/lib/color-utils";
@@ -236,8 +236,14 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
       <div data-testid="edit-dialog" className="mx-4 w-full max-w-xs rounded-lg bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-3 text-sm font-semibold">{t.editTags}</div>
         <div className="grid gap-2">
-          <input ref={editNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={editName} onChange={(e) => { setEditName(e.target.value); editAutoFillSourceRef.current = "name"; }} onFocus={() => setActiveEditInput("name")} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
-          <input ref={editNameAltInputRef} className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={editNameAlt} onChange={(e) => { setEditNameAlt(e.target.value); editAutoFillSourceRef.current = "nameAlt"; }} onFocus={() => setActiveEditInput("nameAlt")} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
+          <div className="grid gap-1">
+            <span className="text-xs font-medium text-[var(--muted)]">{localeLabels["zh-CN"]}</span>
+            <input ref={editNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={editName} onChange={(e) => { setEditName(e.target.value); editAutoFillSourceRef.current = "name"; }} onFocus={() => setActiveEditInput("name")} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
+          </div>
+          <div className="grid gap-1">
+            <span className="text-xs font-medium text-[var(--muted)]">{localeLabels["en-US"]}</span>
+            <input ref={editNameAltInputRef} className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={editNameAlt} onChange={(e) => { setEditNameAlt(e.target.value); editAutoFillSourceRef.current = "nameAlt"; }} onFocus={() => setActiveEditInput("nameAlt")} onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditTag(null); }} />
+          </div>
           <div className="flex items-center gap-2">
             {isPitchCategory && (
               <>
@@ -306,8 +312,14 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
       <div data-testid="create-dialog" className="mx-4 w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-4 text-sm font-semibold">{t.addTag}</div>
         <div className="grid gap-3">
-          <input ref={createNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={createName} onChange={(e) => { setCreateName(e.target.value); autoFillSourceRef.current = "name"; }} onFocus={() => setActiveCreateInput("name")} onKeyDown={(e) => { if (e.key === "Enter") { if (createNameAltInputRef.current && !createNameAlt.trim()) { createNameAltInputRef.current.focus(); e.preventDefault(); } else { handleCreateFromDialog(); } } if (e.key === "Escape") setShowCreateDialog(false); }} />
-          <input ref={createNameAltInputRef} className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={createNameAlt} onChange={(e) => { setCreateNameAlt(e.target.value); autoFillSourceRef.current = "nameAlt"; }} onFocus={() => setActiveCreateInput("nameAlt")} onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }} />
+          <div className="grid gap-1">
+            <span className="text-xs font-medium text-[var(--muted)]">{localeLabels["zh-CN"]}</span>
+            <input ref={createNameInputRef} className="input w-full" placeholder={(t as any)[category]} value={createName} onChange={(e) => { setCreateName(e.target.value); autoFillSourceRef.current = "name"; }} onFocus={() => setActiveCreateInput("name")} onKeyDown={(e) => { if (e.key === "Enter") { if (createNameAltInputRef.current && !createNameAlt.trim()) { createNameAltInputRef.current.focus(); e.preventDefault(); } else { handleCreateFromDialog(); } } if (e.key === "Escape") setShowCreateDialog(false); }} />
+          </div>
+          <div className="grid gap-1">
+            <span className="text-xs font-medium text-[var(--muted)]">{localeLabels["en-US"]}</span>
+            <input ref={createNameAltInputRef} className="input w-full" placeholder={(messages[otherLocale] as any)[category]} value={createNameAlt} onChange={(e) => { setCreateNameAlt(e.target.value); autoFillSourceRef.current = "nameAlt"; }} onFocus={() => setActiveCreateInput("nameAlt")} onKeyDown={(e) => { if (e.key === "Enter") handleCreateFromDialog(); if (e.key === "Escape") setShowCreateDialog(false); }} />
+          </div>
           <div className="flex items-center gap-1.5">
             {isPitchCategory && (
               <>
@@ -399,6 +411,7 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
               }}
             >
               <option value="" disabled hidden>{label || t.choose}</option>
+              <option value="">-</option>
               {localTags.map((tag) => (
                 <option key={tag.id} value={tag.id}>{tagDisplayName(tag, locale)}</option>
               ))}
