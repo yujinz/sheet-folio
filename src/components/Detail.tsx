@@ -679,6 +679,10 @@ export function Pager({ images, tab, setTab, index, setIndex, viewMode, toggleVi
   // When in scroll mode, jump to the current index (on mode switch or tab switch).
   useEffect(() => {
     if (isFlip || !scrollRef.current || images.length === 0) return;
+    // Reset the tracked scroll index so the counter never shows stale data
+    // (e.g. after switching tabs, which jumps to index 0).
+    setActiveScrollIndex(index);
+    activeScrollIndexRef.current = index;
     const el = scrollRef.current;
     const child = el.children[index] as HTMLElement | undefined;
     if (child) {
