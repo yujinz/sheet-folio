@@ -49,8 +49,7 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
-# Local agent instructions (not shared across clones)
-.github/copilot-instructions.md
+
 
 # Optional npm cache directory
 .npm
