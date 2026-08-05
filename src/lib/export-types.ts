@@ -48,3 +48,40 @@ export type ExportManifest = {
   imageCount: number;
   schemaVersion: number;
 };
+
+// ─── Import/export bundle & status types (shared server + demo) ───────────
+
+export type StorageMethod = "sqlite" | "indexeddb";
+
+export type ExportStatus = {
+  pieceCount: number;
+  tagCount: number;
+  imageCount: number;
+  lastExportedAt: string | null;
+  lastSnapshotAt: string | null;
+  hasSnapshot: boolean;
+  storageMethod: StorageMethod;
+};
+
+/**
+ * Image payload in an export bundle.
+ * Server: Buffer (raw file bytes). Demo: string (data: URL or static path).
+ */
+export type ExportImageData = Buffer | string;
+
+/** The structured data exchanged between buildExportData / importData. */
+export type ExportDataBundle = {
+  manifest: ExportManifest;
+  pieces: ExportedPiece[];
+  tags: ExportedTag[];
+  singleSelectCategories: string[];
+  tagCategories: ExportedTagCategory[];
+  /** Keyed by `${pieceId}/${kind}/${filename}`. */
+  images: Map<string, ExportImageData>;
+};
+
+export type ImportResult = {
+  imported: { pieces: number; tags: number; images: number };
+  skipped: { pieces: number };
+};
+

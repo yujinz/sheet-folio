@@ -57,6 +57,12 @@ When making changes, always start by understanding these files:
 | `src/components/Directory.tsx` | Main list/table view |
 | `src/components/Detail.tsx` | Piece detail/edit view |
 | `src/components/TagPicker.tsx` | Tag selection UI |
+| `src/components/Settings.tsx` | Import/export backup & restore UI |
+| `src/lib/export-import.ts` | Server-side export/import data layer |
+| `src/app/api/import/route.ts` | Import zip endpoint (merge/replace) |
+| `src/app/api/export/route.ts` | Export zip endpoint |
+| `src/app/api/export/status/route.ts` | Export status endpoint |
+| `src/app/api/export/rollback/route.ts` | Rollback to snapshot endpoint |
 | `src/lib/i18n.ts` | i18n translations (zh-CN, en-US) |
 | `SCHEMA.md` | Export data format (mirrors DB schema) |
 | `playwright.config.ts` | E2E test config (runs demo mode on port 3002) |

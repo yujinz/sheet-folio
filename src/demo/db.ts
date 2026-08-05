@@ -41,6 +41,19 @@ export interface DeviceZoomRow {
   updatedAt: string;
 }
 
+/**
+ * Snapshot row for the import/export rollback feature.
+ * One row per data table (kind = table name, JSON array in `data`), plus one
+ * row per image (kind = "image", subId = image id, `data` = single image row).
+ * Using `latest` as the snapshotId keeps a single overwrite-able slot.
+ */
+export interface SnapshotRow {
+  snapshotId: string; // "latest"
+  kind: string; // "meta" | "pieces" | "tags" | "songTags" | "links" | "categories" | "ssCategories" | "deviceZooms" | "image"
+  subId: number; // 0 for non-image kinds; image id for images
+  data: unknown;
+}
+
 // ─── Dexie database class ──────────────────────────────────────────────────
 
 export class DemoDb extends Dexie {
@@ -52,6 +65,7 @@ export class DemoDb extends Dexie {
   categories!: Dexie.Table<CategoryEntry, string>;
   singleSelectCategories!: Dexie.Table<{ category: string }, string>;
   deviceZooms!: Dexie.Table<DeviceZoomRow, [string, number]>;
+  snapshots!: Dexie.Table<SnapshotRow, [string, string, number]>;
 
   constructor() {
     super("sheet-folio-demo");
@@ -65,6 +79,10 @@ export class DemoDb extends Dexie {
       categories: "&key",
       singleSelectCategories: "&category",
       deviceZooms: "[deviceId+songId]",
+    });
+
+    this.version(2).stores({
+      snapshots: "&[snapshotId+kind+subId], [snapshotId+kind]",
     });
   }
 

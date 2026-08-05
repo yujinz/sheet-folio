@@ -6,6 +6,34 @@ _This file records architecture and schema decisions. For what's built vs. plann
 
 ---
 
+## Import/Export (Session G, planned)
+
+**Goal:** UI-based data backup/restore via zip files, with rollback safety net.
+
+**Export format:** Matches the existing `SCHEMA.md` export structure:
+- `manifest.json`, `pieces.json`, `tags.json`, `single-select-categories.json`, `tag-categories.json`
+- `images/{pieceId}/{kind}/{filename}` for each image (stripped of EXIF, matching `scripts/export-data.ts`)
+- Packaged as a `.zip` via `jszip` (single dependency for both server and demo)
+
+**Merge dedup algorithm:**
+- ① Fast path: `SELECT WHERE id = ?` — if the same ID exists and titles match → skip (O(1) for same-DB re-imports)
+- ② Full search: `SELECT WHERE title = ? AND titleAlt = ?` — catches cross-device imports where IDs differ
+- ③ Otherwise → INSERT as new with auto-increment ID
+- Tags deduped by `(category, name)` via `Map<exportTagId, targetTagId>` remapping
+
+**Snapshot strategy:**
+- One snapshot slot (latest only, overwritten each time)
+- Created on export and before import (safety net for rollback)
+- Server: `data/snapshots/sheet-folio.db` — raw SQLite file copy (+ WAL/SHM)
+- Demo: Dexie `snapshots` table keyed `[snapshotId, kind, subId?]` — images stored as individual rows (one per image) to avoid giant JSON blobs; metadata tables as single JSON array rows
+- Rollback: close DB connection, copy snapshot over live files, reopen; demo restores by clearing all tables and re-inserting from snapshot rows
+
+**Timestamp storage:** Server: `data/last-export.json`. Demo: `localStorage` key `"sheet-folio-last-export"`.
+
+**Exclusions:** CSV/Excel support, cloud backup (R2 via `backup.sh` is separate).
+
+---
+
 ## Single-select filter hook (`useSingleSelectFilter`, 2026-07-08)
 
 - Created `src/lib/useSingleSelectFilter.ts` for reusable single-select filter toggles.

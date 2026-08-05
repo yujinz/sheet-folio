@@ -26,12 +26,13 @@ Sheet Folio treats images as first-class: throw your sheets in and get a clean, 
 </ul>
 
 - **Image Stacking & Viewing:** Group multiple images into a single piece. Browse thumbnails with per-device zoom, then enter fullscreen to flip page-by-page or scroll continuously.
-- **Per-Device Favorites:** Mark pieces as favorites — stored locally per device.
+- **Per-Device Favorites:** Mark pieces as favorites - stored locally per device.
 
 ### Library Management
 - **Directory Management:** Create, edit, and delete pieces. Browse, search, filter, and sort your collection.
 - **Tagging & Filtering:** Assign color-coded tags to your pieces and use them to filter the main directory. Pitch tags receive rainbow colors by octave, sorted low→high. Supports adding custom tag categories.
 - **Notes and External Links:** Write practice notes and attach links for videos or sheet sources to your pieces.
+- **Import/Export:** Backup and restore your entire collection from the Settings page (gear icon in the directory header). Export a zip with all pieces, tags, and images; import with merge mode (skips duplicates) or replace mode. Includes a rollback safety net. (UI inspired by [Karaoke Shuffle](https://karaoke-shuffle.netlify.app/))
 
 ### Technical Highlights
 
@@ -46,7 +47,6 @@ Sheet Folio treats images as first-class: throw your sheets in and get a clean, 
 * **UI**
   * **Built-in Languages:** Natively supports English (`en-US`) and 简体中文 (`zh-CN`).
   * **Easy Extension:** Extend beyond the two currently implemented languages by writing your own i18n JSON.
-
 * **User Data**
   * **No Language Limits:** Song titles, tags, and descriptions support arbitrary languages.
   * **Alternative Bilingual Fields:** You can manage your library in a single language, or use the optional alternate name fields to display titles and tags in two languages .
@@ -89,8 +89,7 @@ For more details, see the [Demo section under Development](#demo).
 - **No setup required**, runs entirely in your browser. 
 - Accessible from WAN.
 
-
-**Cons** (⚠️Why it's not recommended for real use):
+**Cons** (⚠️Know your risks):
 
 - **No database migration:** When the demo app is updated with schema changes, your stored data may become incompatible - requiring you to manually clear IndexedDB (see the note above). Unlike the self-hosted version, there is no automatic migration between versions.
 
@@ -98,9 +97,7 @@ For more details, see the [Demo section under Development](#demo).
 
 - Maximum storage size limits depend on your specific browser.
 
-- Data is sandboxed and does not sync between your devices.
-
-  - Roadmap: Add import/export zip interface.
+- Data is sandboxed and does not sync between your devices. (Use the Settings page import/export to transfer data.)
 
 
 
@@ -146,8 +143,8 @@ Then restart WSL2 with `wsl --shutdown`, reopen your WSL2 terminal, and start do
 ---
 
 **Pros**:
-- **Full control over your data:** export, backup, and sync to cloud storage.
 - Database migrations run automatically when you pull updates.
+- Option to sync to cloud storage.
 - No storage limits - only limited by your disk.
 
 **Cons**:
@@ -157,6 +154,14 @@ Then restart WSL2 with `wsl --shutdown`, reopen your WSL2 terminal, and start do
 
 
 ## Data Export
+
+Two ways to export your data:
+
+**1. Web UI**
+
+Navigate to the Settings page (gear icon in the directory header), click **Export Backup (ZIP)**. Downloads a zip with all pieces, tags, and images. Use **Import** on the same page to restore or transfer data.
+
+**2. Script (for automation)**
 
 ```bash
 ./scripts/export-data.sh
@@ -353,7 +358,7 @@ the command.
 
 ### Demo
 
-A browser-only demo of sheet-folio — the same UI/UX, but all data lives in the browser. Uses client-side **IndexedDB** (via Dexie.js) instead of server-side SQLite database. Data persists after tab/browser close.
+A browser-only demo of sheet-folio: same UI/UX, but all data lives in the browser. Uses client-side **IndexedDB** (via Dexie.js) instead of server-side SQLite database. Data persists after tab/browser close.
 
 The demo data layer lives on **`main`** alongside the server code, under `src/demo/`:
 - `src/demo/store.ts` — IndexedDB data operations (mirrors `src/lib/data.ts`)

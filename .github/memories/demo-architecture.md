@@ -32,8 +32,9 @@ When a feature/change is made, update these files in the same PR:
 | Server file | Demo file | What to sync |
 |---|---|---|
 | `src/lib/data.ts` | `src/demo/store.ts` | Every data operation function |
+| `src/lib/export-import.ts` | `src/demo/store.ts` | Export/import/snapshot/rollback functions |
 | `src/app/api/**/route.ts` | `src/demo/fetch.ts` ROUTES array | Every API route needs a matching pattern + method handler |
-| `src/db/schema.ts` | `src/demo/db.ts` (Dexie schema) | Table/column changes must be mirrored |
+| `src/db/schema.ts` | `src/demo/db.ts` (Dexie schema) | Table/column changes must be mirrored (snapshots table added for import/export) |
 | `src/lib/types.ts` | (shared) | Types are shared, no sync needed |
 | `src/lib/seed.ts` | `src/demo/seed.ts` | Seed data should reflect same categories/tags |
 

@@ -57,6 +57,21 @@ Ported demo data layer from `demo` branch into `src/demo/`. See [Design Decision
 
 ## 🔜 Planned
 
+### Import/Export UI + Data Layer (Session G) — ✅ DONE (2026-08-05)
+
+New `/settings` page with export (zip), import (zip, merge or replace), and rollback from snapshot.
+
+- **Export**: `GET /api/export` → `jszip` bundle (manifest + pieces + tags + images) → zip download
+- **Import**: `POST /api/import?mode=merge|replace` → accepts multipart zip, validates, imports
+- **Status**: `GET /api/export/status` → counts, last export time, hasSnapshot, storage method
+- **Rollback**: `POST /api/export/rollback` → restores from snapshot; snapshot created on export + before import
+- **Snapshot**: Server: `data/snapshots/{dbBase}.db` via `sqlite.backup()` (async — must await). Demo: Dexie `snapshots` table `[snapshotId, kind, subId?]`, images as individual rows
+- **Merge dedup**: ① `WHERE id = ?` + titles match → skip. ② `WHERE title=? AND titleAlt=?` → skip. ③ INSERT new. Tags deduped by `(category, name)` via `Map<exportTagId, targetTagId>`
+- **Dependency**: `jszip`
+- **New files**: `src/lib/export-import.ts` (server), `src/lib/export-validation.ts` (Zod, browser-safe), `src/app/api/export/*` (3 routes), `src/app/api/import/route.ts`, `src/components/Settings.tsx`, `src/app/settings/page.tsx`, `tests/lib/export-import.test.ts`, `e2e/settings.spec.ts`
+- **Modified**: `src/components/Directory.tsx` (gear nav), `src/lib/i18n.ts` (~40 keys), `src/db/index.ts` (`getSqliteConnection()`), `src/demo/{store,fetch,db}.ts`
+- **No schema changes**
+
 ### Grid View (Session D)
 
 1. View toggle (table/grid) persisted in sessionStorage

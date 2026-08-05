@@ -155,6 +155,15 @@ function createDb() {
 
 export const db = globalThis.sheetFolioDb?.db ?? (globalThis.sheetFolioDb = createDb()).db;
 
+/**
+ * Returns the raw better-sqlite3 connection used by the app (or null in
+ * demo mode). Used by snapshot/rollback in src/lib/export-import.ts.
+ */
+export function getSqliteConnection(): Database.Database | null {
+  return globalThis.sheetFolioDb?.sqlite ?? null;
+}
+
+
 // Graceful shutdown: close the database connection on SIGTERM/SIGINT
 if (typeof process !== "undefined") {
   const handleShutdown = () => {

@@ -8,7 +8,15 @@
  */
 
 import type { CategoryEntry, ImageKind, Song, SongImage, Tag, VideoLink } from "@/lib/types";
-import { demoDb } from "@/demo/db";
+import { demoDb, type SnapshotRow } from "@/demo/db";
+import { parseExportBundle } from "@/lib/export-validation";
+import type {
+  ExportDataBundle,
+  ExportImageData,
+  ExportStatus,
+  ExportedPiece,
+  ImportResult,
+} from "@/lib/export-types";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -111,7 +119,7 @@ export async function createPiece(body: { title?: string; titleAlt?: string }): 
     title: body.title ?? "",
     titleAlt: body.titleAlt ?? "",
     difficulty: 1,
-    notes: "You are using the demo version. Data lives in your browser and may be lost. For proper self-hosting setup, see https://github.com/yujinz/sheet-folio",
+    notes: "You are using the demo version. Data lives in your browser and may be lost. Export your data regularly via Settings (gear icon); or setup self-hosting version with https://github.com/yujinz/sheet-folio",
     createdAt: time,
     updatedAt: time,
   };
@@ -549,4 +557,364 @@ export async function saveLinks(
 export async function healthCheck(): Promise<{ status: string }> {
   await ensureSeeded();
   return { status: "ok" };
+}
+
+// ─── Export / Import / Snapshot ────────────────────────────────────────────
+// 🔄 DEMO SYNC: mirrors src/lib/export-import.ts (server layer).
+
+const LAST_EXPORT_KEY = "sheet-folio-last-export";
+const SNAPSHOT_ID = "latest";
+
+function readLastExport(): string | null {
+  try {
+    return localStorage.getItem(LAST_EXPORT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Records the last export timestamp to localStorage. */
+export function recordExport(): void {
+  try {
+    localStorage.setItem(LAST_EXPORT_KEY, new Date().toISOString());
+  } catch {
+    // ignore
+  }
+}
+
+/** GET /api/export/status — counts, last export time, snapshot availability. */
+export async function getExportStatus(): Promise<ExportStatus> {
+  await ensureSeeded();
+  const [pieceCount, tagCount, imageCount, meta] = await Promise.all([
+    demoDb.pieces.count(),
+    demoDb.tags.count(),
+    demoDb.images.count(),
+    demoDb.snapshots.where("[snapshotId+kind+subId]").equals([SNAPSHOT_ID, "meta", 0]).first(),
+  ]);
+  const metaData = meta?.data as { timestamp?: string } | undefined;
+  return {
+    pieceCount,
+    tagCount,
+    imageCount,
+    lastExportedAt: readLastExport(),
+    lastSnapshotAt: metaData?.timestamp ?? null,
+    hasSnapshot: !!meta,
+    storageMethod: "indexeddb",
+  };
+}
+
+/** Builds the export bundle. Image values are url strings (data: URL or static path). */
+export async function buildExportData(): Promise<ExportDataBundle> {
+  await ensureSeeded();
+  const [pieces, allTags, joins, allImages, allLinks, cats, ssCats] = await Promise.all([
+    demoDb.pieces.toArray(),
+    demoDb.tags.toArray(),
+    demoDb.songTags.toArray(),
+    demoDb.images.toArray(),
+    demoDb.links.toArray(),
+    demoDb.categories.toArray(),
+    demoDb.singleSelectCategories.toArray(),
+  ]);
+
+  const tagsById = new Map(allTags.map((t) => [t.id, t]));
+  const tagsBySong = new Map<number, Tag[]>();
+  for (const j of joins) {
+    const tag = tagsById.get(j.tagId);
+    if (!tag) continue;
+    tagsBySong.set(j.songId, [...(tagsBySong.get(j.songId) ?? []), tag]);
+  }
+  const imagesBySong = new Map<number, SongImage[]>();
+  for (const img of allImages) {
+    imagesBySong.set(img.songId, [...(imagesBySong.get(img.songId) ?? []), img]);
+  }
+  const linksBySong = new Map<number, VideoLink[]>();
+  for (const l of allLinks) {
+    linksBySong.set(l.songId, [...(linksBySong.get(l.songId) ?? []), l]);
+  }
+
+  const images = new Map<string, ExportImageData>();
+  const exportedPieces: ExportedPiece[] = pieces.map((p) => {
+    const grouped = groupTags(tagsBySong.get(p.id) ?? []);
+    const pieceTags: ExportedPiece["tags"] = {};
+    for (const [cat, list] of Object.entries(grouped)) {
+      pieceTags[cat] = list.map((t) => ({ id: t.id, name: t.name, nameAlt: t.nameAlt, color: t.color, category: t.category }));
+    }
+    const staff = (imagesBySong.get(p.id) ?? []).filter((i) => i.kind === "staff");
+    const numbered = (imagesBySong.get(p.id) ?? []).filter((i) => i.kind === "numbered");
+    for (const img of [...staff, ...numbered]) {
+      images.set(`${p.id}/${img.kind}/${img.filename}`, img.url);
+    }
+    return {
+      id: p.id,
+      title: p.title,
+      titleAlt: p.titleAlt,
+      difficulty: p.difficulty,
+      notes: p.notes,
+      tags: pieceTags,
+      images: {
+        staff: staff.map((i) => ({ id: i.id, filename: i.filename, sourceUrl: i.sourceUrl })),
+        numbered: numbered.map((i) => ({ id: i.id, filename: i.filename, sourceUrl: i.sourceUrl })),
+      },
+      links: (linksBySong.get(p.id) ?? []).map((l) => ({ id: l.id, label: l.label, url: l.url })),
+    };
+  });
+
+  return {
+    manifest: {
+      exportedAt: nowIso(),
+      pieceCount: exportedPieces.length,
+      tagCount: allTags.length,
+      imageCount: allImages.length,
+      schemaVersion: 3,
+    },
+    pieces: exportedPieces,
+    tags: allTags.map((t) => ({ id: t.id, name: t.name, nameAlt: t.nameAlt, color: t.color, category: t.category })),
+    singleSelectCategories: ssCats.map((r) => r.category),
+    tagCategories: cats.map((c) => ({ key: c.key, name: c.name, nameAlt: c.nameAlt, sortOrder: c.sortOrder })),
+    images,
+  };
+}
+
+/**
+ * Imports a validated bundle. Mirrors the server merge/replace semantics
+ * (see src/lib/export-import.ts importData).
+ */
+export async function importData(bundle: ExportDataBundle, mode: "merge" | "replace"): Promise<ImportResult> {
+  await ensureSeeded();
+  const result: ImportResult = { imported: { pieces: 0, tags: 0, images: 0 }, skipped: { pieces: 0 } };
+  const time = nowIso();
+
+  if (mode === "replace") {
+    await demoDb.transaction(
+      "rw",
+      [demoDb.pieces, demoDb.tags, demoDb.songTags, demoDb.images, demoDb.links, demoDb.categories, demoDb.singleSelectCategories, demoDb.deviceZooms],
+      async () => {
+        await Promise.all([
+          demoDb.pieces.clear(),
+          demoDb.tags.clear(),
+          demoDb.songTags.clear(),
+          demoDb.images.clear(),
+          demoDb.links.clear(),
+          demoDb.categories.clear(),
+          demoDb.singleSelectCategories.clear(),
+          demoDb.deviceZooms.clear(),
+        ]);
+      },
+    );
+  }
+
+  // Tag categories (by key)
+  const existingCatKeys = new Set((await demoDb.categories.toArray()).map((c) => c.key));
+  for (const cat of bundle.tagCategories) {
+    if (!existingCatKeys.has(cat.key)) {
+      await demoDb.categories.add({ key: cat.key, name: cat.name, nameAlt: cat.nameAlt, sortOrder: cat.sortOrder });
+      existingCatKeys.add(cat.key);
+    }
+  }
+
+  // Single-select categories
+  const existingSs = new Set((await demoDb.singleSelectCategories.toArray()).map((r) => r.category));
+  for (const cat of bundle.singleSelectCategories) {
+    if (!existingSs.has(cat)) {
+      await demoDb.singleSelectCategories.add({ category: cat });
+      existingSs.add(cat);
+    }
+  }
+
+  // Tags: dedup by (category, name), build exportId → targetId map
+  const tagKeyIndex = new Map<string, number>();
+  for (const t of await demoDb.tags.toArray()) {
+    tagKeyIndex.set(`${t.category}\u0000${t.name}`, t.id);
+  }
+  const tagIdMap = new Map<number, number>();
+  for (const expTag of bundle.tags) {
+    const key = `${expTag.category}\u0000${expTag.name}`;
+    const existingId = tagKeyIndex.get(key);
+    if (existingId !== undefined) {
+      tagIdMap.set(expTag.id, existingId);
+      continue;
+    }
+    const newId = await demoDb.tags.add({ name: expTag.name, nameAlt: expTag.nameAlt, color: expTag.color, category: expTag.category });
+    tagKeyIndex.set(key, newId);
+    tagIdMap.set(expTag.id, newId);
+    result.imported.tags++;
+  }
+
+  // Pieces
+  const explicitIds = mode === "replace";
+  for (const expPiece of bundle.pieces) {
+    let newId: number;
+
+    if (explicitIds) {
+      const existing = await demoDb.pieces.get(expPiece.id);
+      if (existing) continue;
+      await demoDb.pieces.add({
+        id: expPiece.id,
+        title: expPiece.title,
+        titleAlt: expPiece.titleAlt,
+        difficulty: expPiece.difficulty,
+        notes: expPiece.notes,
+        createdAt: time,
+        updatedAt: time,
+      });
+      newId = expPiece.id;
+      result.imported.pieces++;
+    } else {
+      // ① Fast path: same ID + same titles → exact duplicate
+      const byId = await demoDb.pieces.get(expPiece.id);
+      if (byId && byId.title === expPiece.title && byId.titleAlt === expPiece.titleAlt) {
+        result.skipped.pieces++;
+        continue;
+      }
+      // ② Full search: same (title, titleAlt) → duplicate by name
+      const byTitle = await demoDb.pieces
+        .filter((p) => p.title === expPiece.title && p.titleAlt === expPiece.titleAlt)
+        .first();
+      if (byTitle) {
+        result.skipped.pieces++;
+        continue;
+      }
+      // ③ Insert as new
+      newId = await demoDb.pieces.add({
+        title: expPiece.title,
+        titleAlt: expPiece.titleAlt,
+        difficulty: expPiece.difficulty,
+        notes: expPiece.notes,
+        createdAt: time,
+        updatedAt: time,
+      });
+      result.imported.pieces++;
+    }
+
+    // song_tags (remap export tag ids → target tag ids)
+    for (const list of Object.values(expPiece.tags)) {
+      for (const t of list) {
+        const targetTagId = tagIdMap.get(t.id);
+        if (targetTagId === undefined) continue;
+        await demoDb.songTags.add({ songId: newId, tagId: targetTagId }).catch(() => {});
+      }
+    }
+
+    // images
+    for (const kind of ["staff", "numbered"] as const) {
+      let index = 0;
+      for (const img of expPiece.images[kind] ?? []) {
+        const imgKey = `${expPiece.id}/${kind}/${img.filename}`;
+        const imgData = bundle.images.get(imgKey);
+        const url = typeof imgData === "string" ? imgData : `/uploads/${expPiece.id}/${kind}/${img.filename}`;
+        await demoDb.images.add({
+          songId: newId,
+          kind,
+          url,
+          filename: img.filename,
+          sortOrder: index,
+          sourceUrl: img.sourceUrl,
+          createdAt: time,
+        });
+        index++;
+        result.imported.images++;
+      }
+    }
+
+    // links
+    let linkOrder = 0;
+    for (const link of expPiece.links ?? []) {
+      await demoDb.links.add({ songId: newId, label: link.label, url: link.url, sortOrder: linkOrder++ });
+    }
+  }
+
+  return result;
+}
+
+/** Creates a snapshot (single "latest" slot) of all demo data. */
+export async function createSnapshot(): Promise<void> {
+  await ensureSeeded();
+  const [pieces, tags, songTags, images, links, categories, ssCats, deviceZooms] = await Promise.all([
+    demoDb.pieces.toArray(),
+    demoDb.tags.toArray(),
+    demoDb.songTags.toArray(),
+    demoDb.images.toArray(),
+    demoDb.links.toArray(),
+    demoDb.categories.toArray(),
+    demoDb.singleSelectCategories.toArray(),
+    demoDb.deviceZooms.toArray(),
+  ]);
+
+  const rows: SnapshotRow[] = [
+    { snapshotId: SNAPSHOT_ID, kind: "meta", subId: 0, data: { timestamp: nowIso(), counts: { pieces: pieces.length, tags: tags.length, images: images.length } } },
+    { snapshotId: SNAPSHOT_ID, kind: "pieces", subId: 0, data: pieces },
+    { snapshotId: SNAPSHOT_ID, kind: "tags", subId: 0, data: tags },
+    { snapshotId: SNAPSHOT_ID, kind: "songTags", subId: 0, data: songTags },
+    { snapshotId: SNAPSHOT_ID, kind: "links", subId: 0, data: links },
+    { snapshotId: SNAPSHOT_ID, kind: "categories", subId: 0, data: categories },
+    { snapshotId: SNAPSHOT_ID, kind: "ssCategories", subId: 0, data: ssCats },
+    { snapshotId: SNAPSHOT_ID, kind: "deviceZooms", subId: 0, data: deviceZooms },
+    // one row per image — avoids a single giant JSON blob of data URLs
+    ...images.map((img) => ({ snapshotId: SNAPSHOT_ID, kind: "image", subId: img.id, data: img })),
+  ];
+
+  await demoDb.transaction("rw", demoDb.snapshots, async () => {
+    await demoDb.snapshots.where("snapshotId").equals(SNAPSHOT_ID).delete();
+    await demoDb.snapshots.bulkAdd(rows);
+  });
+}
+
+/** Checks whether a snapshot exists. */
+export async function hasSnapshot(): Promise<boolean> {
+  await ensureSeeded();
+  const meta = await demoDb.snapshots.where("[snapshotId+kind+subId]").equals([SNAPSHOT_ID, "meta", 0]).first();
+  return !!meta;
+}
+
+/** Restores all demo tables from the latest snapshot. Throws if none exists. */
+export async function restoreSnapshot(): Promise<void> {
+  await ensureSeeded();
+  const meta = await demoDb.snapshots.where("[snapshotId+kind+subId]").equals([SNAPSHOT_ID, "meta", 0]).first();
+  if (!meta) throw new Error("No snapshot available");
+
+  const readTable = async (kind: string): Promise<unknown[]> => {
+    const row = await demoDb.snapshots.where("[snapshotId+kind+subId]").equals([SNAPSHOT_ID, kind, 0]).first();
+    return Array.isArray(row?.data) ? (row.data as unknown[]) : [];
+  };
+
+  const [pieces, tags, songTags, links, categories, ssCats, deviceZooms] = await Promise.all([
+    readTable("pieces"),
+    readTable("tags"),
+    readTable("songTags"),
+    readTable("links"),
+    readTable("categories"),
+    readTable("ssCategories"),
+    readTable("deviceZooms"),
+  ]);
+  const imageRows = await demoDb.snapshots
+    .where("[snapshotId+kind]")
+    .equals([SNAPSHOT_ID, "image"])
+    .toArray();
+
+  await demoDb.transaction(
+    "rw",
+    [demoDb.pieces, demoDb.tags, demoDb.songTags, demoDb.images, demoDb.links, demoDb.categories, demoDb.singleSelectCategories, demoDb.deviceZooms],
+    async () => {
+      await Promise.all([
+        demoDb.pieces.clear(),
+        demoDb.tags.clear(),
+        demoDb.songTags.clear(),
+        demoDb.images.clear(),
+        demoDb.links.clear(),
+        demoDb.categories.clear(),
+        demoDb.singleSelectCategories.clear(),
+        demoDb.deviceZooms.clear(),
+      ]);
+      if (pieces.length) await demoDb.pieces.bulkAdd(pieces as Parameters<typeof demoDb.pieces.bulkAdd>[0]);
+      if (tags.length) await demoDb.tags.bulkAdd(tags as Parameters<typeof demoDb.tags.bulkAdd>[0]);
+      if (songTags.length) await demoDb.songTags.bulkAdd(songTags as Parameters<typeof demoDb.songTags.bulkAdd>[0]);
+      if (links.length) await demoDb.links.bulkAdd(links as Parameters<typeof demoDb.links.bulkAdd>[0]);
+      if (categories.length) await demoDb.categories.bulkAdd(categories as Parameters<typeof demoDb.categories.bulkAdd>[0]);
+      if (ssCats.length) await demoDb.singleSelectCategories.bulkAdd(ssCats as Parameters<typeof demoDb.singleSelectCategories.bulkAdd>[0]);
+      if (deviceZooms.length) await demoDb.deviceZooms.bulkAdd(deviceZooms as Parameters<typeof demoDb.deviceZooms.bulkAdd>[0]);
+      if (imageRows.length) {
+        await demoDb.images.bulkAdd(imageRows.map((r) => r.data as SongImage));
+      }
+    },
+  );
 }

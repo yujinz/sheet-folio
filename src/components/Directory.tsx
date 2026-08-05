@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Music, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Music, Pencil, Plus, RotateCcw, Search, Settings, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
@@ -519,9 +519,26 @@ export default function Directory() {
 
   return (
     <main className="sheet-page">
+      {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2 text-sm" style={{ background: "#fffbeb", borderBottom: "1px solid #fde68a" }}>
+          <span style={{ color: "#92400e" }}>{t.demoExportReminder}</span>
+          <Link href="/settings" className="text-button !min-h-0 !h-auto !py-0.5 !px-2" style={{ fontSize: 12, color: "#92400e", borderColor: "#92400e" }}>
+            <Settings size={12} /> {t.settingsTitle}
+          </Link>
+        </div>
+      )}
       <header className="flex flex-col sm:flex-row items-center gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
         <div className="flex items-center justify-end gap-3 order-1 sm:order-last sm:ml-auto w-full sm:w-auto">
           <span className="text-[var(--muted)]" style={{ fontSize: "14px" }}>{t.appTitle}</span>
+          <Link
+            href="/settings"
+            className="icon-button"
+            aria-label={t.settingsTitle}
+            title={t.settingsTitle}
+            style={{ width: 32, height: 32, minWidth: 32, minHeight: 32 }}
+          >
+            <Settings size={16} />
+          </Link>
           <span style={{ fontSize: "14px" }}><LocaleSwitch /></span>
         </div>
         <div className="flex items-center gap-3 flex-1 order-2 sm:order-first w-full sm:w-auto">

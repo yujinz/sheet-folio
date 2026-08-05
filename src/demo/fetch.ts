@@ -14,6 +14,9 @@
  */
 
 import * as demoStore from "@/demo/store";
+import JSZip from "jszip";
+import { parseExportBundle } from "@/lib/export-validation";
+import type { ExportDataBundle, ExportImageData } from "@/lib/export-types";
 
 type RouteHandler = (url: URL, init: RequestInit, params: Record<string, string>) => Promise<Response>;
 
@@ -72,6 +75,16 @@ function readFileAsDataURL(file: File): Promise<string> {
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
+  });
+}
+
+/** Read a data URL from any Blob (used for images extracted from import zips). */
+function readBlobAsDataURL(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
   });
 }
 
@@ -351,6 +364,117 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
     pattern: "/api/health",
     methods: {
       GET: async () => jsonResponse(await demoStore.healthCheck()),
+    },
+  },
+
+  // ── Export / Import / Rollback ──────────────────────────────────────
+  {
+    pattern: "/api/export/status",
+    methods: {
+      GET: async () => jsonResponse(await demoStore.getExportStatus()),
+    },
+  },
+  {
+    pattern: "/api/export",
+    methods: {
+      GET: async () => {
+        const bundle = await demoStore.buildExportData();
+        const zip = new JSZip();
+        zip.file("manifest.json", JSON.stringify(bundle.manifest, null, 2));
+        zip.file("pieces.json", JSON.stringify(bundle.pieces, null, 2));
+        zip.file("tags.json", JSON.stringify(bundle.tags, null, 2));
+        zip.file("single-select-categories.json", JSON.stringify(bundle.singleSelectCategories, null, 2));
+        zip.file("tag-categories.json", JSON.stringify(bundle.tagCategories, null, 2));
+        for (const [key, data] of bundle.images) {
+          if (typeof data !== "string") continue;
+          const comma = data.indexOf(",");
+          if (data.startsWith("data:") && comma >= 0) {
+            zip.file(`images/${key}`, data.slice(comma + 1), { base64: true });
+          }
+          // static-path images (seed data) are omitted — they ship with the site
+        }
+        const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+        await demoStore.createSnapshot();
+        demoStore.recordExport();
+        const ts = new Date().toISOString().replace(/[:.]/g, "-");
+        return new Response(blob, {
+          headers: {
+            "Content-Type": "application/zip",
+            "Content-Disposition": `attachment; filename="sheet-folio-backup-${ts}.zip"`,
+          },
+        });
+      },
+    },
+  },
+  {
+    pattern: "/api/export/rollback",
+    methods: {
+      POST: async () => {
+        try {
+          await demoStore.restoreSnapshot();
+          return okResponse();
+        } catch {
+          return badRequest("No snapshot available");
+        }
+      },
+    },
+  },
+  {
+    pattern: "/api/import",
+    methods: {
+      POST: async (url, init) => {
+        const mode = url.searchParams.get("mode") === "replace" ? "replace" : "merge";
+        const formData = init?.body instanceof FormData ? init.body : null;
+        const file = formData?.get("file");
+        if (!(file instanceof File)) return badRequest("Missing backup file");
+
+        let zip: JSZip;
+        try {
+          zip = await JSZip.loadAsync(await file.arrayBuffer());
+        } catch {
+          return badRequest("Invalid zip file");
+        }
+
+        const readJson = async (name: string) => {
+          const entry = zip.file(name);
+          return entry ? JSON.parse(await entry.async("string")) : null;
+        };
+        const [manifest, pieces, tags, singleSelectCategories, tagCategories] = await Promise.all([
+          readJson("manifest.json"),
+          readJson("pieces.json"),
+          readJson("tags.json"),
+          readJson("single-select-categories.json"),
+          readJson("tag-categories.json"),
+        ]);
+        if (!manifest || !Array.isArray(pieces) || !Array.isArray(tags)) {
+          return badRequest("Backup file is missing required data (manifest.json, pieces.json, tags.json)");
+        }
+
+        const images = new Map<string, string>();
+        for (const entry of Object.values(zip.files)) {
+          if (entry.dir) continue;
+          const name = entry.name.replace(/\\/g, "/");
+          if (!name.startsWith("images/")) continue;
+          const key = name.slice("images/".length);
+          if (!key.includes("/")) continue;
+          const blob = await entry.async("blob");
+          images.set(key, await readBlobAsDataURL(blob));
+        }
+
+        const bundle = parseExportBundle({
+          manifest,
+          pieces,
+          tags,
+          singleSelectCategories: singleSelectCategories ?? [],
+          tagCategories: tagCategories ?? [],
+        });
+        bundle.images = images as unknown as Map<string, ExportImageData>;
+
+        // Safety net: snapshot the current state before importing.
+        await demoStore.createSnapshot();
+        const result = await demoStore.importData(bundle, mode);
+        return jsonResponse(result);
+      },
     },
   },
 

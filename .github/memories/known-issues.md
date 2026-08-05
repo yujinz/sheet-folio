@@ -2,6 +2,28 @@
 
 > Related: [Project Overview](project-overview.md) · [Design Decisions](design-decisions.md) · [Implementation Roadmap](implementation-roadmap.md)
 
+## E2E tests broken by demo EN default (2026-08-05) — PRE-EXISTING, NOT import/export
+- Commit `a900bbe` ("load EN demo by default", 2026-07-24) made demo mode default to English, but `e2e/directory.spec.ts` and `e2e/i18n.spec.ts` still assume a Chinese default → they fail in demo mode (e.g. `a:has-text('欢乐颂')` shows "Ode to Joy").
+- Confirmed pre-existing: the simplest directory test fails even with all import/export changes stashed.
+- `e2e/settings.spec.ts` avoids this by forcing `localStorage["sheet-folio-locale"] = "en-US"` via `addInitScript`.
+- Fix direction: update the old specs to force `zh-CN`, or update their selectors to be locale-agnostic.
+
+## `better-sqlite3.backup()` is ASYNC (2026-08-05)
+- `db.backup(dest)` returns a Promise and completes page transfers asynchronously via `setImmediate`.
+- Must `await` it. Calling it without await writes the snapshot file lazily → immediate `fs.existsSync` checks report false.
+- `src/lib/export-import.ts` `createSnapshot()` awaits it. (Note: `src/db/index.ts` migration auto-backup does NOT await — pre-existing, best-effort only.)
+
+## Snapshot/rollback implementation notes (2026-08-05)
+- Snapshot path is per-DB: `data/snapshots/{dbBasename}.db` (isolates the vitest test DB from the real one). `last-export.json` → `data/{dbBasename}.last-export.json`.
+- `restoreSnapshot()` copies rows through a second read-only connection (better-sqlite3 `backup()` + row copy). Keeps the live connection open; no server restart needed. Deletes children before parents, inserts parents before children (FK order).
+- Rollback restores DB rows only — image files added to `data/uploads/` after the snapshot remain (orphans; handled by gc-images).
+
+## Merge dedup can "hide" deleted pieces with duplicate titles (2026-08-05) — by design, surfaced in UI
+- Merge dedup step ② (by `title + titleAlt`) means a **deleted** piece whose `(title, titleAlt)` matches a **still-existing** piece is treated as a duplicate and NOT re-added. So "export → delete a piece → merge-import the old zip" does NOT restore it when other pieces share the same title (e.g. many pieces titled "新曲子").
+- This dedup was designed for cross-device imports (IDs differ, avoid dupes). It conflicts with the "restore deleted pieces" use case, which is inherent — a same-titled survivor is indistinguishable from the deleted piece by content.
+- "Replace whole DB" DOES restore deleted pieces (it clears then re-inserts with original IDs) — confirmed by user.
+- Fix (2026-08-05): the `/settings` import UI now shows a zip preview (export date + counts) on file select and a merge result breakdown ("Added: X … Skipped: Y existing pieces") so users can see what merge did. The Replace confirmation no longer says "cannot be undone" — the import route snapshots before replacing, so Rollback CAN undo a replace.
+
 ## Demo build
 - Always use `pnpm build:demo` (not raw env vars) — the script handles the api/ folder rename, signal handlers for Ctrl+C, and auto-approval.
 - The `build:demo` script lives at `scripts/build-demo.mjs` and runs `next build` internally with `NEXT_PUBLIC_DEMO_MODE=true`.
