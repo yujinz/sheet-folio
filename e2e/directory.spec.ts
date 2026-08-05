@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { waitForTable, getTableRowCount, navigateToPiece, clickTagPill } from "./fixtures/seed";
+import { waitForTable, getTableRowCount, navigateToPiece, clickTagPill, forceLocale } from "./fixtures/seed";
 
 test.beforeEach(async ({ page }) => {
+  // Demo mode defaults to EN; selectors/titles here assume a zh-CN UI.
+  await forceLocale(page, "zh-CN");
   await page.goto("/");
   await waitForTable(page);
 });
@@ -73,7 +75,8 @@ test("select difficulty pill filters pieces", async ({ page }) => {
 test("switch difficulty pill switches filter", async ({ page }) => {
   await page.locator('.filter-section button:has-text("1")').first().click();
   await page.waitForTimeout(300);
-  await page.locator('.filter-section button:has-text("5")').first().click();
+  // 空之境界 M18 has difficulty 4 in the seed.
+  await page.locator('.filter-section button:has-text("4")').first().click();
   await page.waitForTimeout(300);
   await expect(page.locator("a:has-text('空之境界 M18')")).toBeVisible();
   await expect(page.locator("a:has-text('欢乐颂')")).not.toBeVisible();

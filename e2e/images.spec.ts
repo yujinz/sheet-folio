@@ -1,12 +1,14 @@
 import { test, expect } from "@playwright/test";
 import { existsSync } from "fs";
 import { join } from "path";
-import { waitForTable, navigateToPiece } from "./fixtures/seed";
+import { waitForTable, navigateToPiece, forceLocale } from "./fixtures/seed";
 
 const STAFF_IMG = join(__dirname, "fixtures", "test-staff.png");
 const NUMBERED_IMG = join(__dirname, "fixtures", "test-numbered.png");
 
 test.beforeEach(async ({ page }) => {
+  // Demo mode defaults to EN; tests navigate via zh piece titles.
+  await forceLocale(page, "zh-CN");
   await page.goto("/");
   await waitForTable(page);
 });

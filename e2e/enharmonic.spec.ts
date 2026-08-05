@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { waitForTable } from "./fixtures/seed";
+import { waitForTable, forceLocale } from "./fixtures/seed";
 
 test.beforeEach(async ({ page }) => {
+  // Demo mode defaults to EN; selectors here (编辑标签/等音显示) assume zh-CN.
+  await forceLocale(page, "zh-CN");
   await page.goto("/");
   await waitForTable(page);
 });

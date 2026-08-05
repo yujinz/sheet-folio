@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { waitForTable, navigateToPiece } from "./fixtures/seed";
+import { waitForTable, navigateToPiece, forceLocale } from "./fixtures/seed";
 
 test.beforeEach(async ({ page }) => {
+  // Demo mode defaults to EN; tests navigate via zh piece titles.
+  await forceLocale(page, "zh-CN");
   await page.goto("/");
   await waitForTable(page);
 });

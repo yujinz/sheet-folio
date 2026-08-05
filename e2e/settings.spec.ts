@@ -83,7 +83,9 @@ test("import merge adds a new piece", async ({ page }) => {
   await expect(page.locator(`text=${path.basename(IMPORT_ZIP_PATH)}`)).toBeVisible();
 
   await page.getByRole("button", { name: /Merge/ }).click();
-  await expect(page.locator("text=/Import successful/")).toBeVisible();
+  // Import result breakdown is shown (not "Import successful", which only
+  // appears when nothing was added).
+  await expect(page.locator("text=/Added: 1 pieces/")).toBeVisible();
 
   // Status refreshed: one more piece than seed
   await expect(page.locator('dt:has-text("Total pieces") + dd')).toHaveText(String(SEED_PIECE_COUNT + 1));

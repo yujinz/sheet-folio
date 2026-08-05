@@ -2,11 +2,11 @@
 
 > Related: [Project Overview](project-overview.md) · [Design Decisions](design-decisions.md) · [Implementation Roadmap](implementation-roadmap.md)
 
-## E2E tests broken by demo EN default (2026-08-05) — PRE-EXISTING, NOT import/export
+## E2E tests broken by demo EN default (2026-08-05) — ✅ FIXED
 - Commit `a900bbe` ("load EN demo by default", 2026-07-24) made demo mode default to English, but `e2e/directory.spec.ts` and `e2e/i18n.spec.ts` still assume a Chinese default → they fail in demo mode (e.g. `a:has-text('欢乐颂')` shows "Ode to Joy").
 - Confirmed pre-existing: the simplest directory test fails even with all import/export changes stashed.
 - `e2e/settings.spec.ts` avoids this by forcing `localStorage["sheet-folio-locale"] = "en-US"` via `addInitScript`.
-- Fix direction: update the old specs to force `zh-CN`, or update their selectors to be locale-agnostic.
+- **Fix (2026-08-05)**: Added `forceLocale(page, locale)` helper to `e2e/fixtures/seed.ts` (`page.addInitScript` that sets `sheet-folio-locale`). Specs that assume a Chinese default (`directory`, `detail`, `tags`, `images`, `enharmonic`) call `forceLocale(page, "zh-CN")` in `beforeEach`. `e2e/i18n.spec.ts` uses a **conditional** `addInitScript` (only sets `zh-CN` if no locale is already stored) so the "persists across reload" test's English setting survives `page.reload()` — an unconditional `addInitScript` would re-force zh-CN on reload and break it. Also fixed a stale directory test that clicked a non-existent difficulty "5" pill (seed difficulties are 1/2/4; 空之境界 M18 is 4) and the `settings.spec.ts` "Import successful" assertion (app now shows the "Added: N pieces …" merge-result breakdown instead). Full suite: 55 passed.
 
 ## `better-sqlite3.backup()` is ASYNC (2026-08-05)
 - `db.backup(dest)` returns a Promise and completes page transfers asynchronously via `setImmediate`.

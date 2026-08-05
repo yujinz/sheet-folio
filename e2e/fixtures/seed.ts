@@ -35,3 +35,12 @@ export async function navigateToPiece(page: Page, title: string): Promise<void> 
 export async function clickTagPill(page: Page, tagName: string): Promise<void> {
   await page.locator(`button:has-text("${tagName}")`).first().click();
 }
+
+/**
+ * Force the app to a specific locale for this test.
+ * Demo mode defaults to EN (see src/lib/useLocale.ts), but many specs and
+ * their selectors assume a zh-CN default, so set it before the first goto.
+ */
+export async function forceLocale(page: Page, locale: "zh-CN" | "en-US"): Promise<void> {
+  await page.addInitScript((value) => localStorage.setItem("sheet-folio-locale", value), locale);
+}

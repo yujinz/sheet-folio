@@ -2,6 +2,14 @@ import { test, expect } from "@playwright/test";
 import { waitForTable } from "./fixtures/seed";
 
 test.beforeEach(async ({ page }) => {
+  // Demo mode defaults to EN. Start each test in Chinese, but only set it if
+  // not already stored so tests that switch locale + reload (persistence) keep
+  // whatever the test itself wrote to localStorage.
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("sheet-folio-locale")) {
+      localStorage.setItem("sheet-folio-locale", "zh-CN");
+    }
+  });
   await page.goto("/");
   await waitForTable(page);
 });
