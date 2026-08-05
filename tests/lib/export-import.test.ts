@@ -1,7 +1,8 @@
 import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { inArray, like } from "drizzle-orm";
+import { inArray, like, eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 
 // Unique prefix so tests never collide with real or other-test data.
@@ -161,6 +162,52 @@ describe("export-import", () => {
     // cleanup
     db.delete(schema.songs).where(inArray(schema.songs.title, [`${PREFIX}Merge1`, `${PREFIX}Merge2`])).run();
     db.delete(schema.tags).where(like(schema.tags.name, `${PREFIX}Merge%`)).run();
+  });
+
+  it("importData stores image URLs with the /api/uploads/ prefix", async () => {
+    const { importData } = await import("@/lib/export-import");
+    const { db } = await import("@/db");
+
+    const pieceId = 99030;
+    const title = `${PREFIX}Images`;
+    const tagName = `${PREFIX}ImagesTag`;
+    CLEANUP_TITLES.push(title);
+    CLEANUP_TAG_NAMES.push(tagName);
+
+    const b = bundle({ pieceId, title, titleAlt: `${PREFIX}Images EN`, tagName, tagId: 99530 });
+    const filename = "scan.png";
+    b.pieces[0].images = {
+      staff: [{ filename, sourceUrl: "https://example.com/scan.png", sortOrder: 0 }],
+      numbered: [],
+    };
+    b.images.set(`${pieceId}/staff/${filename}`, Buffer.from("fake-image-bytes"));
+    b.manifest.imageCount = 1;
+
+    // Redirect writes to a temp dir so the real data/uploads is untouched.
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "sheet-folio-upload-"));
+    const prev = process.env.UPLOAD_DIR;
+    process.env.UPLOAD_DIR = tmp;
+    try {
+      const r = importData(b, "merge");
+      expect(r.imported.pieces).toBe(1);
+      expect(r.imported.images).toBe(1);
+
+      const song = db.select().from(schema.songs).where(eq(schema.songs.title, title)).get();
+      expect(song).toBeDefined();
+      const images = db
+        .select()
+        .from(schema.songImages)
+        .where(eq(schema.songImages.songId, song!.id))
+        .all();
+      expect(images).toHaveLength(1);
+      expect(images[0].url).toBe(`/api/uploads/${song!.id}/staff/${filename}`);
+      expect(images[0].filename).toBe(filename);
+      // The file itself should have been written under the uploads dir.
+      expect(fs.existsSync(path.join(tmp, String(song!.id), "staff", filename))).toBe(true);
+    } finally {
+      process.env.UPLOAD_DIR = prev;
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it("importData replace clears everything and imports with original ids", async () => {

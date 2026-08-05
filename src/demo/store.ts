@@ -801,7 +801,7 @@ export async function importData(bundle: ExportDataBundle, mode: "merge" | "repl
       for (const img of expPiece.images[kind] ?? []) {
         const imgKey = `${expPiece.id}/${kind}/${img.filename}`;
         const imgData = bundle.images.get(imgKey);
-        const url = typeof imgData === "string" ? imgData : `/uploads/${expPiece.id}/${kind}/${img.filename}`;
+        const url = typeof imgData === "string" ? imgData : `/api/uploads/${expPiece.id}/${kind}/${img.filename}`;
         await demoDb.images.add({
           songId: newId,
           kind,

@@ -330,7 +330,7 @@ export function importData(bundle: ExportDataBundle, mode: "merge" | "replace"):
           .values({
             songId: newId,
             kind,
-            url: `/uploads/${newId}/${kind}/${img.filename}`,
+            url: `/api/uploads/${newId}/${kind}/${img.filename}`,
             filename: img.filename,
             sortOrder: index,
             sourceUrl: img.sourceUrl,

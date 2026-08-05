@@ -2,6 +2,12 @@
 
 > Related: [Project Overview](project-overview.md) · [Design Decisions](design-decisions.md) · [Implementation Roadmap](implementation-roadmap.md)
 
+## Zip import stored image URLs as `/uploads/…` → images 404 (2026-08-05) — ✅ FIXED
+- `src/lib/export-import.ts` `importData()` wrote the image file to disk correctly (`data/uploads/{id}/{kind}/{filename}`) but stored the DB row's `url` as `/uploads/{id}/{kind}/{filename}` — no such route exists.
+- The route that serves uploaded files is `src/app/api/uploads/[...path]` (matches `/api/uploads/*`), so `<img src>` got a 404. Normal upload (`POST /api/pieces/[id]/images`, `src/app/api/pieces/[id]/images/route.ts`) correctly uses `/api/uploads/…`.
+- **Fix (2026-08-05)**: changed `url` to `/api/uploads/{newId}/{kind}/{filename}` in `src/lib/export-import.ts` (~line 334). Also fixed the same (dead-code) fallback in `src/demo/store.ts` `importData` for consistency. Added regression test in `tests/lib/export-import.test.ts` asserting the URL prefix. All 135 tests pass.
+- Demo-mode import was NOT affected — `src/demo/fetch.ts` converts image blobs to inline data URLs, so demo import never hits the broken path.
+
 ## E2E tests broken by demo EN default (2026-08-05) — ✅ FIXED
 - Commit `a900bbe` ("load EN demo by default", 2026-07-24) made demo mode default to English, but `e2e/directory.spec.ts` and `e2e/i18n.spec.ts` still assume a Chinese default → they fail in demo mode (e.g. `a:has-text('欢乐颂')` shows "Ode to Joy").
 - Confirmed pre-existing: the simplest directory test fails even with all import/export changes stashed.
