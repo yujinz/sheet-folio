@@ -61,7 +61,7 @@ export default function Settings() {
 
   async function handleExport() {
     setBusy(true);
-    setMessage(null);
+    setMessage(t.exporting);
     try {
       const res = await fetch("/api/export");
       if (!res.ok) throw new Error();
@@ -77,7 +77,7 @@ export default function Settings() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setMessage(t.exportSuccess);
+      setMessage(process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? t.exportSuccess : t.exportSuccess + " " + t.exportHttpWarning);
       await refreshStatus();
     } catch {
       setMessage(t.exportFailed);
@@ -129,7 +129,7 @@ export default function Settings() {
     }
     if (mode === "replace" && !confirm(t.importReplaceConfirm)) return;
     setBusy(true);
-    setMessage(null);
+    setMessage(t.importing);
     try {
       const form = new FormData();
       form.append("file", file);
@@ -249,6 +249,9 @@ export default function Settings() {
           <section className="rounded-lg border border-[var(--line)] bg-white p-4">
             <h2 className="mb-1 text-sm font-semibold">{t.exportTitle}</h2>
             <p className="mb-3 text-sm text-[var(--muted)]">{t.exportDesc}</p>
+            {process.env.NEXT_PUBLIC_DEMO_MODE !== "true" && (
+              <p className="mb-3 text-xs text-[var(--muted)]">{t.exportHttpWarning}</p>
+            )}
             <button className="text-button primary-button" type="button" onClick={handleExport} disabled={busy}>
               <Download size={16} /> {t.exportButton}
             </button>
