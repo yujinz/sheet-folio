@@ -17,6 +17,7 @@
 
 import Database from "better-sqlite3";
 import sharp from "sharp";
+import JSZip from "jszip";
 import path from "node:path";
 import fs from "node:fs";
 
@@ -301,10 +302,45 @@ async function main() {
     "utf-8"
   );
 
+  // Write sheet-folio-export.zip — same format as the UI export
+  // (Settings → Export Backup), so the flat bundle can be imported back
+  // via Settings → Import → Merge/Replace.
+  console.log("📦 Writing sheet-folio-export.zip...");
+  const zip = new JSZip();
+  const epoch = new Date(0); // deterministic entry dates → identical SHA for identical data
+
+  const addJson = (name: string, data: unknown) =>
+    zip.file(name, JSON.stringify(data, null, 2), { date: epoch });
+
+  addJson("manifest.json", manifest);
+  addJson("pieces.json", exportedPieces);
+  addJson("tags.json", exportedTags);
+  addJson("single-select-categories.json", singleSelectRows.map((r) => r.category));
+  addJson("tag-categories.json", exportedTagCategories);
+
+  // Walk images/ dir and add each file at images/{pieceId}/{kind}/{filename}
+  const walkImages = (dir: string, rel: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+      const name = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        walkImages(abs, name);
+      } else {
+        zip.file(`images/${name}`, fs.readFileSync(abs), { date: epoch });
+      }
+    }
+  };
+  if (fs.existsSync(IMG_OUT)) walkImages(IMG_OUT, "");
+
+  const zipBuf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+  const zipPath = path.join(OUTPUT_DIR, "sheet-folio-export.zip");
+  fs.writeFileSync(zipPath, zipBuf);
+
   console.log(`\n✅ Export complete! Output: ${OUTPUT_DIR}`);
   console.log(`   Pieces: ${exportedPieces.length}`);
   console.log(`   Tags: ${exportedTags.length}`);
   console.log(`   Images (EXIF stripped): ${imageCount}`);
+  console.log(`   ZIP: ${zipPath} (${zipBuf.length} bytes)`);
   console.log(`   Manifest: ${JSON.stringify(manifest)}`);
 }
 

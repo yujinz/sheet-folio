@@ -154,6 +154,50 @@ make_archive() {
   echo "$dst"
 }
 
+# adopt_export_zip <zip_src> <out_dir> <name_prefix>
+#   Copies a pre-made export ZIP (produced by scripts/export-data.sh inside
+#   Docker) into <out_dir>/<name_prefix>-<ts>-<sha12>.zip — no host-side
+#   archiving needed (avoids installing zip).
+#   Prints the destination archive path to stdout.
+#   If a file with the same SHA already exists, just touches it and skips.
+adopt_export_zip() {
+  local zip_src="$1"
+  local out="$2"
+  local prefix="$3"
+
+  mkdir -p "$out"
+
+  if [[ ! -f "$zip_src" ]]; then
+    err "Pre-made export zip not found: $zip_src (run ./scripts/export-data.sh first)"
+    return 1
+  fi
+
+  # SHA of the archive content (deterministic — export-data.ts uses fixed dates)
+  local content_sha
+  content_sha="$(sha256sum "$zip_src" | cut -c1-12)"
+
+  # Dedup: if a file with the same content SHA already exists, just touch it
+  for existing in "${out}/${prefix}-"*"-${content_sha}.zip"; do
+    if [[ -f "$existing" ]]; then
+      info "Content SHA $content_sha already exists as $(basename "$existing"), touching & skipping ..."
+      log "  SHA $content_sha already exists (skipping)"
+      touch "$existing"
+      echo "$existing"
+      return 0
+    fi
+  done
+
+  local ts_val
+  ts_val="$(ts)"
+  local final_name="${prefix}-${ts_val}-${content_sha}.zip"
+  local dst="${out}/${final_name}"
+
+  info "Adopting $zip_src -> $(basename "$dst") ..."
+  cp "$zip_src" "$dst"
+  log "  Created $(basename "$dst")"
+  echo "$dst"
+}
+
 # prune_dir <dir> <keep>
 #   Keeps the <keep> most recently modified unique-SHA files, deletes the rest.
 #   If multiple files share the same content SHA, only the newest is kept
@@ -167,25 +211,25 @@ prune_dir() {
   fi
 
   local total
-  total="$(find "$dir" -maxdepth 1 -type f -name '*.tar.gz' | wc -l)"
+  total="$(find "$dir" -maxdepth 1 -type f \( -name '*.tar.gz' -o -name '*.zip' \) | wc -l)"
   if (( total <= keep )); then
     return
   fi
 
   info "Pruning $dir: keeping last $keep unique-SHA of $total archives ..."
 
-  # Group files by SHA (last 12 hex chars before .tar.gz).
+  # Group files by SHA (last 12 hex chars before .tar.gz or .zip).
   # For each SHA, keep only the most recently modified file.
   # Then keep the <keep> most recent of those survivors.
-  find "$dir" -maxdepth 1 -type f -name '*.tar.gz' -printf '%T@ %p\0' \
+  find "$dir" -maxdepth 1 -type f \( -name '*.tar.gz' -o -name '*.zip' \) -printf '%T@ %p\0' \
     | sort -rnz \
     | awk -v keep="$keep" 'BEGIN { RS="\0"; FS=" " }
       {
         # Rejoin fields in case path has spaces (first field is timestamp)
         ts = $1; sub(/^[^ ]* /, "", $0); path = $0
-        # Extract SHA from filename: prefix-YYYYMMDD_HHMMSS-<sha12>.tar.gz
+        # Extract SHA from filename: prefix-YYYYMMDD_HHMMSS-<sha12>.tar.gz|.zip
         name = path; gsub(/^.*\//, "", name)
-        if (match(name, /-[0-9a-f]{12}\.tar\.gz$/)) {
+        if (match(name, /-[0-9a-f]{12}\.(tar\.gz|zip)$/)) {
           sha = substr(name, RSTART + 1, 12)
           if (!(sha in seen)) {
             seen[sha] = 1
@@ -201,7 +245,7 @@ prune_dir() {
       }' \
     | while IFS= read -r file; do
         name="$(basename "$file")"
-        sha="$(echo "$name" | sed -n 's/.*-\([0-9a-f]\{12\}\)\.tar\.gz$/\1/p')"
+        sha="$(echo "$name" | sed -n 's/.*-\([0-9a-f]\{12\}\)\.\(tar\.gz\|zip\)$/\1/p')"
         date_part="$(echo "$name" | sed -n 's/.*-\([0-9]\{8\}_[0-9]\{6\}\)-.*/\1/p')"
         info "  Removing $name${sha:+ (SHA $sha)}"
         rm -f "$file"
@@ -287,9 +331,12 @@ info "Step 2: Export backup"
 if [[ ! -d "$EXPORT_DIR" ]]; then
   err "Export directory $EXPORT_DIR not found — skipping"
 else
-  exp_archive="$(make_archive "$EXPORT_DIR" "$EXPORTS_DIR" "export")"
-  info "Export archive: $exp_archive"
-  prune_dir "$EXPORTS_DIR" "$KEEP"
+  if exp_archive="$(adopt_export_zip "$EXPORT_DIR/sheet-folio-export.zip" "$EXPORTS_DIR" "export")"; then
+    info "Export archive: $exp_archive"
+    prune_dir "$EXPORTS_DIR" "$KEEP"
+  else
+    info "Skipping export backup (no zip available)"
+  fi
 fi
 
 # ------------------------------------------------------------------
@@ -312,9 +359,9 @@ if [[ -n "$R2_BUCKET" ]]; then
 
   local_exp_name="$(basename "$exp_archive")"
 
-  # Extract SHA from filename (format: export-YYYYMMDD_HHMMSS-<sha12>.tar.gz)
+  # Extract SHA from filename (format: export-YYYYMMDD_HHMMSS-<sha12>.zip)
   sha="${local_exp_name##*-}"
-  sha="${sha%.tar.gz}"
+  sha="${sha%.zip}"
 
   # Check if this SHA already exists on R2
   r2_objects="$(r2_list_objects "$R2_BUCKET" "$R2_ENDPOINT")"

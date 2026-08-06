@@ -168,13 +168,13 @@ Navigate to the Settings page (gear icon in the directory header), click **Expor
 ```
 Exports the database from the running container, builds the export image, and outputs to `export-data/`. Requires the sheet-folio container to be running.
 
-Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format).
+Output goes to `export-data/` (see [SCHEMA.md](SCHEMA.md) for the format). A `sheet-folio-export.zip` is also produced alongside the flat files — it's the same format the Web UI uses, so you can upload it via **Settings → Import** (Merge or Replace) to restore this data in another instance.
 
 Logs milestones to `$HOME/logs/sheet-folio-export-data.log`. On failure, the last 20 lines of output are appended to the log.
 
 ## Data Backup
 
-Creates compressed, SHA-deduplicated backups of both docker app volumes and exported data, with optional upload to object storage. Archives are named `<prefix>-<timestamp>-<sha12>.tar.gz` - identical data reuses the same file. Keeps the last 5 unique-SHA backups both locally and on cloud.
+Creates compressed, SHA-deduplicated backups of both docker app volumes and exported data, with optional upload to object storage. Archives are named `<prefix>-<timestamp>-<sha12>.<ext>` - identical data reuses the same file. Volume archives use `.tar.gz`; export archives are `.zip` (produced by the export Docker image — no `zip` needed on the host). Keeps the last 5 unique-SHA backups both locally and on cloud.
 
 > **Note:**  Run `./scripts/export-data.sh` first to get fresh data, or use `--with-export` to do both in one step.
 
