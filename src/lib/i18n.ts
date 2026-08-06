@@ -114,6 +114,11 @@ export const messages = {
     rollbackConfirm: "确定恢复到上一版快照？当前所有数据将被替换。",
     rollbackSuccess: "已恢复",
     rollbackNone: "暂无快照",
+    resetDataTitle: "危险操作",
+    resetDataDesc: "删除所有数据，恢复为初始演示数据。",
+    resetDataButton: "重置为初始数据",
+    resetDataConfirm: "确定要删除所有数据并恢复为初始演示数据？已有的备份快照也将被清除，此操作不可撤销。",
+    resetDataSuccess: "已重置为初始数据",
   },
   "en-US": {
     appTitle: "Sheet Folio",
@@ -223,6 +228,11 @@ export const messages = {
     rollbackConfirm: "Restore to the previous snapshot? All current data will be replaced.",
     rollbackSuccess: "Restored",
     rollbackNone: "No snapshot",
+    resetDataTitle: "Danger zone",
+    resetDataDesc: "Delete all data and restore the default demo pieces.",
+    resetDataButton: "Reset to default data",
+    resetDataConfirm: "Delete all data and restore the default demo pieces? Any existing rollback snapshot will also be cleared. This cannot be undone.",
+    resetDataSuccess: "Data reset — default demo pieces restored",
   }
 } as const;
 

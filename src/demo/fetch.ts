@@ -497,6 +497,17 @@ const ROUTES: { pattern: string; methods: Record<string, RouteHandler> }[] = [
       },
     },
   },
+
+  // ── Reset demo data ─────────────────────────────────────────────────
+  {
+    pattern: "/api/reset",
+    methods: {
+      DELETE: async () => {
+        await demoStore.resetAllData();
+        return okResponse();
+      },
+    },
+  },
 ];
 
 // ─── Router ────────────────────────────────────────────────────────────────

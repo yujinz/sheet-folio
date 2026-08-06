@@ -190,6 +190,26 @@ export default function Settings() {
     }
   }
 
+  async function handleReset() {
+    if (!confirm(t.resetDataConfirm)) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/reset", { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setMessage((err as { error?: string }).error ?? t.importFailed);
+        return;
+      }
+      setMessage(t.resetDataSuccess);
+      setTimeout(() => window.location.reload(), 800);
+    } catch {
+      setMessage(t.importFailed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const storageLabel = status?.storageMethod === "indexeddb" ? t.storageIndexedDB : t.storageSqlite;
 
   return (
@@ -344,6 +364,17 @@ export default function Settings() {
             </button>
             {!status?.hasSnapshot && <span className="ml-2 text-xs text-[var(--muted)]">{t.rollbackNone}</span>}
           </section>
+
+          {/* Reset demo data (demo only) */}
+          {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+            <section className="rounded-lg border border-[var(--line)] bg-white p-4">
+              <h2 className="mb-1 text-sm font-semibold" style={{ color: "#991b1b" }}>{t.resetDataTitle}</h2>
+              <p className="mb-3 text-sm text-[var(--muted)]">{t.resetDataDesc}</p>
+              <button className="text-button danger-button" type="button" onClick={handleReset} disabled={busy}>
+                {t.resetDataButton}
+              </button>
+            </section>
+          )}
         </div>
       </div>
     </main>

@@ -866,6 +866,32 @@ export async function hasSnapshot(): Promise<boolean> {
   return !!meta;
 }
 
+/** Clears all demo data (incl. snapshots) and re-seeds with initial demo pieces/tags. */
+export async function resetAllData(): Promise<void> {
+  await ensureSeeded();
+  await demoDb.transaction(
+    "rw",
+    [demoDb.pieces, demoDb.tags, demoDb.songTags, demoDb.images, demoDb.links, demoDb.categories, demoDb.singleSelectCategories, demoDb.deviceZooms, demoDb.snapshots],
+    async () => {
+      await Promise.all([
+        demoDb.pieces.clear(),
+        demoDb.tags.clear(),
+        demoDb.songTags.clear(),
+        demoDb.images.clear(),
+        demoDb.links.clear(),
+        demoDb.categories.clear(),
+        demoDb.singleSelectCategories.clear(),
+        demoDb.deviceZooms.clear(),
+        demoDb.snapshots.clear(),
+      ]);
+    },
+  );
+  // Reset seed state so initializeSeed() runs again on next access
+  seeded = false;
+  seeding = null;
+  await ensureSeeded();
+}
+
 /** Restores all demo tables from the latest snapshot. Throws if none exists. */
 export async function restoreSnapshot(): Promise<void> {
   await ensureSeeded();
