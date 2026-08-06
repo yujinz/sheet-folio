@@ -67,17 +67,11 @@ Offers the exact same UI/UX, but utilizes the browser's IndexedDB to replace the
 
 When the demo is updated with database changes, your browser's stored data may be incompatible with the new version. If you see errors after loading, clear the stored data:
 
-**Quick method:** Open your browser's settings → **Privacy & Security** → **Clear browsing data** → select **Cached images and files** + **Cookies and site data** (for `yujinz.github.io`) → clear, then refresh.
+**Easiest:** Go to [Settings](https://yujinz.github.io/sheet-folio/settings) (gear icon in the directory header). Open **Danger zone** → **Reset to default data**. This clears all demo data and restores the initial pieces.
 
-**Browser-specific (via DevTools):**
+**Fallback (if the app won't load):** Open your browser settings and find "Clear browsing data" (or equivalent). Include **cached images and files** + **cookies and site data** for `yujinz.github.io`, then clear and refresh.
 
-| Browser | Steps |
-|---|---|
-| Chrome / Edge | Press `F12` → **Application** tab → **Storage** → **Clear site data** → refresh |
-| Firefox | Press `F12` → **Storage** tab → **IndexedDB** → right-click `sheet-folio-demo` → **Delete All** → refresh |
-| Safari | **Develop** menu → **Show Web Inspector** → **Storage** → **IndexedDB** → select `sheet-folio-demo` → **Clear** → refresh |
-
-⚠️ This will delete any data you've added in the demo - your pieces, tags, and images will be lost.
+⚠️ This will delete any data you've added in the demo. If you have an exported zip from an older version, you can use an AI agent to help migrate the data to match the current schema before importing.
 
 For more details, see the [Demo section under Development](#demo).
 
@@ -91,7 +85,7 @@ For more details, see the [Demo section under Development](#demo).
 
 **Cons** (⚠️Know your risks):
 
-- **No database migration:** When the demo app is updated with schema changes, your stored data may become incompatible - requiring you to manually clear IndexedDB (see the note above). Unlike the self-hosted version, there is no automatic migration between versions.
+- **No database migration:** When the demo app is updated with schema changes, your stored data may become incompatible — use the **Reset to default data** button in Settings → Danger zone, or manually clear IndexedDB (see the note above). Unlike the self-hosted version, there is no automatic migration between versions.
 
 - **Browsers may clear your data:**  Safari automatically wipes local browser storage after 7 days of inactivity. To prevent data loss on Apple devices, you could use the "Add to Home Screen" feature to request persistent storage.
 
@@ -387,6 +381,10 @@ Two starter pieces and a couple preset tags are auto-loaded on first visit.
 <summary><b>Note:</b> Clearing IndexedDB after updating</summary>
 
 After pulling demo changes that modify the database schema (new tables, new columns, etc.), you may need to clear the IndexedDB database for the new schema to take effect. Old data stored under a previous schema version can cause errors.
+
+**Easiest:** Go to **Settings** → **Danger zone** → **Reset to default data**.
+
+**Manual (via DevTools):**
 
 | Browser | Steps |
 |---|---|
