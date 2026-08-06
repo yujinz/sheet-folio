@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { inArray, like, eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
+import type { ExportDataBundle } from "@/lib/export-types";
 
 // Unique prefix so tests never collide with real or other-test data.
 const PREFIX = "ExportTest-";
@@ -22,7 +23,7 @@ function lastExportFile() {
   return path.join(path.dirname(testDbPath()), `${base}.last-export.json`);
 }
 
-function bundle(opts?: { pieceId?: number; title?: string; titleAlt?: string; tagName?: string; tagId?: number }) {
+function bundle(opts?: { pieceId?: number; title?: string; titleAlt?: string; tagName?: string; tagId?: number }): ExportDataBundle {
   const pieceId = opts?.pieceId ?? 99000;
   const title = opts?.title ?? `${PREFIX}Piece`;
   const titleAlt = opts?.titleAlt ?? `${PREFIX}Piece EN`;
@@ -177,7 +178,7 @@ describe("export-import", () => {
     const b = bundle({ pieceId, title, titleAlt: `${PREFIX}Images EN`, tagName, tagId: 99530 });
     const filename = "scan.png";
     b.pieces[0].images = {
-      staff: [{ filename, sourceUrl: "https://example.com/scan.png", sortOrder: 0 }],
+      staff: [{ id: 1, filename, sourceUrl: "https://example.com/scan.png" }],
       numbered: [],
     };
     b.images.set(`${pieceId}/staff/${filename}`, Buffer.from("fake-image-bytes"));

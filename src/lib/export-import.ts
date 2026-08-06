@@ -36,7 +36,7 @@ import type {
 // ─── Paths ────────────────────────────────────────────────────────────────
 
 function dbPath(): string {
-  return process.env.DB_PATH || path.join(process.cwd(), "data", "sheet-folio.db");
+  return process.env.DB_PATH || path.join(/* turbopackIgnore: true */ process.cwd(), "data", "sheet-folio.db");
 }
 function dataDir(): string {
   return path.dirname(dbPath());
@@ -52,7 +52,7 @@ function lastExportPath(): string {
   return path.join(dataDir(), `${dbBase()}.last-export.json`);
 }
 function uploadsDir(): string {
-  return process.env.UPLOAD_DIR || path.join(process.cwd(), "data", "uploads");
+  return process.env.UPLOAD_DIR || path.join(/* turbopackIgnore: true */ process.cwd(), "data", "uploads");
 }
 
 // ─── Status ───────────────────────────────────────────────────────────────
@@ -142,9 +142,9 @@ export async function buildExportData(): Promise<ExportDataBundle> {
       for (const img of full.images?.[kind] ?? []) {
         const key = `${full.id}/${kind}/${img.filename}`;
         if (images.has(key)) continue;
-        const srcPath = path.join(uploadsDir(), String(full.id), kind, img.filename);
-        if (fs.existsSync(srcPath)) {
-          images.set(key, fs.readFileSync(srcPath));
+        const srcPath = path.join(/* turbopackIgnore: true */ uploadsDir(), String(full.id), kind, img.filename);
+        if (fs.existsSync(/* turbopackIgnore: true */ srcPath)) {
+          images.set(key, fs.readFileSync(/* turbopackIgnore: true */ srcPath));
         }
       }
     }
@@ -322,9 +322,9 @@ export function importData(bundle: ExportDataBundle, mode: "merge" | "replace"):
         const imgKey = `${expPiece.id}/${kind}/${img.filename}`;
         const imgData = bundle.images.get(imgKey);
         if (imgData && typeof imgData !== "string") {
-          const destDir = path.join(uploadsDir(), String(newId), kind);
+          const destDir = path.join(/* turbopackIgnore: true */ uploadsDir(), String(newId), kind);
           fs.mkdirSync(destDir, { recursive: true });
-          fs.writeFileSync(path.join(destDir, img.filename), imgData as Buffer);
+          fs.writeFileSync(path.join(/* turbopackIgnore: true */ destDir, img.filename), imgData as Buffer);
         }
         db.insert(songImages)
           .values({

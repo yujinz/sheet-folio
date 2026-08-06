@@ -53,7 +53,7 @@ function releaseLock(lockDir: string) {
 }
 
 function createDb() {
-  const dbPath = process.env.DB_PATH || path.join(process.cwd(), "data", "sheet-folio.db");
+  const dbPath = process.env.DB_PATH || path.join(/* turbopackIgnore: true */ process.cwd(), "data", "sheet-folio.db");
   const dataDir = path.dirname(dbPath);
   fs.mkdirSync(dataDir, { recursive: true });
 
@@ -127,7 +127,7 @@ function createDb() {
     }
 
     try {
-      migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
+      migrate(db, { migrationsFolder: path.join(/* turbopackIgnore: true */ process.cwd(), "drizzle") });
     } finally {
       releaseLock(lockDir);
     }

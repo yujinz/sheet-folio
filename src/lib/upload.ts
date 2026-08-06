@@ -1,7 +1,7 @@
 import path from "node:path";
 
 export function uploadRoot() {
-  return process.env.UPLOAD_DIR || path.join(process.cwd(), "data", "uploads");
+  return process.env.UPLOAD_DIR || path.join(/* turbopackIgnore: true */ process.cwd(), "data", "uploads");
 }
 
 export function safeName(name: string) {

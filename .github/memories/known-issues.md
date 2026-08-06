@@ -2,6 +2,19 @@
 
 > Related: [Project Overview](project-overview.md) · [Design Decisions](design-decisions.md) · [Implementation Roadmap](implementation-roadmap.md)
 
+## Turbopack NFT warning "whole project traced" + next.config.ts in trace (2026-08-06) — ✅ FIXED
+- **Symptom**: `pnpm build` printed `Encountered unexpected file in NFT list` flagging `next.config.ts` (import trace: `export-import.ts` → `api/import/route.ts`). The `.nft.json` swept the whole project root (726 files incl. `next.config.ts`, `drizzle.config.ts`, `Dockerfile`, `tsconfig.json`…).
+- **Root cause**: `src/lib/export-import.ts` / `src/db/index.ts` / `src/lib/upload.ts` do `path.join(process.cwd(), "data", …)` (DB path, uploads dir, drizzle migrations folder). Turbopack can't statically scope `process.cwd()` → traces the entire project. Matters because the Dockerfile deploys with `output: standalone`, so traced files get copied into the standalone folder.
+- **Key insight (upstream bug [vercel/next.js#95125](https://github.com/vercel/next.js/issues/95125))**: the `/* turbopackIgnore: true */` comment does NOT work in Next.js 16.2.x for `fs(path.join(...))` shapes. Fixed upstream in PR #95144 → released in **16.3.0**. Also: the comment must go on the **flagged `fs`/`path` call itself**, not just on `process.cwd()` — Turbopack can't track the annotation through a function return value (e.g. `uploadsDir()`), so downstream calls still get flagged.
+- **Fix (2026-08-06)**: upgraded `next` → 16.3.0 and added `/* turbopackIgnore: true */` at the exact flagged call sites: `fs.existsSync`, `fs.readFileSync`, `fs.writeFileSync(path.join(...))`, and the `path.join(uploadsDir(), …)` calls in `export-import.ts`; plus the `process.cwd()` calls in `db/index.ts` and `upload.ts`. NFT trace dropped to 140 files with zero root config files.
+
+## Next 16.3.0 type-checks test files during `next build` (2026-08-06) — ✅ FIXED
+- 16.3.0 now type-checks everything in tsconfig `include` (incl. `tests/`, `e2e/`); 16.2.6 did not. This surfaced two classes of issues:
+  1. Stale test types: `tests/lib/data.test.ts` still used `nameEn` (type is `nameAlt`); `tests/lib/export-import.test.ts` assigned an invalid `ExportedImage` shape (`{filename, sourceUrl, sortOrder}` — needs `id`, no `sortOrder`). Fixed both.
+  2. `tests/lib/schemas.test.ts` imports `@/app/api/*` routes → **demo build** (`pnpm build:demo`, which renames `src/app/api` out of the way) failed type-check.
+- **Fix**: added `tsconfig.build.json` (extends `tsconfig.json`, `exclude: ["node_modules","scripts","tests","e2e","out"]`, separate `tsBuildInfoFile` under `node_modules/.cache/`) and set `typescript: { tsconfigPath: "tsconfig.build.json" }` in `next.config.ts`. IDE keeps `tsconfig.json` (tests still type-checked in editor); builds skip tests.
+
+
 ## Zip import stored image URLs as `/uploads/…` → images 404 (2026-08-05) — ✅ FIXED
 - `src/lib/export-import.ts` `importData()` wrote the image file to disk correctly (`data/uploads/{id}/{kind}/{filename}`) but stored the DB row's `url` as `/uploads/{id}/{kind}/{filename}` — no such route exists.
 - The route that serves uploaded files is `src/app/api/uploads/[...path]` (matches `/api/uploads/*`), so `<img src>` got a 404. Normal upload (`POST /api/pieces/[id]/images`, `src/app/api/pieces/[id]/images/route.ts`) correctly uses `/api/uploads/…`.
