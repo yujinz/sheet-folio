@@ -288,8 +288,14 @@ async function main() {
   );
 
   // Write manifest.json
+  // exportedAt is derived from the data's last-modified time (MAX updated_at),
+  // NOT the wall clock. This keeps the bundle deterministic: identical data
+  // produces a byte-identical manifest.json and sheet-folio-export.zip, so
+  // backup.sh's SHA dedup reuses the same archive on re-exports of unchanged
+  // data. Falls back to epoch for an empty database.
+  const dataUpdatedAt = songs.reduce((max, s) => (s.updated_at > max ? s.updated_at : max), "");
   const manifest: ExportManifest = {
-    exportedAt: new Date().toISOString(),
+    exportedAt: dataUpdatedAt || new Date(0).toISOString(),
     pieceCount: exportedPieces.length,
     tagCount: exportedTags.length,
     imageCount,
@@ -307,10 +313,13 @@ async function main() {
   // via Settings → Import → Merge/Replace.
   console.log("📦 Writing sheet-folio-export.zip...");
   const zip = new JSZip();
-  const epoch = new Date(0); // deterministic entry dates → identical SHA for identical data
+  // Use the data-derived timestamp for zip entry dates — deterministic (same
+  // data → same date) and meaningful when entries are browsed. Falls back to
+  // epoch for empty databases.
+  const entryDate = dataUpdatedAt ? new Date(dataUpdatedAt) : new Date(0);
 
   const addJson = (name: string, data: unknown) =>
-    zip.file(name, JSON.stringify(data, null, 2), { date: epoch });
+    zip.file(name, JSON.stringify(data, null, 2), { date: entryDate });
 
   addJson("manifest.json", manifest);
   addJson("pieces.json", exportedPieces);
@@ -326,11 +335,18 @@ async function main() {
       if (entry.isDirectory()) {
         walkImages(abs, name);
       } else {
-        zip.file(`images/${name}`, fs.readFileSync(abs), { date: epoch });
+        zip.file(`images/${name}`, fs.readFileSync(abs), { date: entryDate });
       }
     }
   };
   if (fs.existsSync(IMG_OUT)) walkImages(IMG_OUT, "");
+
+  // JSZip auto-creates implicit folder entries (images/, images/1/, …) that
+  // default to the wall-clock date; pin every entry so the archive is
+  // byte-identical for identical data.
+  for (const name of Object.keys(zip.files)) {
+    zip.files[name].date = entryDate;
+  }
 
   const zipBuf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
   const zipPath = path.join(OUTPUT_DIR, "sheet-folio-export.zip");
