@@ -468,10 +468,6 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
 }) {
   const { t } = useLocale();
   const [draft, setDraft] = useState(links);
-  const isDirty = useMemo(() => {
-    if (draft.length !== links.length) return true;
-    return draft.some((link, i) => link.label !== links[i].label || link.url !== links[i].url);
-  }, [draft, links]);
   useEffect(() => setDraft(links), [links]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevZoom = useRef(zoom);
@@ -571,22 +567,35 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
         </div>
       )}
       <div className="mx-auto grid w-full max-w-3xl gap-2 pb-8">
-        {draft.map((link, index) => (
-          <div key={index} className="grid gap-2 sm:grid-cols-[1fr_2fr_auto_auto]">
-            <input className="input" value={link.label} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, label: event.target.value } : item))} placeholder={t.linkTitle} />
-            <input className="input" value={link.url} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, url: event.target.value } : item))} placeholder={t.videoLink} />
-            <a className="text-button" href={link.url} target="_blank">{t.open}</a>
-            <button className="icon-button" type="button" onClick={() => {
-              if (!confirm(t.removeLinkConfirm)) return;
-              const next = draft.filter((_, i) => i !== index);
-              setDraft(next);
-              setLinks(next);
-            }} aria-label={t.removeLink}><X size={14} /></button>
-          </div>
-        ))}
+        {draft.map((link, index) => {
+          const orig = links[index];
+          const isLinkDirty = !orig || orig.label !== link.label || orig.url !== link.url;
+          return (
+            <div key={index} className="grid gap-2 sm:grid-cols-[1fr_2fr_auto_auto_auto]">
+              <input className="input" value={link.label} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, label: event.target.value } : item))} placeholder={t.linkTitle} />
+              <input className="input" value={link.url} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, url: event.target.value } : item))} placeholder={t.videoLink} />
+              <a className="text-button" href={link.url} target="_blank">{t.open}</a>
+              <button
+                className={`text-button ${isLinkDirty ? "primary-button" : "disabled-button"}`}
+                type="button"
+                disabled={!isLinkDirty}
+                onClick={() => setLinks(draft)}
+              >{t.save}</button>
+              <button className="icon-button" type="button" onClick={() => {
+                const next = draft.filter((_, i) => i !== index);
+                if (orig) {
+                  if (!confirm(t.removeLinkConfirm)) return;
+                  setDraft(next);
+                  setLinks(next);
+                } else {
+                  setDraft(next);
+                }
+              }} aria-label={t.removeLink}><X size={14} /></button>
+            </div>
+          );
+        })}
         <div className="flex gap-2">
           <button className="text-button" type="button" onClick={() => setDraft([...draft, { id: 0, songId: 0, label: "", url: "", sortOrder: draft.length }])}><Plus size={16} /> {t.link}</button>
-          <button className={`text-button ${isDirty ? "primary-button" : "disabled-button"}`} type="button" disabled={!isDirty} onClick={() => setLinks(draft)}>{t.saveLinks}</button>
         </div>
       </div>
     </section>
