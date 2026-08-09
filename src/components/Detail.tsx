@@ -571,9 +571,9 @@ function Browser({ images, zoom, onOpen, links, setLinks }: {
           const orig = links[index];
           const isLinkDirty = !orig || orig.label !== link.label || orig.url !== link.url;
           return (
-            <div key={index} className="grid gap-2 sm:grid-cols-[1fr_2fr_auto_auto_auto]">
-              <input className="input" value={link.label} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, label: event.target.value } : item))} placeholder={t.linkTitle} />
-              <input className="input" value={link.url} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, url: event.target.value } : item))} placeholder={t.videoLink} />
+            <div key={index} className="grid gap-2 grid-cols-[auto_auto_auto] sm:grid-cols-[1fr_2fr_auto_auto_auto]">
+              <input className="input col-span-full sm:col-span-1" value={link.label} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, label: event.target.value } : item))} placeholder={t.linkTitle} />
+              <input className="input col-span-full sm:col-span-1" value={link.url} onChange={(event) => setDraft(draft.map((item, i) => i === index ? { ...item, url: event.target.value } : item))} placeholder={t.videoLink} />
               <a className="text-button" href={link.url} target="_blank">{t.open}</a>
               <button
                 className={`text-button ${isLinkDirty ? "primary-button" : "disabled-button"}`}
