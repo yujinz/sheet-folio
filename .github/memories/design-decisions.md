@@ -30,6 +30,12 @@ _This file records architecture and schema decisions. For what's built vs. plann
 
 **Timestamp storage:** Server: `data/last-export.json`. Demo: `localStorage` key `"sheet-folio-last-export"`.
 
+**`lastExportedAt` / `newPiecesSinceExport` semantics (demo banner, 2026-08-10):**
+- `lastExportedAt` is updated **only by an export** (`recordExport()`). Import (merge/replace) and reset do **NOT** touch it — by design. Importing a backup does not mean the current library was exported, so the "last backup" date legitimately stays as the last manual export.
+- `newPiecesSinceExport` = count of pieces with `updatedAt > lastExportedAt`. Imported pieces are inserted with `updatedAt = now`, so after a merge import the counter jumps by the imported count, and after a replace import it equals the whole library. This is intentional: after an import the library no longer matches the last export, so nudging a re-export is the safe behavior.
+- After a reset, `lastExportedAt` is also left stale (the seed re-seed has July timestamps, so the counter usually drops to 0 and the banner returns to the calm seed state via `isSeedData`).
+- Do NOT "fix" this by having import update the export date — that would be inaccurate (the zip is a backup from another time/device, not a snapshot of the current state).
+
 **Exclusions:** CSV/Excel support, cloud backup (R2 via `backup.sh` is separate).
 
 ---

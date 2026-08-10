@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Music, Pencil, Plus, 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
+import DemoBanner from "@/components/DemoBanner";
 import { useLocale } from "@/lib/useLocale";
 import { categoryKey, canAddCategory } from "@/lib/category";
 import type { CategoryEntry, Song, Tag, TagCategory } from "@/lib/types";
@@ -519,14 +520,7 @@ export default function Directory() {
 
   return (
     <main className="sheet-page">
-      {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2 text-sm" style={{ background: "#fffbeb", borderBottom: "1px solid #fde68a" }}>
-          <span style={{ color: "#92400e" }}>{t.demoExportReminder}</span>
-          <Link href="/settings" className="text-button !min-h-0 !h-auto !py-0.5 !px-2" style={{ fontSize: 12, color: "#92400e", borderColor: "#92400e" }}>
-            <Settings size={12} /> {t.settingsTitle}
-          </Link>
-        </div>
-      )}
+      <DemoBanner />
       <header className="flex flex-col sm:flex-row items-center gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
         <div className="flex items-center justify-end gap-3 order-1 sm:order-last sm:ml-auto w-full sm:w-auto">
           <span className="text-[var(--muted)]" style={{ fontSize: "14px" }}>{t.appTitle}</span>

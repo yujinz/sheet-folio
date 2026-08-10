@@ -47,6 +47,7 @@
 - Always use `pnpm build:demo` (not raw env vars) — the script handles the api/ folder rename, signal handlers for Ctrl+C, and auto-approval.
 - The `build:demo` script lives at `scripts/build-demo.mjs` and runs `next build` internally with `NEXT_PUBLIC_DEMO_MODE=true`.
 - For dev mode: `pnpm dev:demo` — no script needed, just the env var wrapper.
+- ⚠️ **Stale `.next/dev/types` after running `next dev` breaks `pnpm build:demo`** (2026-08-10): if you run the dev server (`NEXT_PUBLIC_DEMO_MODE=true pnpm dev -p 3002`) and then run `pnpm build:demo` in the same working tree, the build fails with `TS2307 Cannot find module '../../src/app/api/*/route.js'` errors in `.next/dev/types/validator.ts`. Root cause: the dev server generates `.next/dev/types` referencing the `src/app/api/**` routes; `build-demo.mjs` renames `src/app/api` away (so the static export can't bundle better-sqlite3), leaving stale type references that fail type-check. **Fix**: `rm -rf .next` before `pnpm build:demo`. The build-demo script does NOT clean `.next` itself.
 
 ## Demo images — strip EXIF before deploy (REMINDER, 2026-08-02)
 - Before deploying/exporting the demo, strip EXIF/IPTC/XMP from images so they don't leak into the demo/exported data.

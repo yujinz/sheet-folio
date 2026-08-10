@@ -9,6 +9,7 @@
 
 import type { CategoryEntry, ImageKind, Song, SongImage, Tag, VideoLink } from "@/lib/types";
 import { demoDb, type SnapshotRow } from "@/demo/db";
+import { SEED_PIECE_IDS } from "@/demo/seed";
 import { parseExportBundle } from "@/lib/export-validation";
 import type {
   ExportDataBundle,
@@ -119,7 +120,7 @@ export async function createPiece(body: { title?: string; titleAlt?: string }): 
     title: body.title ?? "",
     titleAlt: body.titleAlt ?? "",
     difficulty: 1,
-    notes: "You are using the demo version. Data lives in your browser and may be lost. Export your data regularly via Settings (gear icon); or setup self-hosting version with https://github.com/yujinz/sheet-folio",
+    notes: "",
     createdAt: time,
     updatedAt: time,
   };
@@ -585,21 +586,34 @@ export function recordExport(): void {
 /** GET /api/export/status — counts, last export time, snapshot availability. */
 export async function getExportStatus(): Promise<ExportStatus> {
   await ensureSeeded();
-  const [pieceCount, tagCount, imageCount, meta] = await Promise.all([
+  const maxSeedId = Math.max(...SEED_PIECE_IDS);
+  const [pieceCount, tagCount, imageCount, meta, nonSeedCount] = await Promise.all([
     demoDb.pieces.count(),
     demoDb.tags.count(),
     demoDb.images.count(),
     demoDb.snapshots.where("[snapshotId+kind+subId]").equals([SNAPSHOT_ID, "meta", 0]).first(),
+    // Indexed count of pieces with id beyond the seed range — O(1) via the primary key.
+    demoDb.pieces.where("id").above(maxSeedId).count(),
   ]);
   const metaData = meta?.data as { timestamp?: string } | undefined;
+  const lastExportedAt = readLastExport();
+  // Count pieces created/edited after the last export (null when never exported).
+  let newPiecesSinceExport: number | null = null;
+  if (lastExportedAt) {
+    const allPieces = await demoDb.pieces.toArray();
+    newPiecesSinceExport = allPieces.filter((p) => p.updatedAt > lastExportedAt).length;
+  }
   return {
     pieceCount,
     tagCount,
     imageCount,
-    lastExportedAt: readLastExport(),
+    lastExportedAt,
     lastSnapshotAt: metaData?.timestamp ?? null,
     hasSnapshot: !!meta,
     storageMethod: "indexeddb",
+    newPiecesSinceExport,
+    // Still seed data only when every piece ID is one of the seed IDs.
+    isSeedData: nonSeedCount === 0,
   };
 }
 

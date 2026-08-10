@@ -272,6 +272,14 @@ export default function Settings() {
             {process.env.NEXT_PUBLIC_DEMO_MODE !== "true" && (
               <p className="mb-3 text-xs text-[var(--muted)]">{t.exportHttpWarning}</p>
             )}
+            {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+              <p className="mb-3 text-xs text-[var(--muted)]">
+                {t.demoSelfHostNote}{" "}
+                <a href="https://github.com/yujinz/sheet-folio" target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--accent)" }}>
+                  github.com/yujinz/sheet-folio
+                </a>
+              </p>
+            )}
             <button className="text-button primary-button" type="button" onClick={handleExport} disabled={busy}>
               <Download size={16} /> {t.exportButton}
             </button>

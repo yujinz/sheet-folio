@@ -9,7 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { db, getSqliteConnection } from "@/db";
 import {
   deviceZoom,
@@ -81,6 +81,12 @@ export function getExportStatus(): ExportStatus {
     }
   }
 
+  // Count pieces created/edited after the last export (null when never exported).
+  let newPiecesSinceExport: number | null = null;
+  if (lastExportedAt) {
+    newPiecesSinceExport = db.select().from(songs).where(gt(songs.updatedAt, lastExportedAt)).all().length;
+  }
+
   return {
     pieceCount,
     tagCount,
@@ -89,6 +95,9 @@ export function getExportStatus(): ExportStatus {
     lastSnapshotAt,
     hasSnapshot: fs.existsSync(snapshotPath()),
     storageMethod: "sqlite",
+    newPiecesSinceExport,
+    // The server data layer has no seed concept — users own everything.
+    isSeedData: false,
   };
 }
 

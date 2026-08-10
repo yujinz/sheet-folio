@@ -61,6 +61,10 @@ export type ExportStatus = {
   lastSnapshotAt: string | null;
   hasSnapshot: boolean;
   storageMethod: StorageMethod;
+  /** Number of pieces created/edited since the last export. null = never exported. */
+  newPiecesSinceExport: number | null;
+  /** True when the library still only contains the seed data (nothing user-created). */
+  isSeedData: boolean;
 };
 
 /**
