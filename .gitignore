@@ -82,6 +82,10 @@ web_modules/
 .next
 out
 
+# Next.js 16 auto-generated agent files (disabled via agentRules: false)
+AGENTS.md
+CLAUDE.md
+
 # Nuxt.js build / generate output
 .nuxt
 dist

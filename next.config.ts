@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Disable Next.js 16 auto-generation of AGENTS.md / CLAUDE.md.
+  // This project uses .github/copilot-instructions.md instead.
+  agentRules: false,
   ...(process.env.NEXT_PUBLIC_DEMO_MODE === "true"
     ? {
         output: "export",
