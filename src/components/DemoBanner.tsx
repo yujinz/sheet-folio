@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Settings } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/useLocale";
 import type { ExportStatus } from "@/lib/export-types";
 
@@ -57,44 +57,46 @@ export default function DemoBanner() {
   if (!status) return null; // avoid flashing while loading
 
   let message: string;
-  let cta: ReactNode;
   if (status.isSeedData) {
     // Nothing user-created yet — calm informational note about the browser version.
     message = t.demoBrowserVersion;
-    cta = t.demoBackupCta;
   } else if (!status.lastExportedAt) {
     // Own data but never exported — urgent.
     message = t.demoNeverExportedUrgent;
-    cta = t.demoBackupCta;
   } else if (status.newPiecesSinceExport && status.newPiecesSinceExport > 0) {
     const count = status.newPiecesSinceExport;
     message = interpolate(
       count === 1 ? t.demoExportedWithNewOne : t.demoExportedWithNew,
       { date: formatDate(status.lastExportedAt, locale), count: String(count) },
     );
-    cta = t.demoBackupCta;
   } else {
-    // Everything is backed up — positive confirmation, neutral settings link.
+    // Everything is backed up — positive confirmation.
     message = interpolate(t.demoBackedUp, { date: formatDate(status.lastExportedAt, locale) });
-    cta = (
-      <>
-        <Settings size={12} /> {t.settingsTitle}
-      </>
-    );
   }
+
+  // Show the "go back up →" pointer only when the user owns data that isn't fully backed up yet.
+  const needsBackup = !status.isSeedData && (!status.lastExportedAt || (status.newPiecesSinceExport ?? 0) > 0);
 
   return (
     <div
       className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
       style={{ background: "#fffbeb", borderBottom: "1px solid #fde68a" }}
     >
-      <span style={{ color: "#92400e" }}>{message}</span>
+      <span style={{ color: "#92400e" }}>
+        {message}
+        {needsBackup && (
+          <>
+            {locale === "en-US" ? " " : ""}
+            <span>{t.demoBackupCta}</span>
+          </>
+        )}
+      </span>
       <Link
         href="/settings"
         className="text-button !min-h-0 !h-auto !py-0.5 !px-2"
         style={{ fontSize: 12, color: "#92400e", borderColor: "#92400e" }}
       >
-        {cta}
+        <Settings size={12} /> {t.settingsTitle}
       </Link>
     </div>
   );
