@@ -177,10 +177,12 @@ export default function Detail({ songId }: { songId: number }) {
     }
   }
 
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
   async function deletePiece() {
     if (!confirm(t.deletePieceConfirm)) return;
     await fetch(`/api/pieces/${songId}`, { method: "DELETE" });
-    location.href = "/";
+    location.href = `${basePath}/`;
   }
 
   const handleToggleFavorite = () => toggleFavorite(songId);
