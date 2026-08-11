@@ -49,6 +49,29 @@
 - For dev mode: `pnpm dev:demo` — no script needed, just the env var wrapper.
 - ⚠️ **Stale `.next/dev/types` after running `next dev` breaks `pnpm build:demo`** (2026-08-10): if you run the dev server (`NEXT_PUBLIC_DEMO_MODE=true pnpm dev -p 3002`) and then run `pnpm build:demo` in the same working tree, the build fails with `TS2307 Cannot find module '../../src/app/api/*/route.js'` errors in `.next/dev/types/validator.ts`. Root cause: the dev server generates `.next/dev/types` referencing the `src/app/api/**` routes; `build-demo.mjs` renames `src/app/api` away (so the static export can't bundle better-sqlite3), leaving stale type references that fail type-check. **Fix**: `rm -rf .next` before `pnpm build:demo`. The build-demo script does NOT clean `.next` itself.
 
+## Demo reset: IDs don't restart from 4, continue from max before reset (2026-08-10) — by design
+
+### Problem
+After "Reset DB" in demo mode, creating a new piece gives an ID like 16 instead of 4 (seed pieces are 1-3, so next should be 4). The ID continues from the max ID that existed before reset + 1.
+
+### Root cause
+IndexedDB/Dexie `++id` auto-increment counters never go down. `Table.clear()` removes all rows but does NOT reset the internal counter. Same behavior in SQLite: `DELETE FROM` doesn't reset `sqlite_sequence`.
+
+**Sequence:**
+1. Seed: pieces 1, 2, 3 added via `bulkAdd` with explicit IDs → counter ≥ 3
+2. User creates pieces 4–15 → counter ≥ 15
+3. Reset: `clear()` removes rows, counter stays at 15
+4. Re-seed: pieces 1, 2, 3 re-added (explicit IDs), counter still 15
+5. New piece via `add()` → ID 16 (counter 15 + 1)
+
+### Affected files
+- **Demo**: `src/demo/store.ts` `resetAllData()` (line ~891) — `.clear()` on Dexie tables
+- **Server**: `src/app/api/reset/route.ts` — `DELETE FROM` without resetting `sqlite_sequence`
+
+### Fix direction (not implemented)
+- **Dexie**: would need to delete + recreate object stores (version bump) or manually track next ID
+- **SQLite**: `DELETE FROM sqlite_sequence WHERE name IN ('songs','tags',...)` after clearing
+
 ## Demo images — strip EXIF before deploy (REMINDER, 2026-08-02)
 - Before deploying/exporting the demo, strip EXIF/IPTC/XMP from images so they don't leak into the demo/exported data.
 - Tool: `node scripts-local/strip-image-metadata.mjs <dir-or-file> [...]` — lossless (no recompression), handles JPEG/PNG/GIF.
