@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Music, Pencil, Plus, RotateCcw, Search, Settings, X } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
 import DemoBanner from "@/components/DemoBanner";
@@ -31,13 +31,98 @@ function getCategoryLabel(categories: UserCategory[], key: string, locale: strin
 
 type SortKey = "title" | "difficulty" | "pitch" | "technique" | "rhythm" | "notes" | "createdAt";
 
+type DirectoryRowProps = {
+  piece: Song;
+  allCategoryKeys: string[];
+  tags: Tag[];
+  locale: string;
+  favoriteIds: number[];
+  singleSelectCategories: Set<string>;
+  defaultColor: string;
+  isPitchCategory: (key: string, label?: string) => boolean;
+  createTag: (tag: Omit<Tag, "id">) => Promise<Tag>;
+  updatePiece: (piece: Song, patch: Record<string, unknown>) => Promise<void>;
+  onDefaultColorChange: (color: string) => void;
+  onTitleMouseDown: () => void;
+};
 
+/**
+ * Memoized row so search/filter/sort re-renders don't re-render every piece
+ * row (each row mounts one TagPicker per category). Props are kept stable via
+ * useCallback in <Directory>; only rows whose own data changed re-render.
+ */
+const DirectoryRow = memo(function DirectoryRow({
+  piece,
+  allCategoryKeys,
+  tags,
+  locale,
+  favoriteIds,
+  singleSelectCategories,
+  defaultColor,
+  isPitchCategory,
+  createTag,
+  updatePiece,
+  onDefaultColorChange,
+  onTitleMouseDown,
+}: DirectoryRowProps) {
+  function buildTagIds(category: string, ids: number[]) {
+    return allCategoryKeys.flatMap((cat) =>
+      cat === category ? ids : (piece.tags[cat]?.map((tag) => tag.id) ?? [])
+    );
+  }
+  return (
+    <tr>
+      <td className="sticky-col-first">
+        <select className="select tag-add-select" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
+          {DIFFICULTY_LEVELS.map((score) => <option key={score}>{score}</option>)}
+        </select>
+      </td>
+      <td className="sticky-col-second font-semibold" style={{ fontSize: 15 }}>
+        <span className="inline-flex items-center gap-1">
+          {favoriteIds.includes(piece.id) && <Heart size={15} fill="var(--accent)" style={{ color: "var(--accent)" }} />}
+          <Link
+            href={`/piece/${piece.id}`}
+            onMouseDown={onTitleMouseDown}
+          >{getLocalizedField(locale, piece.title, piece.titleAlt)}</Link>
+        </span>
+      </td>
+      {allCategoryKeys.map((category) => (
+        <td key={category}>
+          <TagPicker
+            compact
+            selectedOnly
+            isPitchCategory={isPitchCategory(category)}
+            singleSelect={singleSelectCategories.has(category)}
+            category={category}
+            tags={tags.filter((tag) => tag.category === category)}
+            selected={piece.tags[category]?.map((tag) => tag.id) ?? []}
+            onCreate={createTag}
+            onChange={(ids) => updatePiece(piece, { tagIds: buildTagIds(category, ids) })}
+            defaultColor={defaultColor}
+            onDefaultColorChange={onDefaultColorChange}
+          />
+        </td>
+      ))}
+      <td><textarea className="textarea min-h-20" value={piece.notes} onChange={(event) => updatePiece(piece, { notes: event.target.value })} /></td>
+    </tr>
+  );
+});
 
+/**
+ * Server-rendered directory data (production). Demo mode passes `null` and the
+ * component fetches via the window.fetch interceptor as before.
+ */
+export type DirectoryInitialData = {
+  pieces: Song[];
+  tags: Tag[];
+  categories: CategoryEntry[];
+  singleSelectCategories: string[];
+} | null;
 
-export default function Directory() {
+export default function Directory({ initialData = null }: { initialData?: DirectoryInitialData }) {
   const { locale, t } = useLocale();
-  const [pieces, setPieces] = useState<Song[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
+  const [pieces, setPieces] = useState<Song[]>(() => initialData?.pieces ?? []);
+  const [tags, setTags] = useState<Tag[]>(() => initialData?.tags ?? []);
   const [query, setQuery] = useState(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEYS.directoryState);
@@ -57,12 +142,20 @@ export default function Directory() {
   const { favoriteIds } = useFavorites();
   const router = useRouter();
   const [defaultColor, setDefaultColor] = useState("#9e6aba");
-  const createTag = useCreateTag(setTags, (created) =>
-    setDefaultColor((prev) => pickDefaultColor([...tags, created], prev)),
+  const handleTagCreated = useCallback(
+    (created: Tag) => setDefaultColor((prev) => pickDefaultColor([...tags, created], prev)),
+    [tags],
   );
+  const createTag = useCreateTag(setTags, handleTagCreated);
 
+  // Production renders the directory server-side (initialData is present), so
+  // skip the mount-time fetch and use the server data directly. Demo mode
+  // passes no initialData — the window.fetch interceptor drives refresh().
+  const hasInitialDataRef = useRef(initialData !== null);
   useEffect(() => {
-    void refresh();
+    if (!hasInitialDataRef.current) {
+      void refresh();
+    }
   }, []);
 
   // Restore saved state from sessionStorage after hydration
@@ -81,10 +174,16 @@ export default function Directory() {
     } catch {}
   }, []);
 
-  const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(new Set());
+  const [singleSelectCategories, setSingleSelectCategories] = useState<Set<string>>(() => new Set(initialData?.singleSelectCategories ?? []));
 
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [userCategories, setUserCategories] = useState<UserCategory[]>([]);
+  const [userCategories, setUserCategories] = useState<UserCategory[]>(() =>
+    (initialData?.categories ?? []).map((r) => ({
+      key: r.key,
+      labelZh: r.name || r.nameAlt,
+      labelAlt: r.nameAlt || r.name
+    }))
+  );
   /** Computed: ordered list of all category keys (from server labels + tags). */
   const allCategoryKeys = useMemo(() => {
     const keys = new Set(userCategories.map((c) => c.key));
@@ -169,6 +268,18 @@ export default function Directory() {
   // to avoid Next.js's synthetic scroll-to-top during navigation overwriting
   // the correct value.
   const scrollYRef = useRef(0);
+
+  // Flush the in-memory scroll position to sessionStorage. Used by the title
+  // link's onMouseDown (inside the memoized DirectoryRow) before Next.js
+  // processes the click and scrolls to top for the new page.
+  const flushScrollToStorage = useCallback(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEYS.directoryState);
+      const state = saved ? JSON.parse(saved) : {};
+      state.scrollY = scrollYRef.current;
+      sessionStorage.setItem(STORAGE_KEYS.directoryState, JSON.stringify(state));
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const flush = () => {
@@ -263,14 +374,14 @@ export default function Directory() {
     setTags((value) => value.map((t) => t.id === tag.id ? { ...t, ...tag } : t));
   }
 
-  async function updatePiece(piece: Song, patch: Record<string, unknown>) {
+  const updatePiece = useCallback(async (piece: Song, patch: Record<string, unknown>) => {
     const updated = await fetch(`/api/pieces/${piece.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch)
     }).then((res) => res.json());
     setPieces((rows) => rows.map((row) => (row.id === piece.id ? updated : row)));
-  }
+  }, []);
 
   // Track scroll position in-memory (ref) for show/hide of scroll-to-top button.
   // We deliberately do NOT write to sessionStorage here — Next.js's synthetic
@@ -778,58 +889,23 @@ export default function Directory() {
             </tr>
           </thead>
           <tbody>
-            {visible.map((piece) => {
-              function buildTagIds(category: string, ids: number[]) {
-                return allCategoryKeys.flatMap((cat) =>
-                  cat === category ? ids : (piece.tags[cat]?.map((tag) => tag.id) ?? [])
-                );
-              }
-              return (
-              <tr key={piece.id}>
-                <td className="sticky-col-first">
-                  <select className="select tag-add-select" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
-                    {DIFFICULTY_LEVELS.map((score) => <option key={score}>{score}</option>)}
-                  </select>
-                </td>
-                <td className="sticky-col-second font-semibold" style={{ fontSize: 15 }}>
-                  <span className="inline-flex items-center gap-1">
-                    {favoriteIds.includes(piece.id) && <Heart size={15} fill="var(--accent)" style={{ color: "var(--accent)" }} />}
-                    <Link
-                      href={`/piece/${piece.id}`}
-                      onMouseDown={() => {
-                        // Flush in-memory scrollY to sessionStorage before Next.js
-                        // processes the click and scrolls to top for the new page.
-                        try {
-                          const saved = sessionStorage.getItem(STORAGE_KEYS.directoryState);
-                          const state = saved ? JSON.parse(saved) : {};
-                          state.scrollY = scrollYRef.current;
-                          sessionStorage.setItem(STORAGE_KEYS.directoryState, JSON.stringify(state));
-                        } catch {}
-                      }}
-                    >{getLocalizedField(locale, piece.title, piece.titleAlt)}</Link>
-                  </span>
-                </td>
-                {allCategoryKeys.map((category) => (
-                  <td key={category}>
-                    <TagPicker
-                      compact
-                      selectedOnly
-                      isPitchCategory={isPitchCategory(category)}
-                      singleSelect={singleSelectCategories.has(category)}
-                      category={category}
-                      tags={tags.filter((tag) => tag.category === category)}
-                      selected={piece.tags[category]?.map((tag) => tag.id) ?? []}
-                      onCreate={createTag}
-                      onChange={(ids) => updatePiece(piece, { tagIds: buildTagIds(category, ids) })}
-                      defaultColor={defaultColor}
-                      onDefaultColorChange={setDefaultColor}
-                    />
-                  </td>
-                ))}
-                <td><textarea className="textarea min-h-20" value={piece.notes} onChange={(event) => updatePiece(piece, { notes: event.target.value })} /></td>
-              </tr>
-              );
-            })}
+            {visible.map((piece) => (
+              <DirectoryRow
+                key={piece.id}
+                piece={piece}
+                allCategoryKeys={allCategoryKeys}
+                tags={tags}
+                locale={locale}
+                favoriteIds={favoriteIds}
+                singleSelectCategories={singleSelectCategories}
+                defaultColor={defaultColor}
+                isPitchCategory={isPitchCategory}
+                createTag={createTag}
+                updatePiece={updatePiece}
+                onDefaultColorChange={setDefaultColor}
+                onTitleMouseDown={flushScrollToStorage}
+              />
+            ))}
           </tbody>
         </table>
       </div>

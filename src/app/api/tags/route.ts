@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { songTags, tags } from "@/db/schema";
+import { tags } from "@/db/schema";
 import { apiError, withErrorHandler } from "@/lib/api";
+import { getTags } from "@/lib/data";
 import { findDuplicateTag } from "@/lib/tag-utils";
 
 export const tagSchema = z.object({
@@ -19,20 +20,11 @@ export const renameCategorySchema = z.object({
 });
 
 export const GET = withErrorHandler(async () => {
-  const rows = db
-    .select({
-      id: tags.id,
-      name: tags.name,
-      nameAlt: tags.nameAlt,
-      color: tags.color,
-      category: tags.category,
-      songCount: sql<number>`count(${songTags.songId})`.mapWith(Number),
-    })
-    .from(tags)
-    .leftJoin(songTags, sql`${tags.id} = ${songTags.tagId}`)
-    .groupBy(tags.id)
-    .all();
-  return NextResponse.json(rows);
+  // no-store: tag data changes on every edit, so the browser must never
+  // serve a stale copy (mirrors the uploads route's explicit policy).
+  return NextResponse.json(getTags(), {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 });
 
 export const POST = withErrorHandler(async (request: Request) => {

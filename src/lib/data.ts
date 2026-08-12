@@ -1,7 +1,8 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { deviceZoom, songImages, songs, songTags, tags, videoLinks } from "@/db/schema";
-import type { ImageKind, Song, Tag } from "@/lib/types";
+import { deviceZoom, singleSelectCategories, songImages, songs, songTags, tagCategories, tags, videoLinks } from "@/db/schema";
+import { seedDefaultCategories } from "@/lib/seed";
+import type { CategoryEntry, ImageKind, Song, Tag } from "@/lib/types";
 
 /**
  * 🔄 DEMO SYNC: Each function here has a counterpart in src/lib/demo-store.ts
@@ -35,6 +36,41 @@ export function getSongs(): Song[] {
   return allSongs.map((song) => {
     return { ...song, tags: groupTags(joinsBySongId.get(song.id) ?? []) };
   });
+}
+
+/**
+ * GET /api/tags payload — every tag with its song count.
+ * Shared by the API route and the server-rendered directory page.
+ */
+export function getTags(): (Tag & { songCount: number })[] {
+  return db
+    .select({
+      id: tags.id,
+      name: tags.name,
+      nameAlt: tags.nameAlt,
+      color: tags.color,
+      category: tags.category,
+      songCount: sql<number>`count(${songTags.songId})`.mapWith(Number),
+    })
+    .from(tags)
+    .leftJoin(songTags, sql`${tags.id} = ${songTags.tagId}`)
+    .groupBy(tags.id)
+    .all();
+}
+
+/**
+ * GET /api/categories payload — ordered tag category entries.
+ * Idempotently seeds the 3 default categories on first run (before a reset
+ * re-inserts them), so the directory page never shows zero categories.
+ */
+export function getCategories(): CategoryEntry[] {
+  seedDefaultCategories();
+  return db.select().from(tagCategories).orderBy(asc(tagCategories.sortOrder), asc(tagCategories.key)).all();
+}
+
+/** GET /api/single-select-categories payload — category keys marked single-select. */
+export function getSingleSelectCategories(): string[] {
+  return db.select().from(singleSelectCategories).all().map((r) => r.category);
 }
 
 export function getSong(id: number): Song | null {

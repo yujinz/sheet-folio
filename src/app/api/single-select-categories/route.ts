@@ -4,10 +4,12 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { singleSelectCategories } from "@/db/schema";
 import { apiError, withErrorHandler } from "@/lib/api";
+import { getSingleSelectCategories } from "@/lib/data";
 
 export const GET = withErrorHandler(async () => {
-  const rows = db.select().from(singleSelectCategories).all();
-  return NextResponse.json(rows.map((r) => r.category));
+  return NextResponse.json(getSingleSelectCategories(), {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 });
 
 const createSchema = z.object({

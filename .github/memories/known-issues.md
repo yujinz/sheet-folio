@@ -2,6 +2,10 @@
 
 > Related: [Project Overview](project-overview.md) · [Design Decisions](design-decisions.md) · [Implementation Roadmap](implementation-roadmap.md)
 
+## Next.js route-segment config must be a static literal (2026-08-12)
+- Writing `export const dynamic = process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "auto" : "force-dynamic";` in `src/app/page.tsx` fails the build with "Route segment config `dynamic` must be a literal value" — route-segment config values can't be expressions, even when `NEXT_PUBLIC_*` is inlined at build time.
+- **Fix (used for the directory server-side fetch)**: call a dynamic API inside the production-only branch — `await connection()` from `next/server` marks the route dynamic per request. In demo mode the `if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") return <Directory />;` branch returns early, so the static export never reaches it and stays static. Verified: `pnpm build` shows `/` as `ƒ (Dynamic)`; `pnpm build:demo` shows `/` as `○ (Static)`.
+
 ## Turbopack NFT warning "whole project traced" + next.config.ts in trace (2026-08-06) — ✅ FIXED
 - **Symptom**: `pnpm build` printed `Encountered unexpected file in NFT list` flagging `next.config.ts` (import trace: `export-import.ts` → `api/import/route.ts`). The `.nft.json` swept the whole project root (726 files incl. `next.config.ts`, `drizzle.config.ts`, `Dockerfile`, `tsconfig.json`…).
 - **Root cause**: `src/lib/export-import.ts` / `src/db/index.ts` / `src/lib/upload.ts` do `path.join(process.cwd(), "data", …)` (DB path, uploads dir, drizzle migrations folder). Turbopack can't statically scope `process.cwd()` → traces the entire project. Matters because the Dockerfile deploys with `output: standalone`, so traced files get copied into the standalone folder.

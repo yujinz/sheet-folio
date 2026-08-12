@@ -6,12 +6,14 @@ import { eq, asc } from "drizzle-orm";
 import { db } from "@/db";
 import { tagCategories } from "@/db/schema";
 import { apiError, withErrorHandler } from "@/lib/api";
-import { seedDefaultCategories } from "@/lib/seed";
+import { getCategories } from "@/lib/data";
 
 export const GET = withErrorHandler(async () => {
-  seedDefaultCategories();
-  const rows = db.select().from(tagCategories).orderBy(asc(tagCategories.sortOrder), asc(tagCategories.key)).all();
-  return NextResponse.json(rows);
+  // getCategories() idempotently seeds default categories when empty, so
+  // the route stays a thin read wrapper. no-store keeps edits visible.
+  return NextResponse.json(getCategories(), {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 });
 
 const createSchema = z.object({

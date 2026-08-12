@@ -1,7 +1,7 @@
 "use client";
 
 import { ListCheck, Music, Palette, Pencil, Plus, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocale } from "@/lib/useLocale";
 import { type Locale, localeLabels, messages } from "@/lib/i18n";
@@ -35,7 +35,7 @@ type Props = {
   onDeleteCategory?: () => void;
 };
 
-export default function TagPicker({ category, label, tags, selected, onChange, onCreate, onDelete, onUpdate, editingTags, selectedOnly, compact, singleSelect, defaultColor, onDefaultColorChange, onRenameCategory, onDeleteCategory, isPitchCategory }: Props) {
+function TagPicker({ category, label, tags, selected, onChange, onCreate, onDelete, onUpdate, editingTags, selectedOnly, compact, singleSelect, defaultColor, onDefaultColorChange, onRenameCategory, onDeleteCategory, isPitchCategory }: Props) {
   const { locale, t } = useLocale();
   const otherLocale: Locale = locale === "zh-CN" ? "en-US" : "zh-CN";
   const [localTags, setLocalTags] = useState(tags);
@@ -585,3 +585,8 @@ export default function TagPicker({ category, label, tags, selected, onChange, o
     </div>
   );
 }
+
+// Memoized so pickers only re-render when their props actually change
+// (DirectoryRow is the primary guard; this is a second layer for callers
+// that pass stable props, e.g. the directory filter section).
+export default memo(TagPicker);

@@ -35,6 +35,14 @@ All 7 items done. `_en` → `_alt` rename across schema/types/components. `categ
 
 Ported demo data layer from `demo` branch into `src/demo/`. See [Design Decisions](design-decisions.md) for rationale and file mapping.
 
+### Directory first-load performance (2026-08-12)
+
+**sheet-folio** (production + demo):
+- **Server-side initial fetch** — `src/app/page.tsx` is now an async Server Component; production fetches `getSongs/getTags/getCategories/getSingleSelectCategories` and passes `initialData` to `Directory` (kills the 4 client round-trips + empty-table flash). Demo mode returns `<Directory/>` unchanged (fetch interceptor). Route is marked dynamic via `await connection()` in the non-demo branch (NOT `export const dynamic = …` — route-segment config must be a static literal, see known-issues).
+- New shared getters in `src/lib/data.ts`: `getTags`, `getCategories` (centralizes `seedDefaultCategories`), `getSingleSelectCategories`. `GET /api/tags`, `/api/categories`, `/api/single-select-categories` now wrap them; all four GETs set `Cache-Control: private, no-store`.
+- **Rendering** — `Directory.tsx` rows extracted into a memoized `DirectoryRow` (stable callbacks via `useCallback`); `TagPicker` default export wrapped in `React.memo`.
+- **Deferred (approved scope)**: virtualization, slim `/api/pieces` payload to tag-id arrays, deep TagPicker hook-split.
+
 ---
 
 ## 🚧 In Progress
