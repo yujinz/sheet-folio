@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { BookOpen, ChevronLeft, ChevronRight, Heart, House, Images, Plus, ScrollText, Trash2, Upload, X, X as XIcon } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Heart, House, Images, Plus, Printer, ScrollText, Trash2, Upload, X, X as XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
@@ -245,6 +245,7 @@ export default function Detail({ songId }: { songId: number }) {
   }, [piece]);
 
   return (
+    <>
     <main className="sheet-page" style={{ overflowY: "auto" }}>
       {!piece ? (
         <div className="p-6">{t.loading}</div>
@@ -340,6 +341,11 @@ export default function Detail({ songId }: { songId: number }) {
         <button className={`pointer-events-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur-sm ${!editingImages ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--foreground)]"}`} type="button" onClick={() => setEditingImages((value) => !value)}>
           <Images size={14} /> <span className="break-keep">{editingImages ? t.viewImages : t.editImages}</span>
         </button>
+        {editingImages && images.length > 0 && (
+          <button className="print-btn pointer-events-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs shadow-sm backdrop-blur-sm bg-white/70 text-[var(--foreground)]" type="button" onClick={() => window.print()}>
+            {t.print} <Printer size={14} />
+          </button>
+        )}
         {!editingImages && (
           <label className="pointer-events-auto flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs shadow-sm backdrop-blur-sm ml-auto">
             {t.zoom}
@@ -368,6 +374,16 @@ export default function Detail({ songId }: { songId: number }) {
         <Pager images={images} tab={tab} setTab={setTab} index={pageIndex} setIndex={setPageIndex} viewMode={viewMode} toggleViewMode={toggleViewMode} />
       )}
     </main>
+    {images.length > 0 && (
+      <div className="print-area">
+        {images.map((image) => (
+          <div className="print-page" key={image.id}>
+            <img src={image.url} alt="" />
+          </div>
+        ))}
+      </div>
+    )}
+    </>
   );
 }
 

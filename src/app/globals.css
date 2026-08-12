@@ -274,3 +274,50 @@ body {
   cursor: pointer;
   touch-action: manipulation;
 }
+
+@page {
+  size: Letter portrait;
+  margin: 0;
+}
+
+.print-area {
+  display: none;
+}
+
+@media print {
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .sheet-page {
+    display: none !important;
+  }
+  .print-area {
+    display: block !important;
+  }
+  .print-page {
+    width: 8.5in;
+    height: 11in;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    page-break-after: always;
+    break-after: page;
+  }
+  .print-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+  .print-page img {
+    max-width: 100%;
+    max-height: 100%;
+  }
+}
+
+@media (pointer: coarse) {
+  .print-btn {
+    display: none !important;
+  }
+}

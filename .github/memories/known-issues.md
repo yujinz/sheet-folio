@@ -143,6 +143,7 @@ The edit icon `✎` (Unicode text) inside `.tag-delete-button` also jitters, but
 - The import path flips between `.next/dev/types/routes.d.ts` (dev mode) and `.next/types/routes.d.ts` (build).
 - Since `.next/` is gitignored, this is just a local reference — irrelevant for others.
 - **Conclusion**: Harmless to commit, but not meaningful. Can be committed or reverted with `git checkout -- next-env.d.ts`.
+- **Practice (2026-08-12)**: After running `next dev`, `next-env.d.ts` flips and shows up in the diff. Revert it with `git checkout -- next-env.d.ts` so the diff is limited to the intended files.
 
 ## iOS tap-status-bar doesn't scroll to top (2026-07-26)
 
