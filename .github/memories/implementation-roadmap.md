@@ -101,6 +101,25 @@ New `/settings` page with export (zip), import (zip, merge or replace), and roll
 
 _Reads from existing `song_tags JOIN single_select_categories`. Does NOT require `song_categories` table — grid view is read-only, and the UI already enforces single-select via radio buttons / `<select>`._
 
+### Directory Virtualization (planned)
+
+**Goal**: render only visible table rows for large libraries — the biggest remaining first-load win (deferred from "Directory first-load performance").
+
+**Compatible with scroll-position memory — do NOT gate on it.** The two features are orthogonal:
+- Restore is just `scrollTo(0, savedY)` on `.table-shell`; virtualization keeps the container's full scroll height via a spacer, so the target offset still exists.
+- Restore gate (`prevPiecesLength` 0→N) keys off `pieces.length` (full data) — virtualization only changes how many rows are *rendered*, not the array length.
+- `scrollYRef`/`scrollTop` tracking, `flushScrollToStorage` on link `onMouseDown`, and the scroll-to-top button are all unaffected.
+
+**Constraints that shape the design**:
+- **Rows are NOT fixed height** — multi-select tag cells render wrapping chips (`flex flex-wrap` in TagPicker compact path), and titles can wrap → needs **dynamic (measured) virtualization**, not fixed-row-height.
+- **Sticky table layout**: sticky `thead` (`top: 0`) + sticky columns (`left: 0`, `left: 60px`) + `border-collapse: collapse`. Use a **spacer row + `transform: translateY(offset)` per visible `<tr>`** so the table layout and sticky columns keep working. Horizontal stickiness is unaffected by vertical virtualization.
+
+**Only real scroll interaction**: restore fires in `useLayoutEffect` + `rAF` after first load, but measured heights start as estimates → defer restore until the virtualizer's first measurement pass (keep rAF + add a "measured" readiness flag before scrolling).
+
+**Open decisions**:
+1. Library (`@tanstack/react-virtual` — good dynamic-height + table support) vs hand-rolled ~60-line `translateY` + `ResizeObserver` (matches repo's minimal-dependency style).
+2. Measurement: per-row `ResizeObserver` (accurate) vs uniform-height + overrides (simpler, but requires clamping tag-chip wrapping = a UI change).
+
 ### Multi-Instrument Support (Session E — optional)
 
 **Alternative (zero-code):** Run separate Docker instances on different ports with fresh DB volumes. Pros: perfect isolation, works today, no code changes. Cons: no cross-instrument browsing or piece duplication, N containers to maintain.
