@@ -43,6 +43,15 @@ Ported demo data layer from `demo` branch into `src/demo/`. See [Design Decision
 - **Rendering** — `Directory.tsx` rows extracted into a memoized `DirectoryRow` (stable callbacks via `useCallback`); `TagPicker` default export wrapped in `React.memo`.
 - **Deferred (approved scope)**: virtualization, slim `/api/pieces` payload to tag-id arrays, deep TagPicker hook-split.
 
+### Rollback snapshot preview card (2026-08-12)
+
+- Settings → Rollback now shows a "Snapshot overview" preview card (date + piece/tag/image counts) when a snapshot exists, mirroring the zip import preview.
+- `ExportStatus` gained `snapshotCounts: { pieces, tags, images } | null`.
+- Server (`src/lib/export-import.ts`): `readSnapshotCounts()` opens the snapshot DB read-only and COUNTs `songs` / `tags` / `song_images`.
+- Demo (`src/demo/store.ts`): reads the counts already stored in the snapshot `meta` row.
+- New i18n keys: `rollbackPreviewTitle`, `rollbackPreviewDate` (zh + en).
+- E2E: settings spec scopes "Total pieces" assertions to the "Current Status" card — the preview card adds a second "Total pieces" row.
+
 ---
 
 ## 🚧 In Progress

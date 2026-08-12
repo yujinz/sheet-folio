@@ -595,7 +595,9 @@ export async function getExportStatus(): Promise<ExportStatus> {
     // Indexed count of pieces with id beyond the seed range — O(1) via the primary key.
     demoDb.pieces.where("id").above(maxSeedId).count(),
   ]);
-  const metaData = meta?.data as { timestamp?: string } | undefined;
+  const metaData = meta?.data as
+    | { timestamp?: string; counts?: { pieces: number; tags: number; images: number } }
+    | undefined;
   const lastExportedAt = readLastExport();
   // Count pieces created/edited after the last export (null when never exported).
   let newPiecesSinceExport: number | null = null;
@@ -610,6 +612,7 @@ export async function getExportStatus(): Promise<ExportStatus> {
     lastExportedAt,
     lastSnapshotAt: metaData?.timestamp ?? null,
     hasSnapshot: !!meta,
+    snapshotCounts: metaData?.counts ?? null,
     storageMethod: "indexeddb",
     newPiecesSinceExport,
     // Still seed data only when every piece ID is one of the seed IDs.

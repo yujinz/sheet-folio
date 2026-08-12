@@ -57,6 +57,26 @@ function uploadsDir(): string {
 
 // ─── Status ───────────────────────────────────────────────────────────────
 
+/**
+ * Counts of pieces/tags/images inside the snapshot DB. Returns null when no
+ * snapshot file exists (or it can't be read).
+ */
+function readSnapshotCounts(): { pieces: number; tags: number; images: number } | null {
+  if (!fs.existsSync(snapshotPath())) return null;
+  try {
+    const snap = new Database(snapshotPath(), { readonly: true });
+    try {
+      const count = (table: string) =>
+        (snap.prepare(`SELECT COUNT(*) AS c FROM "${table}"`).get() as { c: number }).c;
+      return { pieces: count("songs"), tags: count("tags"), images: count("song_images") };
+    } finally {
+      snap.close();
+    }
+  } catch {
+    return null;
+  }
+}
+
 export function getExportStatus(): ExportStatus {
   const pieceCount = db.select().from(songs).all().length;
   const tagCount = db.select().from(tags).all().length;
@@ -94,6 +114,7 @@ export function getExportStatus(): ExportStatus {
     lastExportedAt,
     lastSnapshotAt,
     hasSnapshot: fs.existsSync(snapshotPath()),
+    snapshotCounts: readSnapshotCounts(),
     storageMethod: "sqlite",
     newPiecesSinceExport,
     // The server data layer has no seed concept — users own everything.

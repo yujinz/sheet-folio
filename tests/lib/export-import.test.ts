@@ -80,6 +80,7 @@ describe("export-import", () => {
     expect(status.pieceCount).toBeGreaterThanOrEqual(0);
     expect(status.tagCount).toBeGreaterThanOrEqual(0);
     expect(status.hasSnapshot).toBe(false);
+    expect(status.snapshotCounts).toBeNull();
     expect(status.lastExportedAt).toBeNull();
   });
 
@@ -242,6 +243,14 @@ describe("export-import", () => {
     const { db } = await import("@/db");
 
     await createSnapshot();
+    const { getExportStatus } = await import("@/lib/export-import");
+    const status = getExportStatus();
+    expect(status.hasSnapshot).toBe(true);
+    expect(status.snapshotCounts).toEqual({
+      pieces: status.pieceCount,
+      tags: status.tagCount,
+      images: status.imageCount,
+    });
     const time = nowIso();
     db.insert(schema.songs).values({ title: `${PREFIX}Snap`, difficulty: 1, notes: "", createdAt: time, updatedAt: time }).run();
 

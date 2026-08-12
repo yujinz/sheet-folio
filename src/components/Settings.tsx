@@ -361,6 +361,29 @@ export default function Settings() {
           <section className="rounded-lg border border-[var(--line)] bg-white p-4">
             <h2 className="mb-1 text-sm font-semibold">{t.rollbackTitle}</h2>
             <p className="mb-3 text-sm text-[var(--muted)]">{t.rollbackDesc}</p>
+            {status?.hasSnapshot && status.snapshotCounts && (
+              <div className="mb-3 rounded-lg border border-[var(--line)] bg-white px-3 py-3">
+                <h3 className="mb-2 text-sm font-semibold">{t.rollbackPreviewTitle}</h3>
+                <dl className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <dt className="text-[var(--muted)]">{t.rollbackPreviewDate}</dt>
+                    <dd>{formatDate(status.lastSnapshotAt, locale)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <dt className="text-[var(--muted)]">{t.statusPieceCount}</dt>
+                    <dd>{status.snapshotCounts.pieces}</dd>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <dt className="text-[var(--muted)]">{t.statusTagCount}</dt>
+                    <dd>{status.snapshotCounts.tags}</dd>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <dt className="text-[var(--muted)]">{t.statusImageCount}</dt>
+                    <dd>{status.snapshotCounts.images}</dd>
+                  </div>
+                </dl>
+              </div>
+            )}
             <button
               className="text-button"
               type="button"

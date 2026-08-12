@@ -60,6 +60,8 @@ export type ExportStatus = {
   lastExportedAt: string | null;
   lastSnapshotAt: string | null;
   hasSnapshot: boolean;
+  /** Counts of pieces/tags/images inside the snapshot. null when no snapshot exists. */
+  snapshotCounts: { pieces: number; tags: number; images: number } | null;
   storageMethod: StorageMethod;
   /** Number of pieces created/edited since the last export. null = never exported. */
   newPiecesSinceExport: number | null;

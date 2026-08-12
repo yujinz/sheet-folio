@@ -55,10 +55,15 @@ async function openSettings(page: import("@playwright/test").Page) {
   await expect(page.getByRole("heading", { name: /Data & Backup/ })).toBeVisible();
 }
 
+// The status card's "Total pieces" row. Scoped to the status card because the
+// Rollback section's snapshot preview card also shows a "Total pieces" row.
+function statusPieceCount(page: import("@playwright/test").Page) {
+  return page.locator("section", { hasText: /Current Status/ }).locator('dt:has-text("Total pieces") + dd');
+}
+
 test("status card shows library counts", async ({ page }) => {
   await openSettings(page);
-  const pieceCount = page.locator('dt:has-text("Total pieces") + dd');
-  await expect(pieceCount).toHaveText(String(SEED_PIECE_COUNT));
+  await expect(statusPieceCount(page)).toHaveText(String(SEED_PIECE_COUNT));
   await expect(page.locator('dt:has-text("Storage method") + dd')).toHaveText(/IndexedDB|SQLite/);
 });
 
@@ -73,11 +78,17 @@ test("export downloads a backup zip and records a snapshot", async ({ page }) =>
 
   // Snapshot status updates after export
   await expect(page.locator('dt:has-text("Previous snapshot") + dd')).not.toHaveText("None");
+
+  // Snapshot preview card appears in the Rollback section with the snapshot's counts.
+  const rollbackSection = page.locator("section", { hasText: /Rollback/ });
+  await expect(rollbackSection.getByRole("heading", { name: /Snapshot overview/ })).toBeVisible();
+  await expect(rollbackSection.locator('dt:has-text("Total pieces") + dd')).toHaveText(String(SEED_PIECE_COUNT));
+  await expect(rollbackSection.locator('dt:has-text("Snapshot taken") + dd')).not.toBeEmpty();
 });
 
 test("import merge adds a new piece", async ({ page }) => {
   await openSettings(page);
-  await expect(page.locator('dt:has-text("Total pieces") + dd')).toHaveText(String(SEED_PIECE_COUNT));
+  await expect(statusPieceCount(page)).toHaveText(String(SEED_PIECE_COUNT));
 
   await page.locator('input[type="file"]').setInputFiles(IMPORT_ZIP_PATH);
   await expect(page.locator(`text=${path.basename(IMPORT_ZIP_PATH)}`)).toBeVisible();
@@ -88,7 +99,7 @@ test("import merge adds a new piece", async ({ page }) => {
   await expect(page.locator("text=/Added: 1 pieces/")).toBeVisible();
 
   // Status refreshed: one more piece than seed
-  await expect(page.locator('dt:has-text("Total pieces") + dd')).toHaveText(String(SEED_PIECE_COUNT + 1));
+  await expect(statusPieceCount(page)).toHaveText(String(SEED_PIECE_COUNT + 1));
 });
 
 test("rollback restores the pre-import snapshot", async ({ page }) => {
@@ -97,7 +108,7 @@ test("rollback restores the pre-import snapshot", async ({ page }) => {
   // Import creates a pre-import snapshot (SEED count), then adds a piece.
   await page.locator('input[type="file"]').setInputFiles(IMPORT_ZIP_PATH);
   await page.getByRole("button", { name: /Merge/ }).click();
-  await expect(page.locator('dt:has-text("Total pieces") + dd')).toHaveText(String(SEED_PIECE_COUNT + 1));
+  await expect(statusPieceCount(page)).toHaveText(String(SEED_PIECE_COUNT + 1));
 
   // Snapshot exists → rollback button enabled.
   await expect(page.locator('dt:has-text("Previous snapshot") + dd')).not.toHaveText("None");
@@ -107,5 +118,5 @@ test("rollback restores the pre-import snapshot", async ({ page }) => {
 
   // Page reloads and status reflects the restored (seed) count.
   await expect(page.getByRole("heading", { name: /Data & Backup/ })).toBeVisible();
-  await expect(page.locator('dt:has-text("Total pieces") + dd')).toHaveText(String(SEED_PIECE_COUNT));
+  await expect(statusPieceCount(page)).toHaveText(String(SEED_PIECE_COUNT));
 });
