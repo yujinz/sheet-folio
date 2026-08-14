@@ -79,7 +79,7 @@ const DirectoryRow = memo(function DirectoryRow({
       </td>
       <td className="sticky-col-second font-semibold" style={{ fontSize: 15 }}>
         <span className="inline-flex items-center gap-1">
-          {favoriteIds.includes(piece.id) && <Heart size={15} fill="var(--accent)" style={{ color: "var(--accent)" }} />}
+          {favoriteIds.includes(piece.id) && <Heart className="shrink-0" size={15} fill="var(--accent)" style={{ color: "var(--accent)" }} />}
           <Link
             href={`/piece/${piece.id}`}
             onMouseDown={onTitleMouseDown}

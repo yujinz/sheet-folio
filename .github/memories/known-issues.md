@@ -2,6 +2,12 @@
 
 > Related: [Project Overview](project-overview.md) · [Design Decisions](design-decisions.md) · [Implementation Roadmap](implementation-roadmap.md)
 
+## Directory favorite heart shrinks to a sliver when title is long (2026-08-14) — ✅ FIXED
+- **Symptom**: the filled favorite heart next to a piece title collapses to a tiny vertical line/dot when the title is long. Code said `size={15}`, so it looked like no regression.
+- **Root cause**: the title cell is fixed at 200px (`<th className="sticky-col-second" style={{ width: 200 }}>`); the heart + title sit in `<span className="inline-flex items-center gap-1">`. Flex items default to `flex-shrink: 1`, so a long title squeezes the `<Heart>` SVG below its 15px size. Measured in-browser: 14.99px → **1.7px** wide with flex-shrink allowed.
+- **Fix**: add `className="shrink-0"` to the `<Heart>` in `src/components/Directory.tsx` (title row). Verified: heart stays 14.99px with a long title; title wraps instead.
+- **Not caused by** the "improve directory loading time" commit — that commit left the heart at `size={15}` unchanged. Last size change before this was 2026-07-16 (`ada1ed5`, 13 → 15).
+
 ## Next.js route-segment config must be a static literal (2026-08-12)
 - Writing `export const dynamic = process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "auto" : "force-dynamic";` in `src/app/page.tsx` fails the build with "Route segment config `dynamic` must be a literal value" — route-segment config values can't be expressions, even when `NEXT_PUBLIC_*` is inlined at build time.
 - **Fix (used for the directory server-side fetch)**: call a dynamic API inside the production-only branch — `await connection()` from `next/server` marks the route dynamic per request. In demo mode the `if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") return <Directory />;` branch returns early, so the static export never reaches it and stays static. Verified: `pnpm build` shows `/` as `ƒ (Dynamic)`; `pnpm build:demo` shows `/` as `○ (Static)`.
