@@ -293,7 +293,7 @@ export default function Detail({ songId }: { songId: number }) {
           placeholder={t.notes}
         />
         <div className="flex flex-nowrap items-center gap-3 overflow-x-auto">
-          <select className="select tag-add-select text-center" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => patch({ difficulty: Number(event.target.value) })}>
+          <select className="select tag-add-select" style={{ width: "4rem" }} value={piece.difficulty} onChange={(event) => patch({ difficulty: Number(event.target.value) })}>
               {DIFFICULTY_LEVELS.map((score) => <option key={score}>{score}</option>)}
           </select>
           {(() => {

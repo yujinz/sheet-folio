@@ -249,9 +249,12 @@ body {
   background: #eef2ef;
 }
 
+/* 84px = 64px select + 2×10px cell padding (the difficulty column's
+   min-content width). During horizontal overflow the column pins at this
+   width, so a fixed offset matches it exactly. */
 .song-table .sticky-col-second {
   position: sticky;
-  left: 60px;
+  left: 84px;
   z-index: 2;
   background: var(--panel);
 }

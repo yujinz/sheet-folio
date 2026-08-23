@@ -73,7 +73,7 @@ const DirectoryRow = memo(function DirectoryRow({
   return (
     <tr>
       <td className="sticky-col-first">
-        <select className="select tag-add-select" style={{ width: "3.5rem" }} value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
+        <select className="select tag-add-select" style={{ width: "4rem" }} value={piece.difficulty} onChange={(event) => updatePiece(piece, { difficulty: Number(event.target.value) })}>
           {DIFFICULTY_LEVELS.map((score) => <option key={score}>{score}</option>)}
         </select>
       </td>
@@ -873,7 +873,7 @@ export default function Directory({ initialData = null }: { initialData?: Direct
         <table className="song-table">
           <thead>
             <tr>
-              <th className="sticky-col-first" style={{ width: 60 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty}{difficultyFilter.value !== null && <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: DIFFICULTY_COLORS[difficultyFilter.value], marginLeft: 4, verticalAlign: "middle" }} />} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
+              <th className="sticky-col-first" style={{ width: 84 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty}{difficultyFilter.value !== null && <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: DIFFICULTY_COLORS[difficultyFilter.value], marginLeft: 4, verticalAlign: "middle" }} />} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
               <th className="sticky-col-second" style={{ width: 200 }}>
                 <div className="flex items-center justify-between">
                   <button onClick={() => sortBy("title")}>

@@ -280,6 +280,9 @@ export default function Settings() {
                 </a>
               </p>
             )}
+            {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+              <p className="mb-3 text-xs text-[var(--muted)]">{t.demoIosHomeScreenNote}</p>
+            )}
             <button className="text-button primary-button" type="button" onClick={handleExport} disabled={busy}>
               <Download size={16} /> {t.exportButton}
             </button>

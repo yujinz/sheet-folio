@@ -2,6 +2,18 @@
 
 > Related: [Project Overview](project-overview.md) · [Design Decisions](design-decisions.md) · [Implementation Roadmap](implementation-roadmap.md)
 
+## Difficulty number clipped in directory (worse on macOS) (2026-08-17) — ✅ FIXED
+- **Symptom**: difficulty `<select>` shows a clipped number ("4"/"10" not fully visible), worse on macOS.
+- **Root cause** (two issues):
+  1. The select was forced to `width: 3.5rem` (56px) via inline style — too narrow for macOS's wider native arrow, which overlaps the number.
+  2. The sticky **title column** offset was `left: 60px`, but the difficulty column's min-content width (56px select + 2×10px cell padding = 76px) exceeded it. When the table overflows and scrolls, the title column's white bg overlapped the difficulty select's right edge.
+- **Fix (kept simple, consistent with tag dropdowns)**:
+  - Difficulty select keeps the `select tag-add-select` class (native arrow, consistent with the tag dropdowns) but at a narrower `width: 4rem` (64px) via inline style in `Directory.tsx` and `Detail.tsx` — enough for "10" + native arrow on all OSes, unlike the old 56px.
+  - Difficulty `<th>` width 60 → 84px and sticky title offset `left: 60px` → `84px` (= 64px select + 2×10px cell padding = the column's min-content width in zh). During overflow the column pins at this width, so the offset matches — no overlap when scrolled.
+  - ⚠️ **Locale note**: in en-US the column renders ~89px because the header button "Difficulty" + sort icon is wider than the select; the 84px offset then leaves a ~5px overlap over the cell's **right padding only** (never covers the select/number — verified). zh-CN is exact.
+- **Verified**: zh-CN at 700px (overflow): difficulty col = title sticky offset = 84px (overlap 0, select not covered); select is 64px native, `clientWidth == scrollWidth` (value fully fits). en-US: only the ~5px invisible padding overlap. e2e `directory` + `detail` pass (27 tests).
+- ⚠️ A more elaborate approach (custom chevron via `appearance: none` + JS-measured CSS var) was tried first but rejected as over-engineered and inconsistent with the native tag dropdowns.
+
 ## Directory favorite heart shrinks to a sliver when title is long (2026-08-14) — ✅ FIXED
 - **Symptom**: the filled favorite heart next to a piece title collapses to a tiny vertical line/dot when the title is long. Code said `size={15}`, so it looked like no regression.
 - **Root cause**: the title cell is fixed at 200px (`<th className="sticky-col-second" style={{ width: 200 }}>`); the heart + title sit in `<span className="inline-flex items-center gap-1">`. Flex items default to `flex-shrink: 1`, so a long title squeezes the `<Heart>` SVG below its 15px size. Measured in-browser: 14.99px → **1.7px** wide with flex-shrink allowed.

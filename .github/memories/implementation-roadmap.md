@@ -112,7 +112,7 @@ _Reads from existing `song_tags JOIN single_select_categories`. Does NOT require
 
 **Constraints that shape the design**:
 - **Rows are NOT fixed height** — multi-select tag cells render wrapping chips (`flex flex-wrap` in TagPicker compact path), and titles can wrap → needs **dynamic (measured) virtualization**, not fixed-row-height.
-- **Sticky table layout**: sticky `thead` (`top: 0`) + sticky columns (`left: 0`, `left: 60px`) + `border-collapse: collapse`. Use a **spacer row + `transform: translateY(offset)` per visible `<tr>`** so the table layout and sticky columns keep working. Horizontal stickiness is unaffected by vertical virtualization.
+- **Sticky table layout**: sticky `thead` (`top: 0`) + sticky columns (`left: 0`, `left: 84px` — difficulty column; offset = 64px select + 2×10px cell padding, see `known-issues.md` 2026-08-17) + `border-collapse: collapse`. Use a **spacer row + `transform: translateY(offset)` per visible `<tr>`** so the table layout and sticky columns keep working. Horizontal stickiness is unaffected by vertical virtualization.
 
 **Only real scroll interaction**: restore fires in `useLayoutEffect` + `rAF` after first load, but measured heights start as estimates → defer restore until the virtualizer's first measurement pass (keep rAF + add a "measured" readiness flag before scrolling).
 
