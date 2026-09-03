@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Music, Pencil, Plus, RotateCcw, Search, Settings, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Heart, Music, Pencil, Plus, RotateCcw, Search, Settings, SlidersHorizontal, X } from "lucide-react";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import LocaleSwitch from "@/components/LocaleSwitch";
 import TagPicker from "@/components/TagPicker";
@@ -134,6 +134,9 @@ export default function Directory({ initialData = null }: { initialData?: Direct
     return "";
   });
   const [filters, setFilters] = useState<Record<string, number[]>>(() => ({}));
+  // Filter area is collapsed while searching and reopened via the header toggle.
+  // Defaulting to open keeps the directory browsable as before.
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const difficultyFilter = useSingleSelectFilter<number>();
   const [editingTags, setEditingTags] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "createdAt", dir: "desc" });
@@ -387,6 +390,18 @@ export default function Directory({ initialData = null }: { initialData?: Direct
   // We deliberately do NOT write to sessionStorage here — Next.js's synthetic
   // scroll-to-top during navigation would overwrite the correct value.
   const shellRef = useRef<HTMLDivElement>(null);
+  const hasFocusedSearchRef = useRef(false);
+  // Collapse the filter area when the user starts typing and reopen it when the
+  // query is cleared. The ref makes this fire only on the empty↔non-empty
+  // transition, so a panel opened via the toggle stays open while typing.
+  const prevQueryEmptyRef = useRef(true);
+  useEffect(() => {
+    const isEmpty = query === "";
+    if (isEmpty !== prevQueryEmptyRef.current) {
+      prevQueryEmptyRef.current = isEmpty;
+      setFiltersOpen(isEmpty);
+    }
+  }, [query]);
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -400,6 +415,12 @@ export default function Directory({ initialData = null }: { initialData?: Direct
 
   const hasActiveFilter =
     Object.values(filters).some((ids) => ids.length > 0) || difficultyFilter.value !== null;
+
+  /** Clears all tag-category filters and the difficulty filter. */
+  function clearFilters() {
+    setFilters(Object.fromEntries(Object.keys(filters).map((k) => [k, []])));
+    difficultyFilter.reset();
+  }
 
   /** Extra category keys from DB tags not yet in userCategories. */
   const extraCategoryKeys = useMemo(() => {
@@ -664,6 +685,13 @@ export default function Directory({ initialData = null }: { initialData?: Direct
               onFocus={(e) => {
                 const len = (e.target as HTMLInputElement).value.length;
                 setTimeout(() => (e.target as HTMLInputElement).setSelectionRange(len, len), 0);
+                // Clear filters only on the FIRST focus of the search box. If the
+                // user picks a filter after typing and then returns to search to
+                // keep typing, don't wipe it out again — that would be confusing.
+                if (!hasFocusedSearchRef.current) {
+                  hasFocusedSearchRef.current = true;
+                  clearFilters();
+                }
               }}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(e) => {
@@ -685,11 +713,28 @@ export default function Directory({ initialData = null }: { initialData?: Direct
               </button>
             )}
           </div>
+          {query !== "" && (
+            <button
+              className={`text-button shrink-0 ${filtersOpen ? "" : "primary-button"}`}
+              type="button"
+              style={{ fontSize: "14px" }}
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              title={t.filters}
+            >
+              <SlidersHorizontal size={16} /> {t.filters}
+            </button>
+          )}
         </div>
       </header>
 
       <div ref={shellRef} className="table-shell">
-        <section className="filter-section relative px-4 py-4" style={{ background: "var(--background)" }}>
+        {/* The filter area auto-collapses while typing and reopens when the query
+            is cleared (or via the header toggle while searching). Collapsing is
+            layout-based (display: none) so the table fills the view without
+            depending on scroll; blur never touches this state, so taps on pieces
+            always navigate. */}
+        <section className="filter-section relative px-4 py-4" style={{ background: "var(--background)", ...(!filtersOpen ? { display: "none" } : {}) }}>
         <div className="mb-3 flex flex-col sm:flex-row sm:flex-wrap items-start justify-between gap-3 sm:gap-1.5">
           <div className="flex flex-wrap items-center gap-1.5 order-2 sm:order-first">
           <span className="text-xs font-semibold text-[var(--foreground)] shrink-0 w-[4.5rem]">{t.difficulty}</span>
@@ -716,10 +761,7 @@ export default function Directory({ initialData = null }: { initialData?: Direct
           <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${editingTags ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => setEditingTags((value) => !value)}>
             <Pencil size={12} /> {editingTags ? t.doneEditingTags : t.editTags}
           </button>
-          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(Object.values(filters).some((ids) => ids.length > 0) || difficultyFilter.value !== null) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={() => {
-            setFilters(Object.fromEntries(Object.keys(filters).map((k) => [k, []])));
-            difficultyFilter.reset();
-          }}>
+          <button className={`text-button !min-h-0 !h-auto !py-0.5 !px-2 ${(Object.values(filters).some((ids) => ids.length > 0) || difficultyFilter.value !== null) ? "primary-button" : ""}`} type="button" style={{ fontSize: 12 }} onClick={clearFilters}>
             <RotateCcw size={12} /> {t.resetFilters}
           </button>
         </div>
@@ -921,8 +963,7 @@ export default function Directory({ initialData = null }: { initialData?: Direct
           onClick={() => {
             shellRef.current?.scrollTo({ top: 0, behavior: "smooth" });
             if (hasActiveFilter) {
-              setFilters(Object.fromEntries(Object.keys(filters).map((k) => [k, []])));
-              difficultyFilter.reset();
+              clearFilters();
             }
           }}
           aria-label={hasActiveFilter ? "Scroll to top and reset filters" : "Scroll to top"}

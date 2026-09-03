@@ -16,6 +16,10 @@
 
 Avoid the VS Code repo-memory location `/memories/repo/` (workspace storage ID can change on WSL reconnect, causing data loss).
 
+## Golden rule — never change unrelated behavior without confirmation
+
+When implementing a requested feature/behavior, change **only** what was asked. If a needed change would alter another existing behavior (UI, state, interaction, or test), **stop and ask** before proceeding. (Learned from the directory search/filter work: silently switching "reappear on blur" → "toggle" → "query-driven" repeatedly broke piece-link navigation and other behaviors the user relied on.)
+
 ## Before taking ANY action, read the relevant section below
 
 > These checklists apply to **all** agent actions — running commands, editing code, debugging, investigating. Do not skip them. If you don't read the right file before acting, you risk wrong ports, wrong commands, or missed known issues.

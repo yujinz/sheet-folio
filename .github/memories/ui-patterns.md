@@ -1,5 +1,10 @@
 # UI consistency patterns
 
+## Search & filter collapse (directory)
+- Filter-area visibility is driven by the **search query**, never by focus/blur (focus/blur-driven layout changes shift the table under taps on iOS and break piece navigation).
+- Rules: empty query → filter area visible and no "Filters" toggle; non-empty query → auto-collapse + show a header "Filters" toggle; clearing the query reopens the area. Only the first search focus clears filters.
+- Track the previous empty/non-empty state with a ref so the collapse toggles only on the empty↔non-empty transition (not on every keystroke — otherwise a manually opened panel snaps shut while typing).
+
 ## i18n
 - All user-facing text must have both zh-CN and en-US entries in `src/lib/i18n.ts`
 - Custom category labels accept separate zh/en names stored as `{ key, labelZh, labelEn }`

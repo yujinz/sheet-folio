@@ -101,6 +101,60 @@ test("reset filters clears difficulty filter", async ({ page }) => {
   expect(count).toBeGreaterThanOrEqual(2);
 });
 
+test("focusing search clears active filters", async ({ page }) => {
+  // Apply a difficulty filter — only 欢乐颂 (difficulty 1) should remain
+  await page.locator('.filter-section button:has-text("1")').first().click();
+  await page.waitForTimeout(300);
+  expect(await getTableRowCount(page)).toBe(1);
+
+  // Focusing the search box clears the filter (search restarts from full list)
+  await page.locator('input[placeholder="搜索曲名"]').focus();
+  await page.waitForTimeout(300);
+  const count = await getTableRowCount(page);
+  expect(count).toBeGreaterThanOrEqual(2);
+});
+
+test("typing collapses the filter area and clearing reopens it", async ({ page }) => {
+  const search = page.locator('input[placeholder="搜索曲名"]');
+  const filtersToggle = page.getByRole("button", { name: "筛选", exact: true });
+
+  // Empty query: filter area visible, no toggle shown
+  await expect(page.locator(".filter-section")).toBeVisible();
+  await expect(filtersToggle).toBeHidden();
+
+  // Typing auto-collapses the area and shows the toggle
+  await search.click();
+  await search.type("欢乐");
+  await page.waitForTimeout(200);
+  await expect(page.locator(".filter-section")).toBeHidden();
+  await expect(filtersToggle).toBeVisible();
+
+  // The toggle reopens filters mid-search (query intact)
+  await filtersToggle.click();
+  await page.waitForTimeout(200);
+  await expect(page.locator(".filter-section")).toBeVisible();
+  await expect(page.locator("a:has-text('欢乐颂')")).toBeVisible();
+
+  // Clearing the query auto-reopens the area and hides the toggle
+  await page.locator('button[aria-label="Clear search"]').click();
+  await page.waitForTimeout(300);
+  await expect(page.locator(".filter-section")).toBeVisible();
+  await expect(filtersToggle).toBeHidden();
+});
+
+test("clicking a piece while search is focused navigates to the piece", async ({ page }) => {
+  // Type to collapse the filter area, then click the matching piece link. The
+  // blur must NOT reinsert the filter area under the cursor (which would swallow
+  // the click) — it should navigate to the piece.
+  const search = page.locator('input[placeholder="搜索曲名"]');
+  await search.click();
+  await search.type("欢乐颂");
+  await page.waitForTimeout(200);
+  await expect(page.locator(".filter-section")).toBeHidden();
+  await page.locator(".song-table tbody tr a").first().click();
+  await expect(page).toHaveURL(/\/piece\/\d+/);
+});
+
 // ─── Tag Filters (multi-select) ─────────────────────────────────────
 
 test("toggle tag filter shows filtered pieces", async ({ page }) => {

@@ -2,6 +2,16 @@
 
 > Related: [Project Overview](project-overview.md) · [Design Decisions](design-decisions.md) · [Implementation Roadmap](implementation-roadmap.md)
 
+## Search filter area: blur-driven layout shifts break iOS piece taps (2026-09-03) — ✅ FIXED
+- **Symptom**: with search focused, tapping a piece link did not navigate — the page just shifted/scrolled. Desktop was fine; only iOS (with or without the keyboard up).
+- **Root cause**: filter-area visibility was tied to input focus/blur. On blur we reinserted the collapsed filter section (~157px), shifting the table under the tap mid-gesture so the click landed on a different element. On iOS Safari `blur.relatedTarget` is `null` (links don't take focus on tap), so blur-target detection can't reliably skip the reveal. Pointer-capture detection also didn't cover older iOS (no PointerEvent).
+- **Fix (adopted)**: never change layout on blur. Collapse is now driven by **search query presence**, not focus:
+  - query empty → filter area visible, no toggle shown.
+  - query non-empty → auto-collapse; a header "Filters" toggle appears to reopen.
+  - clearing the query auto-reopens the area.
+  - only the first search focus clears filters.
+- **Lesson**: avoid focus/blur-driven layout changes in scrollable UIs — they shift content under the pointer and break taps on iOS. Prefer state tied to data (the query) + an explicit toggle.
+
 ## Difficulty number clipped in directory (worse on macOS) (2026-08-17) — ✅ FIXED
 - **Symptom**: difficulty `<select>` shows a clipped number ("4"/"10" not fully visible), worse on macOS.
 - **Root cause** (two issues):
