@@ -653,7 +653,7 @@ export default function Directory({ initialData = null }: { initialData?: Direct
   return (
     <main className="sheet-page">
       <DemoBanner />
-      <header className="flex flex-col sm:flex-row items-center gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
+      <header className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
         <div className="flex items-center justify-end gap-3 order-1 sm:order-last sm:ml-auto w-full sm:w-auto">
           <span className="text-[var(--muted)]" style={{ fontSize: "14px" }}>{t.appTitle}</span>
           <Link
@@ -671,7 +671,7 @@ export default function Directory({ initialData = null }: { initialData?: Direct
           <button className="text-button primary-button shrink-0" type="button" style={{ fontSize: "14px" }} onClick={createPiece}>
             <Plus size={16} /> {t.addPiece}
           </button>
-          <div className="relative min-w-20 sm:min-w-48 flex-1">
+          <div className="relative min-w-20 sm:min-w-32 flex-1">
             <Search className="absolute left-3 top-2.5 text-[var(--muted)]" size={16} />
             <input
               className="input"
