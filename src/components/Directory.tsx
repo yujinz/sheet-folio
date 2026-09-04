@@ -912,11 +912,11 @@ export default function Directory({ initialData = null }: { initialData?: Direct
           </div>
           )}
         </section>
-        <table className="song-table">
+        <table className="song-table" style={{ minWidth: 340 + allCategoryKeys.length * 128 }}>
           <thead>
             <tr>
               <th className="sticky-col-first" style={{ width: 84 }}><button onClick={() => sortBy("difficulty")}>{t.difficulty}{difficultyFilter.value !== null && <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: DIFFICULTY_COLORS[difficultyFilter.value], marginLeft: 4, verticalAlign: "middle" }} />} {sort.key === "difficulty" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}</button></th>
-              <th className="sticky-col-second" style={{ width: 200 }}>
+              <th className="sticky-col-second" style={{ width: 128, minWidth: 128 }}>
                 <div className="flex items-center justify-between">
                   <button onClick={() => sortBy("title")}>
                     {t.title} {sort.key === "title" ? (sort.dir === "asc" ? <ArrowUp size={14} className="inline" /> : <ArrowDown size={14} className="inline" />) : <ArrowUpDown size={14} className="inline text-[var(--muted)]" />}
@@ -926,8 +926,8 @@ export default function Directory({ initialData = null }: { initialData?: Direct
                   </button>
                 </div>
               </th>
-              {allCategoryKeys.map((key) => {const selectedIds = filters[key] ?? [];const selectedTags = selectedIds.length > 0 ? tags.filter(t => t.category === key && selectedIds.includes(t.id)) : [];return <th key={key} style={{ width: 170 }}>{getCategoryLabel(userCategories, key, locale)}{selectedTags.length > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 2, marginLeft: 4, verticalAlign: "middle" }}>{selectedTags.map(t => <span key={t.id} style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: t.color }} />)}</span>}</th>;})}
-              <th style={{ width: 170 }}><button onClick={() => sortBy("notes")}>{t.notes}</button></th>
+              {allCategoryKeys.map((key) => {const selectedIds = filters[key] ?? [];const selectedTags = selectedIds.length > 0 ? tags.filter(t => t.category === key && selectedIds.includes(t.id)) : [];return <th key={key} style={{ width: 128, minWidth: 128 }}>{getCategoryLabel(userCategories, key, locale)}{selectedTags.length > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 2, marginLeft: 4, verticalAlign: "middle" }}>{selectedTags.map(t => <span key={t.id} style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: t.color }} />)}</span>}</th>;})}
+              <th style={{ width: 128, minWidth: 128 }}><button onClick={() => sortBy("notes")}>{t.notes}</button></th>
             </tr>
           </thead>
           <tbody>

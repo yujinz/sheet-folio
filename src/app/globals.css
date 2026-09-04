@@ -209,7 +209,7 @@ body {
 
 .song-table {
   width: 100%;
-  min-width: 770px;
+  table-layout: fixed;
   border-collapse: collapse;
 }
 
